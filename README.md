@@ -19,7 +19,7 @@ npm run dev
 - `/pricing.html`：定价
 - `/downloads.html`：下载资源
 
-下载链接默认指向 `picpoet-org/desktop-app` 的 GitHub Releases，发布桌面应用后即可使用。
+下载入口指向统一 Flutter 客户端 `picpoet-org/picpoet` 的 GitHub Releases，客户端覆盖 Android、OpenHarmony、Linux、macOS 和 Windows。CLI 源码位于 `picpoet-org/picpoet-cli`。
 
 ## 品牌资产
 

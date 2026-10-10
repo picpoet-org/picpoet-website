@@ -6,6 +6,6 @@
   "scripts": {
     "dev": "python -m http.server 8080",
     "start": "python -m http.server 8080",
-    "styles:sync": "node styles-source/scripts/generate.mjs && node styles-source/scripts/sync-workspace.mjs --target=styles && node scripts/sync-public.mjs"
+    "public:sync": "node scripts/sync-public.mjs"
   }
 }
