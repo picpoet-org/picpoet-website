@@ -1,7 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
   <title id="title">Picpoet brand mark</title>
-  <desc id="desc">A coral picture inside a dark frame, with a separate poetic sparkle.</desc>
-  <rect width="256" height="256" rx="56" fill="#20201e"/>
+  <desc id="desc">A coral picture inside a frame, with a separate poetic sparkle.</desc>
   <rect x="42" y="64" width="172" height="138" rx="18" fill="#f5f3ee"/>
   <clipPath id="picture">
     <rect x="42" y="64" width="172" height="138" rx="18"/>
