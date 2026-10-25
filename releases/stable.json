@@ -7,11 +7,23 @@
       "minimumSystem": "Android 8.0+；保存相册副本需 Android 10+",
       "applicationId": "org.picpoet.app.android",
       "minSdk": 26,
-      "versionName": null,
-      "versionCode": null,
-      "publishedAt": null,
-      "notes": [],
-      "artifacts": []
+      "versionName": "0.1.0",
+      "versionCode": 1000,
+      "publishedAt": "2026-10-26",
+      "notes": [
+        "首个正式 Android 版本：支持照片诗词创作、照片信息与元数据保存。",
+        "支持本机历史、PNG 分享图和多语言界面。",
+        "支持启动检查更新、设置页手动检查及可选升级提醒。"
+      ],
+      "artifacts": [
+        {
+          "arch": "arm64-v8a",
+          "url": "https://downloads.nullprivate.com/picpoet/release/android/0.1.0/picpoet-0.1.0-arm64-v8a.apk",
+          "format": "apk",
+          "sha256": "a4cb4cac1f14abe80a0abcb8c1a96747ce65898b90bd14b7a8816b182111e118",
+          "sizeBytes": 63870255
+        }
+      ]
     },
     {
       "id": "ohos",

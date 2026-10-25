@@ -8,6 +8,8 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { once } from 'node:events';
+import { formatSize } from '../shared/releases.mjs';
+import { androidVersionCode } from '../scripts/deployment-config.mjs';
 
 const base = new URL(process.env.BASE_URL || 'http://127.0.0.1:8080/');
 const output = process.env.BROWSER_REPORT_DIR;
@@ -73,19 +75,23 @@ try {
   const browser = await send('Browser.getVersion');
   const response = await fetch(new URL('releases/stable.json', base));
   assert.equal(response.status, 200);
-  const empty = await response.json();
-  assert.equal(empty.platforms.length, 5);
-  assert.ok(empty.platforms.every((platform) => platform.artifacts.length === 0));
+  const real = await response.json();
+  assert.equal(real.platforms.length, 5);
+  const empty = structuredClone(real);
+  for (const platform of empty.platforms) {
+    Object.assign(platform, { versionName: null, versionCode: null, publishedAt: null, notes: [], artifacts: [] });
+  }
   const formats = { android: 'apk', ohos: 'hap', linux: 'tar.gz', macos: 'dmg', windows: 'zip' };
   const fixture = structuredClone(empty);
+  const versionName = '0.1.0';
   for (const platform of fixture.platforms) {
     Object.assign(platform, {
-      versionName: '0.3.0', versionCode: 2, publishedAt: '2026-10-24',
+      versionName, versionCode: androidVersionCode(versionName), publishedAt: '2026-10-24',
       notes: ['浏览器正向联调发布说明'],
       artifacts: [{
         arch: platform.id === 'android' ? 'arm64-v8a' : 'arm64',
         format: formats[platform.id],
-        url: `https://cdn.example.com/picpoet/0.3.0/${platform.id}/picpoet.${formats[platform.id]}`,
+        url: `https://cdn.example.com/picpoet/${versionName}/${platform.id}/picpoet.${formats[platform.id]}`,
         sha256: 'a'.repeat(64), sizeBytes: 10485760,
       }],
     });
@@ -93,8 +99,11 @@ try {
   }
   for (const pathname of ['downloads.html', 'pages/downloads.html']) {
     for (const width of [1280, 375]) {
-      for (const mode of ['published', 'empty']) {
+      for (const [mode, manifest] of Object.entries({ published: fixture, empty, real })) {
         const label = `${pathname.replaceAll('/', '-')}-${width}-${mode}`;
+        const publishedCount = manifest.platforms.filter((platform) => platform.artifacts.length).length;
+        const artifactCount = manifest.platforms.reduce((count, platform) => count + platform.artifacts.length, 0);
+        const statusText = publishedCount ? `${publishedCount} 个平台已有安装包。请选择与你的系统及架构匹配的版本。` : '目前暂无公开安装包。各平台发布后，这里将提供直接下载。';
         const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
         const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true });
         const cdp = (method, params) => send(method, params, sessionId);
@@ -126,7 +135,7 @@ try {
             await cdp('Fetch.fulfillRequest', {
               requestId: params.requestId, responseCode: 200,
               responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Cache-Control', value: 'no-store' }],
-              body: Buffer.from(JSON.stringify(fixture)).toString('base64'),
+              body: Buffer.from(JSON.stringify(manifest)).toString('base64'),
             });
             fulfilled++;
           }
@@ -150,9 +159,9 @@ try {
               if (status) new MutationObserver(() => __browserEvidence.statuses.push(status.textContent)).observe(status, { childList: true, subtree: true, characterData: true });
             });
           ` });
-          if (mode === 'published') await cdp('Fetch.enable', { patterns: [{ urlPattern: '*/releases/stable.json', requestStage: 'Request' }] });
+          if (mode !== 'real') await cdp('Fetch.enable', { patterns: [{ urlPattern: '*/releases/stable.json', requestStage: 'Request' }] });
           await cdp('Page.navigate', { url: new URL(pathname, base).href });
-          const ready = () => evaluate(`Boolean(document.querySelector('#refresh-downloads') && !document.querySelector('#refresh-downloads').disabled && document.querySelector('#download-status').textContent.includes(${JSON.stringify(mode === 'published' ? '5 个平台已有安装包' : '目前暂无公开安装包')}))`);
+          const ready = () => evaluate(`Boolean(document.querySelector('#refresh-downloads') && !document.querySelector('#refresh-downloads').disabled && document.querySelector('#download-status').textContent === ${JSON.stringify(statusText)})`);
           await waitFor(ready, `${label} 首次渲染`);
           await evaluate('document.fonts.ready.then(() => true)');
           const mouseClick = async (selector) => {
@@ -176,8 +185,11 @@ try {
           assert.equal(before, 1, `${label} 初始清单请求`);
           await mouseClick('#refresh-downloads');
           await waitFor(async () => requests.length === before + 1 && await ready(), `${label} 鼠标刷新完成`);
-          if (mode === 'published') {
-            for (const platform of fixture.platforms) await mouseClick(`[data-platform="${platform.id}"] summary`);
+          // 每个已有安装包仅展开校验值，下载链接通过 href 验证。
+          for (const platform of manifest.platforms) {
+            for (let index = 0; index < platform.artifacts.length; index++) {
+              await mouseClick(`[data-platform="${platform.id}"] .artifact:nth-child(${index + 1}) summary`);
+            }
           }
           const state = await evaluate(`({
             status: document.querySelector('#download-status').textContent,
@@ -205,38 +217,44 @@ try {
             })),
             evidence: __browserEvidence,
           })`);
-          assert.equal(state.cards.length, 5);
+          assert.equal(state.cards.length, manifest.platforms.length);
+          assert.equal(state.status, statusText);
           assert.equal(state.disabled, false);
           assert.equal(state.viewport, width);
           assert.ok(state.documentWidth <= width && state.bodyWidth <= width, `${label} 页面横向尺寸`);
-          for (const platform of fixture.platforms) {
+          for (const platform of manifest.platforms) {
             const card = state.cards.find((item) => item.id === platform.id);
             assert.ok(card, `${label} 平台卡片 ${platform.id}`);
-            if (mode === 'empty') {
+            assert.equal(card.artifacts.length, platform.artifacts.length);
+            if (!platform.artifacts.length) {
               assert.equal(card.unavailable, '暂未发布');
-              assert.equal(card.artifacts.length, 0);
+              assert.equal(card.version, undefined);
+              assert.equal(card.date, undefined);
             } else {
-              assert.equal(card.version, '版本 0.3.0');
-              assert.ok(card.date.includes('2026-10-24'));
-              assert.equal(card.artifacts.length, 1);
-              const artifact = card.artifacts[0];
-              assert.equal(artifact.href, platform.artifacts[0].url);
-              assert.ok(artifact.ariaLabel.includes(platform.artifacts[0].arch));
-              assert.equal(artifact.meta, `${platform.artifacts[0].format} · 10 MiB · 外部 CDN 下载`);
-              assert.equal(artifact.checksum, 'a'.repeat(64));
+              assert.equal(card.unavailable, undefined);
+              assert.equal(card.version, `版本 ${platform.versionName}`);
+              assert.equal(card.date, `发布于 ${new Date(platform.publishedAt).toISOString().slice(0, 10)} · ${platform.minimumSystem}`);
+            }
+            for (const [index, expected] of platform.artifacts.entries()) {
+              const artifact = card.artifacts[index];
+              assert.equal(artifact.href, expected.url);
+              assert.equal(artifact.ariaLabel, `下载 ${platform.name} ${platform.versionName} ${expected.arch} ${expected.format} 安装包`);
+              assert.equal(artifact.meta, `${expected.format} · ${formatSize(expected.sizeBytes)} · 外部 CDN 下载`);
+              assert.equal(artifact.checksum, expected.sha256);
               assert.equal(artifact.open, true);
               assert.ok(artifact.clientWidth >= artifact.scrollWidth && artifact.contained && artifact.textContained, `${label} ${platform.id} 校验和布局`);
               assert.ok(artifact.box.left >= 0 && artifact.box.right <= width, `${label} 校验和值位于视口内`);
             }
           }
-          assert.equal(state.evidence.clicks.length, mode === 'published' ? 6 : 1);
+          assert.equal(state.evidence.clicks.length, artifactCount + 1);
+          assert.equal(state.evidence.clicks.filter((click) => click.tag === 'SUMMARY').length, artifactCount);
           assert.ok(state.evidence.clicks.every((click) => click.trusted));
           assert.equal(state.evidence.clicks[0].id, 'refresh-downloads');
           assert.ok(state.evidence.statuses.includes('正在读取发布信息…'), `${label} 刷新中状态`);
           assert.equal(requests.length, 2);
           const manifestUrl = new URL(pathname.startsWith('pages/') ? 'pages/releases/stable.json' : 'releases/stable.json', base).href;
           assert.ok(requests.every((url) => url === manifestUrl));
-          await waitFor(() => manifestResponses.length === 2 && (mode === 'empty' || fulfilled === 2), `${label} 请求证据`);
+          await waitFor(() => manifestResponses.length === 2 && fulfilled === (mode === 'real' ? 0 : 2), `${label} 请求证据`);
           assert.ok(manifestResponses.every((item) => item.status === 200));
           assert.deepEqual(errors, [], `${label} 浏览器异常`);
           assert.deepEqual(externalRequests, [], `${label} 所有页面请求使用本地资源`);
@@ -246,7 +264,7 @@ try {
             await writeFile(join(output, `${label}.png`), Buffer.from(screenshot.data, 'base64'));
           }
           results.push({ label, requests, manifestResponses, fulfilled, errors, externalRequests, ...state });
-          console.log(`PASS ${label}：${mode === 'published' ? '5 安装包、5 校验和展开' : '5 暂未发布'}，鼠标刷新成功，宽度 ${state.documentWidth}/${width}，无 JS 异常`);
+          console.log(`PASS ${label}：${artifactCount} 安装包、${artifactCount} 校验和展开、${manifest.platforms.length - publishedCount} 暂未发布，鼠标刷新成功，宽度 ${state.documentWidth}/${width}，无 JS 异常`);
         } finally {
           listeners.delete(listener);
           await send('Target.closeTarget', { targetId });
@@ -255,7 +273,8 @@ try {
     }
   }
   assert.deepEqual(infrastructureErrors, []);
-  const report = { browser, base: base.href, fixture, results };
+  assert.equal(results.length, 12);
+  const report = { browser, base: base.href, fixture, empty, real, results };
   if (output) await writeFile(join(output, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
   console.log(`全部 ${results.length} 个场景通过；Chrome ${browser.product}；${results.reduce((count, item) => count + item.evidence.clicks.length, 0)} 次可信鼠标点击。`);
 } finally {
@@ -264,5 +283,5 @@ try {
   await exited;
   clearTimeout(forceKill);
   for (const request of pending.values()) clearTimeout(request.timer);
-  await rm(profile, { recursive: true, force: true });
+  await rm(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }

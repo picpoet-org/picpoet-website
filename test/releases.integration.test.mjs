@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { detectPlatform, formatSize, loadManifest, validateManifest } from '../shared/releases.mjs';
+import { androidVersionCode, deployment, validatePublishedManifest } from '../scripts/deployment-config.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const base = JSON.parse(await readFile(new URL('../releases/stable.json', import.meta.url), 'utf8'));
@@ -12,12 +13,12 @@ function publishedManifest() {
   const manifest = structuredClone(base);
   for (const platform of manifest.platforms) {
     const format = { android: 'apk', ohos: 'hap', linux: 'tar.gz', macos: 'dmg', windows: 'zip' }[platform.id];
-    platform.versionName = '0.3.0';
-    platform.versionCode = 2;
+    platform.versionName = '0.1.0';
+    platform.versionCode = androidVersionCode(platform.versionName);
     platform.publishedAt = '2026-10-24T00:00:00Z';
     platform.notes = ['照片创作体验更新', '本机历史与分享'];
     platform.artifacts = [{ arch: platform.id === 'android' ? 'arm64-v8a' : 'arm64', format,
-      url: `https://cdn.example.com/picpoet/${platform.id}/0.3.0/picpoet.${format}`,
+      url: `${deployment.downloadBaseUrl}/${platform.id}/0.1.0/picpoet.${format}`,
       sha256: 'a'.repeat(64), sizeBytes: 10485760 }];
   }
   return manifest;
@@ -25,6 +26,8 @@ function publishedManifest() {
 
 test('发布清单经 HTTP 读取后提供五个平台的版本和直链', async (t) => {
   const manifest = publishedManifest();
+  assert.equal(validatePublishedManifest(manifest), manifest);
+  assert.equal(manifest.platforms.find((platform) => platform.id === 'android').versionCode, 1000);
   const server = createServer((_request, response) => {
     response.writeHead(200, { 'Content-Type': 'application/json' });
     response.end(JSON.stringify(manifest));
@@ -40,8 +43,12 @@ test('发布清单经 HTTP 读取后提供五个平台的版本和直链', async
 });
 
 test('空发布清单支持如实呈现五个平台的待发布状态', () => {
-  assert.equal(validateManifest(base), base);
-  assert.ok(base.platforms.every((platform) => platform.artifacts.length === 0));
+  const unpublished = structuredClone(base);
+  for (const platform of unpublished.platforms) {
+    Object.assign(platform, { versionName: null, versionCode: null, publishedAt: null, notes: [], artifacts: [] });
+  }
+  assert.equal(validateManifest(unpublished), unpublished);
+  assert.ok(unpublished.platforms.every((platform) => platform.artifacts.length === 0));
 });
 
 test('设备识别为下载页推荐对应平台，同时保留完整平台列表', () => {
@@ -58,7 +65,11 @@ test('部署同步后根目录和 pages 子路径包含相同清单、页面与�
   execFileSync(process.execPath, ['scripts/sync-public.mjs'], { cwd: root });
   for (const resource of ['index.html', 'docs.html', 'downloads.html', 'pricing.html', 'styles.css',
     'shared/downloads.mjs', 'shared/releases.mjs', 'releases/stable.json']) {
-    const source = await readFile(new URL(`../${resource}`, import.meta.url), 'utf8');
+    let source = await readFile(new URL(`../${resource}`, import.meta.url), 'utf8');
+    if (resource.endsWith('.html')) {
+      const canonical = `${deployment.websiteUrl}/${resource === 'index.html' ? '' : resource}`;
+      source = source.replace('  </head>', `    <link rel="canonical" href="${canonical}" />\n  </head>`);
+    }
     for (const prefix of ['public/', 'public/pages/']) {
       assert.equal(await readFile(new URL(`../${prefix}${resource}`, import.meta.url), 'utf8'), source);
     }
@@ -67,4 +78,11 @@ test('部署同步后根目录和 pages 子路径包含相同清单、页面与�
   for (const platform of base.platforms) assert.ok(html.includes(`data-platform="${platform.id}"`));
   assert.match(html, /id="download-status"/);
   assert.match(html, /shared\/downloads\.mjs/);
+  assert.equal((html.match(/rel="canonical"/g) ?? []).length, 1);
+  const robots = await readFile(new URL('../public/robots.txt', import.meta.url), 'utf8');
+  assert.ok(robots.includes(`Sitemap: ${deployment.websiteUrl}/sitemap.xml`));
+  const sitemap = await readFile(new URL('../public/sitemap.xml', import.meta.url), 'utf8');
+  for (const page of ['', 'downloads.html', 'docs.html', 'pricing.html']) {
+    assert.ok(sitemap.includes(`<loc>${deployment.websiteUrl}/${page}</loc>`));
+  }
 });
