@@ -3,53 +3,72 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Picpoet - 用视觉模型为照片和视频生成结构化元数据。" />
+    <meta name="description" content="Picpoet，为一张照片写一首诗。创作诗词、整理照片描述与标签，在本机回看历史，制作 PNG 分享图。软件免费，无订阅。" />
     <link rel="icon" href="assets/picpoet-mark.svg" type="image/svg+xml" />
     <meta name="theme-color" content="#20201e" />
-    <title>Picpoet - 让每一张照片更易被发现</title>
-    <link rel="stylesheet" href="styles.css" />
+    <title>Picpoet · 为一张照片，留一份诗意</title>
     <link rel="stylesheet" href="shared/picpoet-tokens.css" />
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <a class="skip-link" href="#main">跳至主要内容</a>
     <header class="site-header">
-      <a class="brand" href="index.html" aria-label="Picpoet 首页"><img src="assets/picpoet-mark.svg" alt="" /> <span>Picpoet</span></a>
+      <a class="brand" href="index.html" aria-label="Picpoet 首页"><img src="assets/picpoet-mark.svg" width="32" height="32" alt="" /><span>Picpoet</span></a>
       <nav aria-label="主导航">
         <a href="docs.html">使用说明</a>
         <a href="pricing.html">定价</a>
         <a href="downloads.html">下载</a>
-        <a class="nav-cta" href="https://github.com/picpoet-org/picpoet" target="_blank" rel="noreferrer">GitHub</a>
+        <a class="nav-cta" href="https://github.com/picpoet-org/picpoet">GitHub 源码</a>
       </nav>
     </header>
 
-    <main>
-      <section class="hero shell">
+    <main id="main" tabindex="-1">
+      <section class="hero shell" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <p class="eyebrow">AI metadata for your media library</p>
-          <h1>让每一张照片<br /><span>更容易被发现。</span></h1>
-          <p class="lede">Picpoet 递归扫描图片和视频，借助视觉模型生成标题、描述和结构化标签，并把结果写回媒体元数据。</p>
+          <p class="eyebrow">一张照片，一段心境</p>
+          <h1 id="hero-title">把眼前的风景，<br /><span>留在诗里。</span></h1>
+          <p class="lede">用 Picpoet 为一张照片创作诗或词，也可以只记录照片信息。让画面有文字，让回忆有处可寻。</p>
           <div class="actions">
-            <a class="button primary" href="downloads.html">开始使用</a>
-            <a class="button secondary" href="docs.html">查看使用说明</a>
+            <a class="button primary" href="downloads.html">查看平台与发布状态 <span aria-hidden="true">→</span></a>
+            <a class="button secondary" href="docs.html">了解如何使用</a>
           </div>
+          <p class="hero-note">软件免费 · 无订阅 · 模型服务费用另计</p>
         </div>
-        <div class="hero-card" aria-label="Picpoet 功能示意">
-          <div class="card-top"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span><span class="card-label">picpoet scan</span></div>
-          <div class="media-preview"><span class="media-icon">✦</span><span>family-trip.jpg</span></div>
-          <div class="tag-list"><span>场景: 海边</span><span>活动: 旅行</span><span>季节: 夏季</span><span>情绪: 愉快</span></div>
-          <div class="progress"><span></span></div>
-          <p class="muted">正在写入元数据 · 12 / 48</p>
+        <figure class="hero-card">
+          <div class="artwork-heading"><span>一帧山水</span><span class="artwork-stamp">诗意</span></div>
+          <svg class="landscape" viewBox="0 0 640 400" role="img" aria-labelledby="landscape-title landscape-desc" xmlns="http://www.w3.org/2000/svg">
+            <title id="landscape-title">暮色山水插画</title>
+            <desc id="landscape-desc">一轮落日映着远山，湖面上有一叶小舟。</desc>
+            <rect width="640" height="400" fill="var(--pp-color-photo)" />
+            <circle cx="466" cy="98" r="35" fill="var(--pp-color-accent-dark)" opacity=".8" />
+            <path d="M0 221 88 135 151 194 262 80 365 201 459 155 640 228V400H0Z" fill="var(--pp-color-muted-light)" opacity=".5" />
+            <path d="M0 249 129 210 211 251 366 142 502 251 640 193V400H0Z" fill="var(--pp-color-muted)" opacity=".5" />
+            <path d="M0 278Q165 246 310 279T640 275V400H0Z" fill="var(--pp-color-paper)" opacity=".8" />
+            <g fill="none" stroke="var(--pp-color-muted-light)" stroke-linecap="round"><path d="M70 313h145m178 15h137M156 357h180m83 16h85" /><path d="M429 284h57m-47 9h34" stroke="var(--pp-color-accent-dark)" opacity=".65" /></g>
+            <path d="M267 321h70l-15 10h-43Z" fill="var(--pp-color-ink)" />
+            <path d="M301 320v-41l24 31h-24" fill="var(--pp-color-panel)" stroke="var(--pp-color-ink)" stroke-width="2" stroke-linejoin="round" />
+          </svg>
+          <div class="poem-preview"><h2>山水之间</h2><p>远山收暮色，<br />一棹入秋光。</p><div class="tag-list" aria-label="示例照片标签"><span>远山</span><span>湖泊</span><span>暮色</span></div></div>
+          <figcaption>作品演示 · 插画与文字仅作示意，非真实 App 截图或生成效果保证。</figcaption>
+        </figure>
+      </section>
+
+      <section class="section shell" aria-labelledby="features-title">
+        <div class="section-heading"><p class="eyebrow">从看见，到留住</p><h2 id="features-title">照片之外，还有想说的话。</h2><p>一次专注一张照片，按自己的方式留下文字与记忆。</p></div>
+        <div class="feature-grid">
+          <article><span class="feature-number" aria-hidden="true">01</span><h3>写诗，也写眼前</h3><p>选择诗、词或纯照片信息，生成标题、描述与标签。诗词支持简体、繁体中文，标题与正文可复制。</p></article>
+          <article><span class="feature-number" aria-hidden="true">02</span><h3>保存，留一份余地</h3><p>将结果保存为照片副本，或在支持的来源和平台上选择覆写元数据。修改原图前，先留好备份。</p></article>
+          <article><span class="feature-number" aria-hidden="true">03</span><h3>回看，再分享</h3><p>搜索本机历史、查看详情与原图，按需删除记录。把照片与文字制作成 PNG 分享图，分享当时的心境。</p></article>
         </div>
       </section>
 
-      <section class="feature-grid shell" aria-label="核心能力">
-        <article><span class="feature-number">01</span><h2>批量处理</h2><p>递归扫描目录，统一处理照片和视频，适合整理长期积累的媒体库。</p></article>
-        <article><span class="feature-number">02</span><h2>结构化标签</h2><p>输出标题、主题、场景、活动等字段，保持标签格式稳定可检索。</p></article>
-        <article><span class="feature-number">03</span><h2>安全写回</h2><p>默认复制文件并追加后缀，不覆盖源文件；支持 dry-run 和可配置写入模式。</p></article>
+      <section class="section shell split-section" aria-labelledby="preferences-title">
+        <div><p class="eyebrow">按你的习惯创作</p><h2 id="preferences-title">模型由你选，<br />语言随你定。</h2></div>
+        <div class="section-copy"><p>在设置中填写 API key 与 Base URL，探测可用模型。界面提供简体中文、繁體中文、英语、日语、韩语、越南语和泰语七种语言；诗词内容单独选择简体或繁体中文。</p><p>本机历史不等于离线生成。使用云端视觉模型时，所选照片会发送至你配置的模型服务；服务商的数据处理政策与费用也需要一并了解。</p><a class="text-link" href="docs.html#privacy">了解照片与数据如何处理 <span aria-hidden="true">→</span></a></div>
       </section>
-
-      <section class="closing shell"><p class="eyebrow">Built for thoughtful archives</p><h2>从“记得大概”到“马上找到”。</h2><a class="text-link" href="https://github.com/picpoet-org" target="_blank" rel="noreferrer">查看 Picpoet Org <span>→</span></a></section>
+      <section class="closing shell" aria-labelledby="closing-title"><p class="eyebrow">下一次，为照片多停留片刻</p><h2 id="closing-title">让值得记住的，<br />不只留在相册里。</h2><p>客户端面向 Android、OpenHarmony、Linux、macOS 与 Windows。安装可用性以下载页读取到的各平台发布信息为准。</p><div class="actions"><a class="button primary" href="downloads.html">查看发布状态</a><a class="text-link" href="https://github.com/picpoet-org">探索 Picpoet 开源项目 <span aria-hidden="true">→</span></a></div></section>
     </main>
 
-    <footer class="site-footer shell"><span>© 2026 Picpoet</span><span>开源工具 · 由视觉模型驱动</span></footer>
+    <footer class="site-footer shell"><span>© 2026 Picpoet · 让照片有诗意</span><nav aria-label="页脚导航"><a href="docs.html#privacy">隐私与数据</a><a href="https://github.com/picpoet-org">GitHub 组织</a></nav></footer>
   </body>
 </html>

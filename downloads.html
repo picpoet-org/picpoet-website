@@ -1,9 +1,45 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="description" content="下载 Picpoet" /><link rel="icon" href="assets/picpoet-mark.svg" type="image/svg+xml" /><meta name="theme-color" content="#20201e" /><title>下载 · Picpoet</title><link rel="stylesheet" href="styles.css" /><link rel="stylesheet" href="shared/picpoet-tokens.css" /></head>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="查看 Picpoet Android、OpenHarmony、Linux、macOS、Windows 平台发布状态、系统要求与安装更新说明。" />
+    <meta name="theme-color" content="#20201e" />
+    <title>下载与发布状态 · Picpoet</title>
+    <link rel="icon" href="assets/picpoet-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="shared/picpoet-tokens.css" />
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="shared/downloads.mjs"></script>
+  </head>
   <body>
-    <header class="site-header"><a class="brand" href="index.html"><img src="assets/picpoet-mark.svg" alt="" /> <span>Picpoet</span></a><nav aria-label="主导航"><a href="docs.html">使用说明</a><a href="pricing.html">定价</a><a href="downloads.html">下载</a><a class="nav-cta" href="https://github.com/picpoet-org/picpoet" target="_blank" rel="noreferrer">GitHub</a></nav></header>
-    <main class="shell"><section class="page-header"><p class="eyebrow">Downloads</p><h1>选择适合你的 Picpoet。</h1><p class="lede">统一 Flutter 客户端覆盖 Android、OpenHarmony、Linux、macOS 和 Windows；命令行版本适合自动化和脚本。</p></section><div class="content-grid"><aside class="side-nav"><a href="#client">Flutter 客户端</a><a href="#cli">命令行工具</a><a href="#source">源代码</a></aside><div class="content"><section id="client"><h2>Flutter 客户端</h2><p>客户端源码和平台构建说明位于 Picpoet 仓库。GitHub Releases 将用于发布可下载安装包；目前还没有公开版本。</p><a class="button primary" href="https://github.com/picpoet-org/picpoet/releases" target="_blank" rel="noreferrer">查看客户端 Releases</a><a class="text-link" href="https://github.com/picpoet-org/picpoet" target="_blank" rel="noreferrer">查看 Flutter 客户端源码 <span>→</span></a></section><section id="cli"><h3>命令行工具</h3><p>通过 npm 安装和运行最新版本：</p><div class="code">npm install<br />npm run build<br />npm start -- tag ./photos</div><a class="text-link" href="https://github.com/picpoet-org/picpoet-cli" target="_blank" rel="noreferrer">查看 CLI 源码 <span>→</span></a></section><section id="source"><h3>源代码</h3><p>Picpoet 的客户端、CLI 核心和网站分别维护，欢迎提交 issue 和改进建议。</p><a class="text-link" href="https://github.com/picpoet-org" target="_blank" rel="noreferrer">访问 Picpoet Org <span>→</span></a></section></div></div></main>
-    <footer class="site-footer shell"><span>© 2026 Picpoet</span><span><a href="index.html">返回首页</a></span></footer>
+    <a class="skip-link" href="#main">跳至主要内容</a>
+    <header class="site-header">
+      <a class="brand" href="index.html" aria-label="Picpoet 首页"><img src="assets/picpoet-mark.svg" width="32" height="32" alt="" /><span>Picpoet</span></a>
+      <nav aria-label="主导航"><a href="docs.html">使用说明</a><a href="pricing.html">定价</a><a href="downloads.html" aria-current="page">下载</a><a class="nav-cta" href="https://github.com/picpoet-org/picpoet">GitHub 源码</a></nav>
+    </header>
+    <main id="main" class="shell" tabindex="-1">
+      <section class="page-header"><p class="eyebrow">下载与发布状态</p><h1>在你的设备上，<br />留住一份诗意。</h1><p class="lede">选择平台，查看系统要求与发布信息。平台支持以实际发布包为准，源码可用不代表安装包已发布。</p></section>
+      <section class="download-section" aria-labelledby="platforms-title">
+        <div class="section-heading"><h2 id="platforms-title">选择你的平台</h2><p>发布信息统一从版本清单读取。有可用安装包的平台会显示版本、更新说明与 CDN 下载入口；尚未发布的平台会明确标注。</p></div>
+        <div class="release-toolbar"><p id="download-status" role="status" aria-live="polite">正在读取发布信息…</p><button id="refresh-downloads" type="button" class="button secondary">刷新发布信息</button></div>
+        <noscript><div class="notice"><p>请启用 JavaScript 后刷新页面，以读取发布信息。你仍可查看下方平台说明和客户端源码；实际安装包可用性以成功读取的清单为准。</p></div></noscript>
+        <div class="download-grid">
+          <article id="platform-android" data-platform="android" class="download-card"><h2>Android</h2><p class="platform-requirement">Android 8.0 及以上。保存副本到系统相册需要 Android 10 及以上；覆写原图也需要 Android 10 及以上，并受来源与系统授权限制。</p><div data-release-content><p>请启用 JavaScript 并读取发布信息，以查看可用安装包。</p></div></article>
+          <article id="platform-ohos" data-platform="ohos" class="download-card"><h2>OpenHarmony</h2><p class="platform-requirement">最低系统版本、设备架构与安装方式，以实际 OpenHarmony 发布包说明为准。</p><div data-release-content><p>请启用 JavaScript 并读取发布信息，以查看可用安装包。</p></div></article>
+          <article id="platform-linux" data-platform="linux" class="download-card"><h2>Linux</h2><p class="platform-requirement">最低发行版版本、运行依赖与 CPU 架构，以实际 Linux 发布包说明为准。</p><div data-release-content><p>请启用 JavaScript 并读取发布信息，以查看可用安装包。</p></div></article>
+          <article id="platform-macos" data-platform="macos" class="download-card"><h2>macOS</h2><p class="platform-requirement">最低 macOS 版本及 Apple 芯片或 Intel 架构支持，以实际发布包说明为准。</p><div data-release-content><p>请启用 JavaScript 并读取发布信息，以查看可用安装包。</p></div></article>
+          <article id="platform-windows" data-platform="windows" class="download-card"><h2>Windows</h2><p class="platform-requirement">最低 Windows 版本、运行依赖与 CPU 架构，以实际发布包说明为准。</p><div data-release-content><p>请启用 JavaScript 并读取发布信息，以查看可用安装包。</p></div></article>
+        </div>
+      </section>
+      <div class="content-grid download-guide">
+        <aside class="side-nav"><nav aria-label="安装更新目录"><a href="#updates">Android 更新</a><a href="#install">安装与数据保留</a><a href="#source">源码与构建</a></nav></aside>
+        <div class="content">
+          <section id="updates"><h2>Android 如何检查更新？</h2><p>Android 客户端在启动时进行每日自动更新检查，也可在设置中手动检查。该功能需要构建时配置可访问的发布清单；未配置更新源时，设置页会给出说明。</p><p>出现更新提示时，可以选择“稍后”或忽略该版本，继续使用当前版本。检查失败或暂未发布也无需中断创作。</p></section>
+          <section id="install"><h2>从下载到安装，每一步都由你确认</h2><ol class="steps"><li>有可用版本时，核对平台、版本、架构与更新说明，再选择对应安装包。</li><li>Android 下载会通过外部浏览器打开，下载完成后交给系统安装器安装；按系统提示确认安装来源与权限。</li><li>仅包名与签名一致的安装包才具备覆盖安装并保留应用数据的前提，同时仍需满足系统版本与升级规则。</li></ol><div class="notice"><h3>安装前，先留好备份</h3><p>建议备份照片、创作结果与重要配置。不要把本机历史当作云端备份；卸载、清理数据或更换设备可能导致记录丢失。遇到包名或签名不一致时，请先核对来源与迁移方式。</p></div><p>其他平台的安装步骤与兼容性，以对应发布包附带的说明为准。</p></section>
+          <section id="source"><h2>安装包之外，也可以从源码开始</h2><p>客户端源码与构建说明在 Picpoet 仓库。Rust 核心及其他项目请从 GitHub 组织查找；自行构建需要相应平台的开发环境。</p><div class="actions"><a class="button secondary" href="https://github.com/picpoet-org/picpoet">查看客户端源码</a><a class="text-link" href="https://github.com/picpoet-org">访问 GitHub 组织 <span aria-hidden="true">→</span></a></div><p class="guide-next">首次使用？先阅读<a href="docs.html#config">模型配置说明</a>，了解 API key、照片传输与模型服务费用。</p></section>
+        </div>
+      </div>
+    </main>
+    <footer class="site-footer shell"><span>© 2026 Picpoet · 让照片有诗意</span><nav aria-label="页脚导航"><a href="index.html">返回首页</a><a href="docs.html#privacy">隐私与数据</a></nav></footer>
   </body>
 </html>

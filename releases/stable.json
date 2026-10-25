@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "platforms": [
+    {
+      "id": "android",
+      "name": "Android",
+      "minimumSystem": "Android 8.0+；保存相册副本需 Android 10+",
+      "applicationId": "org.picpoet.app.android",
+      "minSdk": 26,
+      "versionName": null,
+      "versionCode": null,
+      "publishedAt": null,
+      "notes": [],
+      "artifacts": []
+    },
+    {
+      "id": "ohos",
+      "name": "OpenHarmony",
+      "minimumSystem": "以发布包的系统要求为准",
+      "versionName": null,
+      "versionCode": null,
+      "publishedAt": null,
+      "notes": [],
+      "artifacts": []
+    },
+    {
+      "id": "linux",
+      "name": "Linux",
+      "minimumSystem": "以发布包的发行版与架构说明为准",
+      "versionName": null,
+      "versionCode": null,
+      "publishedAt": null,
+      "notes": [],
+      "artifacts": []
+    },
+    {
+      "id": "macos",
+      "name": "macOS",
+      "minimumSystem": "以发布包的系统与芯片要求为准",
+      "versionName": null,
+      "versionCode": null,
+      "publishedAt": null,
+      "notes": [],
+      "artifacts": []
+    },
+    {
+      "id": "windows",
+      "name": "Windows",
+      "minimumSystem": "以发布包的系统与架构说明为准",
+      "versionName": null,
+      "versionCode": null,
+      "publishedAt": null,
+      "notes": [],
+      "artifacts": []
+    }
+  ]
+}

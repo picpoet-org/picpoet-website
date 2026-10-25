@@ -4,8 +4,10 @@
   "private": false,
   "description": "Public website for Picpoet documentation, pricing, and downloads.",
   "scripts": {
-    "dev": "python -m http.server 8080",
-    "start": "python -m http.server 8080",
-    "public:sync": "node scripts/sync-public.mjs"
+    "dev": "python3 -m http.server 8080 --bind 127.0.0.1 --directory public",
+    "start": "python3 -m http.server 8080 --bind 127.0.0.1 --directory public",
+    "test": "node --test test/*.test.mjs",
+    "releases:check": "node scripts/check-releases.mjs",
+    "public:sync": "npm run releases:check && node scripts/sync-public.mjs"
   }
 }

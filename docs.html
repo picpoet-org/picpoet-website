@@ -1,16 +1,37 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="description" content="Picpoet 使用说明" /><link rel="icon" href="assets/picpoet-mark.svg" type="image/svg+xml" /><meta name="theme-color" content="#20201e" /><title>使用说明 · Picpoet</title><link rel="stylesheet" href="styles.css" /><link rel="stylesheet" href="shared/picpoet-tokens.css" /></head>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="从配置模型到照片创作，了解 Picpoet 的诗词生成、元数据保存、本机历史、PNG 分享与隐私边界。" />
+    <meta name="theme-color" content="#20201e" />
+    <title>使用说明 · Picpoet</title>
+    <link rel="icon" href="assets/picpoet-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="shared/picpoet-tokens.css" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
   <body>
-    <header class="site-header"><a class="brand" href="index.html"><img src="assets/picpoet-mark.svg" alt="" /> <span>Picpoet</span></a><nav aria-label="主导航"><a href="docs.html">使用说明</a><a href="pricing.html">定价</a><a href="downloads.html">下载</a><a class="nav-cta" href="https://github.com/picpoet-org/picpoet" target="_blank" rel="noreferrer">GitHub</a></nav></header>
-    <main class="shell"><section class="page-header"><p class="eyebrow">Documentation</p><h1>把媒体库交给 Picpoet。</h1><p class="lede">从安装到第一次批量打标，这里提供一条清晰、可回滚的使用路径。</p></section><div class="content-grid"><aside class="side-nav"><a href="#install">安装</a><a href="#config">配置</a><a href="#commands">常用命令</a><a href="#safety">安全写回</a></aside><div class="content"><section id="install"><h2>安装</h2><p>命令行版本要求 Node.js 20.12 或更高版本。</p><div class="code">npm install<br />npm run build</div></section><section id="config"><h3>配置视觉模型</h3><p>Picpoet 兼容 OpenAI-compatible API，也可以连接本地模型服务。创建配置文件或使用环境变量提供模型地址和 API key。</p><div class="code">{
-  "baseURL": "http://localhost:11434/v1",
-  "model": "llava:13b",
-  "language": "zh"
-}</div></section><section id="commands"><h3>常用命令</h3><div class="code">npm start -- tag ./photos
-npm start -- scan ./photos
-npm start -- read ./photos/photo.jpg
-npm start -- config</div><p>首次运行建议使用 <code>--dry-run</code> 观察结果，确认模型输出后再写回文件。</p></section><section id="safety"><h3>安全写回</h3><p>默认模式会复制源文件并在文件名后追加 <code>_tagged</code>，不会覆盖原始媒体。需要直接写回时，请显式选择 <code>overwrite</code> 模式。</p></section></div></div></main>
-    <footer class="site-footer shell"><span>© 2026 Picpoet</span><span><a href="index.html">返回首页</a></span></footer>
+    <a class="skip-link" href="#main">跳至主要内容</a>
+    <header class="site-header">
+      <a class="brand" href="index.html" aria-label="Picpoet 首页"><img src="assets/picpoet-mark.svg" width="32" height="32" alt="" /><span>Picpoet</span></a>
+      <nav aria-label="主导航"><a href="docs.html" aria-current="page">使用说明</a><a href="pricing.html">定价</a><a href="downloads.html">下载</a><a class="nav-cta" href="https://github.com/picpoet-org/picpoet">GitHub 源码</a></nav>
+    </header>
+    <main id="main" class="shell" tabindex="-1">
+      <section class="page-header"><p class="eyebrow">使用说明</p><h1>从一张照片，<br />开始一份创作。</h1><p class="lede">先连接模型，再选择照片。这里说明如何生成、保存、回看，以及每一步的数据去向。</p></section>
+      <div class="content-grid">
+        <aside class="side-nav"><nav aria-label="本页目录"><a href="#install">安装与平台</a><a href="#config">连接模型</a><a href="#create">照片创作</a><a href="#safety">保存与覆写</a><a href="#history">历史与分享</a><a href="#language">语言设置</a><a href="#privacy">隐私与数据</a></nav></aside>
+        <div class="content">
+          <section id="install"><p class="eyebrow">准备</p><h2>安装与平台</h2><p>先在下载页查看平台与实际发布包。尚未发布的平台会明确标注；源码与构建说明可在客户端仓库查看。</p><p>Android 客户端要求 Android 8.0 及以上；保存副本到系统相册需要 Android 10 及以上。OpenHarmony、Linux、macOS 与 Windows 的系统版本、架构及安装方式，以对应发布包说明为准。</p><div class="actions"><a class="button primary" href="downloads.html#platform-android">查看 Android 发布状态</a><a class="text-link" href="https://github.com/picpoet-org/picpoet">客户端源码 <span aria-hidden="true">→</span></a></div></section>
+          <section id="config"><p class="eyebrow">第一步</p><h2>连接你选择的模型</h2><ol class="steps"><li>进入客户端设置，填写模型服务提供的 <strong>API key</strong> 与 <strong>Base URL</strong>。</li><li>使用模型探测功能，读取服务可提供的模型，并选择支持图像输入的视觉模型。</li><li>确认服务可访问、账号额度与计费规则，再开始照片创作。</li></ol><p>Picpoet 使用兼容 OpenAI 接口的模型服务。探测到模型并不代表所有模型都支持图像，请结合服务商说明选择。连接本地模型时，需要自行运行兼容的视觉模型服务，并确保当前设备可访问该地址。</p><div class="notice"><h3>先了解照片会发往哪里</h3><p>Base URL 决定请求发往的服务。使用云端模型时，所选照片及生成所需内容会发送给该服务；请确认地址可信，妥善保管 API key。</p></div><a class="text-link" href="pricing.html#cloud">查看模型费用说明 <span aria-hidden="true">→</span></a></section>
+          <section id="create"><p class="eyebrow">第二步</p><h2>为照片选择一种表达</h2><p>选择一张照片，按需要选择创作类型：</p><ul><li><strong>诗：</strong>以照片为灵感创作诗句。</li><li><strong>词：</strong>以照片为灵感创作词作。</li><li><strong>纯照片信息：</strong>只生成照片标题、描述与标签。</li></ul><p>生成后先阅读结果，核对描述与标签是否符合画面。标题与正文支持复制，可以将文字用于自己的记录或分享。模型可能误解画面，生成内容应由你确认。</p></section>
+          <section id="safety"><p class="eyebrow">第三步</p><h2>保存副本，或选择覆写</h2><p>照片信息可写入元数据。请根据是否需要保留原图，选择对应保存方式。</p><div class="option-grid"><article class="info-card"><h3>保存副本</h3><p>另存一份带有元数据的照片，保留源文件。Android 保存到系统相册需要 Android 10 及以上。</p></article><article class="info-card"><h3>覆写源文件元数据</h3><p>在支持的平台与照片来源上，明确选择后更新原图元数据。Android 需要 10 及以上，并可能需要系统授权。</p></article></div><p>照片来源、文件格式与系统权限会影响写入能力。部分云端或图库来源无法直接覆写，可以选择保存副本。覆写前建议备份原图，并在保存后核对结果。</p></section>
+          <section id="history"><p class="eyebrow">创作之后</p><h2>回看历史，也把诗意分享出去</h2><ul><li><strong>搜索与详情：</strong>在本机历史中检索记录，打开详情回看创作内容。</li><li><strong>查看原图：</strong>从记录打开对应原图；原图需要仍然存在且可访问。</li><li><strong>删除记录：</strong>按需整理本机历史。删除本机记录并不等于删除模型服务商可能保留的数据。</li><li><strong>PNG 分享图：</strong>将照片与创作文字制作成图片，供保存与分享。</li></ul><p>本机历史不是云端备份。更换设备、清理应用数据或卸载前，请自行备份需要保留的内容。</p></section>
+          <section id="language"><h2>界面语言与诗词语言，分别设置</h2><p>界面支持七种语言：简体中文、繁體中文、英语、日语、韩语、越南语、泰语。</p><p>诗词内容支持简体和繁体中文，默认繁体。界面语言与诗词内容语言分别设置，切换界面语言不代表诗词会改用该语言生成。</p></section>
+          <section id="privacy"><h2>本机保存，不等于全程离线</h2><p>历史记录保存在本机，但生成过程取决于你配置的模型服务。请把“数据存在哪里”与“请求发往哪里”分开理解。</p><dl class="definition-list"><div><dt>使用云端模型</dt><dd>所选照片及生成所需内容会发送至配置的模型服务。数据保留、使用方式与费用由该服务的政策决定；请在发送前阅读并确认。</dd></div><div><dt>使用本地模型</dt><dd>需要自行部署兼容的视觉模型服务。数据是否离开设备，取决于服务部署位置、配置及其是否继续调用上游服务。</dd></div><div><dt>更新与其他联网行为</dt><dd>Android 客户端启动时的每日自动更新检查、设置中的手动检查，以及模型探测都可能联网。本机历史不意味着应用完全不联网。</dd></div><div><dt>照片与分享</dt><dd>发送前留意照片中的人脸、位置等个人信息。分享 PNG 图片、照片副本或原图前，确认愿意公开的文字和元数据范围。</dd></div></dl><a class="text-link" href="downloads.html#updates">了解 Android 更新方式 <span aria-hidden="true">→</span></a></section>
+          <section id="source"><h2>继续了解开源实现</h2><p>客户端使用 Flutter，核心能力由 Rust 提供。客户端构建说明见源码仓库，Rust 核心与其他项目入口请查看 GitHub 组织。</p><div class="actions"><a class="button secondary" href="https://github.com/picpoet-org/picpoet">客户端源码</a><a class="text-link" href="https://github.com/picpoet-org">Picpoet GitHub 组织 <span aria-hidden="true">→</span></a></div></section>
+        </div>
+      </div>
+    </main>
+    <footer class="site-footer shell"><span>© 2026 Picpoet · 让照片有诗意</span><nav aria-label="页脚导航"><a href="index.html">返回首页</a><a href="downloads.html">查看发布状态</a></nav></footer>
   </body>
 </html>
