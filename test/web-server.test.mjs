@@ -57,6 +57,8 @@ async function fixture(t, options = {}) {
   const server = createWebServer({ config: cfg, now: () => clock, publicDirectory: path.join(dir, 'public'), ...(options.fetch ? { fetch: options.fetch } : {}) });
   const base = await listen(server);
   cfg.publicOrigin = base;
+  cfg.publicOrigins = [base];
+  cfg.publicHosts = [new URL(base).host];
   t.after(async () => { await close(server); await close(upstream); await rm(dir, { recursive: true, force: true }); });
   let cookie = '';
   async function request(url, { method = 'GET', body, headers = {}, authenticated = true, origin = base, raw = false, updateCookie = true } = {}) {
@@ -84,16 +86,96 @@ function noSecrets(response) {
   for (const value of [ACCESS, REFRESH, CREDENTIAL, 'upstream_secret']) assert.ok(!`${response.text}\n${JSON.stringify([...response.headers])}`.includes(value));
 }
 
+test('历史分页、详情、删除仅用登录业务凭证，保留 JSON 脱敏与精确白名单', async t => {
+  const f = await fixture(t, { handler(call, res) {
+    if (!call.url.startsWith('/v1/history')) return;
+    json(res, 200, call.method === 'DELETE' ? { deleted: true } : { items: [{ id: ID, title: ACCESS, credential: CREDENTIAL }], nextCursor: 'abc.def', password: REFRESH });
+    return true;
+  } });
+  for (const [url, method] of [['/history', 'GET'], [`/history/${ID}`, 'GET'], [`/history/${ID}/image`, 'GET'], [`/history/${ID}`, 'DELETE']]) {
+    assert.equal((await f.request(`/web-api${url}`, { method })).status, 401);
+  }
+  assert.equal(f.calls.length, 0);
+  await f.login();
+  const page = await f.request('/web-api/history?limit=20&cursor=abc.def', { headers: { Authorization: 'Bearer forged', 'X-Service-Token': 'forged' } });
+  assert.equal(page.status, 200); noSecrets(page);
+  assert.equal(f.calls.at(-1).url, '/v1/history?limit=20&cursor=abc.def');
+  assert.equal(f.calls.at(-1).headers.authorization, `Bearer ${CREDENTIAL}`);
+  assert.equal(f.calls.at(-1).headers.cookie, undefined);
+  assert.equal(f.calls.at(-1).headers['x-service-token'], undefined);
+  noSecrets(await f.request(`/web-api/history/${ID}`));
+  assert.deepEqual((await f.request(`/web-api/history/${ID}`, { method: 'DELETE' })).data, { deleted: true });
+  assert.equal(f.calls.at(-1).method, 'DELETE'); assert.equal(f.calls.at(-1).bytes.length, 0);
+  const count = f.calls.length;
+  for (const query of ['limit=0', 'limit=101', 'limit=-1', 'limit=1.5', 'limit=1&limit=2', 'cursor=a.b&cursor=c.d', 'cursor=' + 'a'.repeat(513), 'cursor=%ZZ', 'cursor=a%0Ab', 'limit=1&cursor=a.b&url=evil', 'url=evil']) {
+    assert.equal((await f.request(`/web-api/history?${query}`)).status, 400, query);
+  }
+  for (const url of [`/history/${ID}?limit=1`, `/history/${ID}/image?cursor=a.b`, '/balance?limit=20', '/plans?']) assert.equal((await f.request('/web-api' + url)).status, 400);
+  assert.equal((await f.request(`/web-api/history/${ID}`, { method: 'DELETE', body: { subjectId: OTHER } })).status, 400);
+  assert.equal((await f.request(`/web-api/history/${ID}`, { method: 'DELETE', origin: 'https://evil.example' })).status, 403);
+  assert.equal((await f.request('/web-api/history', { headers: { 'Sec-Fetch-Site': 'cross-site' } })).status, 403);
+  for (const [url, method] of [['/history', 'DELETE'], ['/history', 'POST'], [`/history/${ID}/image`, 'DELETE'], [`/history/${ID}/other`, 'GET'], ['/history/not-uuid', 'GET'], [`/history/${ID}/`, 'GET']]) assert.equal((await f.request('/web-api' + url, { method })).status, 404);
+  assert.equal(f.calls.length, count);
+});
+
+test('历史 JPEG 二进制独立上限、无重定向、超时与隐私头隔离', async t => {
+  let mode = 'ok';
+  const f = await fixture(t, { config: { historyImageTimeoutMs: 50 }, handler(call, res) {
+    if (!call.url.endsWith('/image')) return;
+    if (mode === 'timeout') return true;
+    if (mode === 'redirect') { res.writeHead(302, { Location: '/secret-target' }); res.end(); return true; }
+    if (mode === '404' || mode === '503') { json(res, Number(mode), { message: CREDENTIAL }); return true; }
+    if (mode === 'declared-large') { res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Content-Length': 2 * 1024 * 1024 + 1 }); res.end(); return true; }
+    res.writeHead(200, { 'Content-Type': mode === 'mime' ? 'image/png' : 'image/jpeg', 'Set-Cookie': 'upstream_secret=yes', Authorization: ACCESS, ETag: REFRESH, 'Content-Disposition': `attachment; filename="${CREDENTIAL}"` });
+    res.write(Buffer.from(mode === 'fake-jpeg' ? [0x3c, 0x68, 0x31] : [0xff, 0xd8, 0xff]));
+    res.end(Buffer.alloc((mode === 'large' ? 2 * 1024 * 1024 + 1 : mode === 'boundary' ? 2 * 1024 * 1024 : 8) - 3)); return true;
+  } });
+  await f.login();
+  for (const [value, expected] of [['ok', 200], ['boundary', 200], ['redirect', 502], ['mime', 502], ['fake-jpeg', 502], ['large', 502], ['declared-large', 502], ['timeout', 504], ['404', 404], ['503', 503]]) {
+    mode = value;
+    const response = await f.request(`/web-api/history/${ID}/image`);
+    assert.equal(response.status, expected, value); noSecrets(response);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+    for (const header of ['etag', 'authorization', 'content-disposition', 'set-cookie']) assert.equal(response.headers.get(header), null);
+    if (expected === 200) assert.equal(response.headers.get('content-type'), 'image/jpeg');
+  }
+  assert.ok(!f.calls.some(call => call.url === '/secret-target'));
+  assert.ok(f.calls.filter(call => call.url.endsWith('/image')).every(call => call.headers.authorization === `Bearer ${CREDENTIAL}` && call.headers.cookie === undefined));
+});
+
+test('历史在途图片退出后不可返回旧账户内容', async t => {
+  let release, entered;
+  const ready = new Promise(resolve => { entered = resolve; });
+  const gate = new Promise(resolve => { release = resolve; });
+  const f = await fixture(t, { async handler(call, res) {
+    if (call.url.endsWith('/image')) { entered(); await gate; res.writeHead(200, { 'Content-Type': 'image/jpeg' }); res.end(Buffer.from([0xff, 0xd8, 0xff])); return true; }
+  } });
+  await f.login();
+  const pending = f.request(`/web-api/history/${ID}/image`, { updateCookie: false });
+  await ready; await f.request('/web-api/logout', { method: 'POST' }); release();
+  assert.equal((await pending).status, 401);
+});
+
 test('配置默认 loopback、URL 无凭据、生产 HTTPS，导入不启动监听', () => {
   const cfg = readConfig({});
   assert.equal(cfg.host, '127.0.0.1');
-  assert.equal(cfg.port, 8090);
-  assert.equal(cfg.publicOrigin, 'http://127.0.0.1:8090');
+  assert.equal(cfg.port, 18090);
+  assert.equal(cfg.publicOrigin, 'http://127.0.0.1:18090');
+  assert.deepEqual(cfg.publicOrigins, ['http://127.0.0.1:18090']);
+  assert.deepEqual(cfg.publicHosts, ['127.0.0.1:18090']);
   assert.equal(cfg.dashboardApiUrl, 'http://127.0.0.1:8080/api/v1');
   assert.equal(cfg.picpoetApiUrl, 'http://127.0.0.1:8081/v1');
   assert.equal(readConfig({ PICPOET_API_URL: 'http://127.0.0.1:9000' }).picpoetApiUrl, 'http://127.0.0.1:9000/v1');
+  const multi = readConfig({
+    WEB_PUBLIC_ORIGINS: 'http://127.0.0.1:18090, http://192.168.31.7:18090, http://127.0.0.1:18090',
+  });
+  assert.deepEqual(multi.publicOrigins, ['http://127.0.0.1:18090', 'http://192.168.31.7:18090']);
+  assert.deepEqual(multi.publicHosts, ['127.0.0.1:18090', '192.168.31.7:18090']);
+  assert.equal(multi.secureCookie, false);
   for (const env of [
     { NODE_ENV: 'production' }, { WEB_PUBLIC_ORIGIN: 'https://site.example/path' },
+    { WEB_PUBLIC_ORIGINS: 'https://site.example, http://127.0.0.1:18090', NODE_ENV: 'production' },
     { DASHBOARD_API_URL: 'http://user:secret@localhost/api/v1' }, { PICPOET_API_URL: 'file:///tmp/api' },
     { DASHBOARD_API_URL: 'http://localhost' }, { PICPOET_API_URL: 'http://localhost/v1?secret=a' },
     { WEB_PUBLIC_ORIGIN: 'http://user:password@localhost' }, { WEB_PORT: '0' }, { WEB_MAX_IMAGE_BYTES: '-1' },
@@ -318,6 +400,30 @@ test('Origin/Host、方法、路径白名单与未登录保护，攻击不触达
   }
   assert.equal((await f.request('/web-api/plans?url=https://evil.example')).status, 400);
   assert.equal(f.calls.length, 0);
+});
+
+test('WEB_PUBLIC_ORIGINS 同时接受本机与局域网 Host/Origin', async t => {
+  const origins = ['http://127.0.0.1:18090', 'http://192.168.31.7:18090'];
+  const f = await fixture(t);
+  // 夹具默认把 Origin 绑到随机监听口；此处恢复联调多 Origin 白名单。
+  f.cfg.publicOrigin = origins[0];
+  f.cfg.publicOrigins = origins;
+  f.cfg.publicHosts = origins.map(origin => new URL(origin).host);
+  for (const origin of origins) {
+    const host = new URL(origin).host;
+    assert.equal((await rawRequest(f.base, '/web-api/plans', { headers: { Host: host } })).status, 200);
+    assert.equal((await rawRequest(f.base, '/web-api/login', {
+      method: 'POST',
+      headers: { Host: host, Origin: origin, 'Content-Type': 'application/json' },
+      chunks: [Buffer.from(JSON.stringify({ email: USER.email, password: 'password123' }))],
+    })).status, 200);
+  }
+  assert.equal((await rawRequest(f.base, '/web-api/plans', { headers: { Host: 'evil.example' } })).status, 403);
+  assert.equal((await rawRequest(f.base, '/web-api/login', {
+    method: 'POST',
+    headers: { Host: '127.0.0.1:18090', Origin: 'https://evil.example', 'Content-Type': 'application/json' },
+    chunks: [Buffer.from(JSON.stringify({ email: USER.email, password: 'password123' }))],
+  })).status, 403);
 });
 
 test('body 与图片独立大小限制、multipart boundary 和字段校验', async t => {

@@ -63,9 +63,9 @@ test('设备识别为下载页推荐对应平台，同时保留完整平台列�
 
 test('部署同步后根目录和 pages 子路径包含相同清单、页面与下载模块', async () => {
   execFileSync(process.execPath, ['scripts/sync-public.mjs'], { cwd: root });
-  for (const resource of ['index.html', 'docs.html', 'downloads.html', 'pricing.html', 'create.html', 'styles.css',
+  for (const resource of ['index.html', 'docs.html', 'downloads.html', 'pricing.html', 'create.html', 'works.html', 'account.html', 'login.html', 'styles.css',
     'shared/downloads.mjs', 'shared/releases.mjs', 'releases/stable.json',
-    'shared/create.css', 'shared/create.mjs', 'shared/create-core.mjs', 'shared/poem-card.mjs', 'assets/fonts/OFL.txt']) {
+    'shared/user-navigation.mjs', 'shared/history.mjs', 'shared/create.css', 'shared/create.mjs', 'shared/create-core.mjs', 'shared/poem-card.mjs', 'assets/fonts/OFL.txt']) {
     let source = await readFile(new URL(`../${resource}`, import.meta.url), 'utf8');
     if (resource.endsWith('.html')) {
       const canonical = `${deployment.websiteUrl}/${resource === 'index.html' ? '' : resource}`;

@@ -25,25 +25,47 @@ function baseURL(raw, kind) {
   return url;
 }
 
+function publicOrigins(env, port) {
+  const raw = env.WEB_PUBLIC_ORIGINS || env.WEB_PUBLIC_ORIGIN || `http://127.0.0.1:${port}`;
+  const parts = String(raw).split(',').map(item => item.trim()).filter(Boolean);
+  if (!parts.length) throw new Error('WEB_PUBLIC_ORIGINS 至少包含一个 origin');
+  const origins = [];
+  const seen = new Set();
+  for (const part of parts) {
+    const origin = baseURL(part, 'WEB_PUBLIC_ORIGIN');
+    if (origin.pathname !== '/') throw new Error('WEB_PUBLIC_ORIGIN 只接受 origin');
+    if (seen.has(origin.origin)) continue;
+    seen.add(origin.origin);
+    origins.push(origin);
+  }
+  if (env.NODE_ENV === 'production' && origins.some(origin => origin.protocol !== 'https:')) {
+    throw new Error('生产要求 HTTPS WEB_PUBLIC_ORIGIN');
+  }
+  return origins;
+}
+
 export function readConfig(env = process.env) {
-  const port = number(env.WEB_PORT, 8090, 65535);
-  const origin = baseURL(env.WEB_PUBLIC_ORIGIN || `http://127.0.0.1:${port}`, 'WEB_PUBLIC_ORIGIN');
-  if (origin.pathname !== '/') throw new Error('WEB_PUBLIC_ORIGIN 只接受 origin');
-  if (env.NODE_ENV === 'production' && origin.protocol !== 'https:') throw new Error('生产要求 HTTPS WEB_PUBLIC_ORIGIN');
+  const port = number(env.WEB_PORT, 18090, 65535);
+  const origins = publicOrigins(env, port);
   const dashboard = baseURL(env.DASHBOARD_API_URL || 'http://127.0.0.1:8080/api/v1', 'DASHBOARD_API_URL');
   if (dashboard.pathname.replace(/\/$/, '') !== '/api/v1') throw new Error('DASHBOARD_API_URL 必须包含完整 /api/v1');
   const picpoet = baseURL(env.PICPOET_API_URL || 'http://127.0.0.1:8081/v1', 'PICPOET_API_URL');
   if (picpoet.pathname === '/') picpoet.pathname = '/v1';
   if (picpoet.pathname.replace(/\/$/, '') !== '/v1') throw new Error('PICPOET_API_URL 接受服务根地址或 /v1');
+  const publicOriginList = Object.freeze(origins.map(origin => origin.origin));
   return Object.freeze({
-    host: env.WEB_HOST || '127.0.0.1', port, publicOrigin: origin.origin,
-    secureCookie: origin.protocol === 'https:',
+    host: env.WEB_HOST || '127.0.0.1', port,
+    publicOrigin: publicOriginList[0],
+    publicOrigins: publicOriginList,
+    publicHosts: Object.freeze(publicOriginList.map(origin => new URL(origin).host)),
+    secureCookie: origins.every(origin => origin.protocol === 'https:'),
     dashboardApiUrl: dashboard.href.replace(/\/$/, ''), picpoetApiUrl: picpoet.href.replace(/\/$/, ''),
     sessionTtlMs: number(env.WEB_SESSION_TTL_MS, 30 * 60_000, 24 * 60 * 60_000),
     maxSessions: number(env.WEB_MAX_SESSIONS, 1000, 100_000),
     jsonBytes: number(env.WEB_MAX_JSON_BYTES, 64 * 1024, MiB),
     imageBytes: number(env.WEB_MAX_IMAGE_BYTES, 10 * MiB, 25 * MiB),
     upstreamTimeoutMs: number(env.WEB_UPSTREAM_TIMEOUT_MS, 30_000, 120_000),
+    historyImageTimeoutMs: number(env.WEB_HISTORY_IMAGE_TIMEOUT_MS, 15_000, 30_000),
     bodyTimeoutMs: number(env.WEB_BODY_TIMEOUT_MS, 15_000, 120_000),
     responseBytes: 4 * MiB, maxConcurrent: 64,
     rateWindowMs: 15 * 60_000, loginLimit: 10, accountLimit: 10, maxRateKeys: 10_000,
@@ -154,15 +176,33 @@ const fixedRoutes = new Map([
   ['POST /register', 'register'], ['POST /verify-email', 'verify-email'], ['POST /resend-otp', 'resend-otp'],
   ['GET /balance', 'balance'], ['GET /plans', 'plans'], ['GET /orders', 'orders'],
   ['POST /orders', 'create-order'], ['POST /generations', 'create-generation'],
+  ['GET /history', 'history-list'],
 ]);
 function routeFor(method, pathname) {
   const fixed = fixedRoutes.get(`${method} ${pathname}`);
   if (fixed) return { kind: fixed };
   const parts = pathname.split('/');
   if (!UUID.test(parts[2] || '')) return null;
+  if (parts[1] === 'history') {
+    if (parts.length === 3 && ['GET', 'DELETE'].includes(method)) return { kind: 'history', suffix: pathname };
+    if (parts.length === 4 && parts[3] === 'image' && method === 'GET') return { kind: 'history-image', suffix: pathname };
+  }
   if (method === 'POST' && parts[1] === 'orders' && parts.length === 4 && ['details', 'payment'].includes(parts[3])) return { kind: 'order', suffix: pathname };
   if (method === 'GET' && parts[1] === 'generations' && (parts.length === 3 || (parts.length === 4 && parts[3] === 'result'))) return { kind: 'generation', suffix: pathname };
   return null;
+}
+
+function historyQuery(method, pathname, raw) {
+  if (raw === undefined) return '';
+  if (method !== 'GET' || pathname !== '/history' || raw.length > 2048 || /%(?![a-f0-9]{2})/i.test(raw)) bad();
+  const query = new URLSearchParams(raw);
+  if ([...query].length > 2) bad();
+  for (const [key, value] of query) {
+    if (!['limit', 'cursor'].includes(key) || query.getAll(key).length !== 1) bad();
+    if (key === 'limit' && (!/^[1-9]\d{0,2}$/.test(value) || Number(value) > 100)) bad();
+    if (key === 'cursor' && (value.length > 512 || (value !== '' && !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value)))) bad();
+  }
+  return query.size ? `?${query}` : '';
 }
 
 /** 返回未监听的 http.Server。测试可注入 fetch、now、配置和静态目录；无 .env、无共享服务 token。 */
@@ -211,6 +251,33 @@ export function createWebServer({ config: cfg = config, fetch: fetchImpl = globa
       fail(status, 'UPSTREAM_REJECTED', status === 401 ? '登录信息无效' : status === 403 ? '操作未获授权，请检查邮箱验证或账户状态' : status === 429 ? '操作频繁，请稍后重试' : '上游未完成请求，请检查输入或稍后重试');
     }
     return result;
+  }
+  // 图片独立于 JSON 代理：只返回受限 JPEG 字节，绝不转发上游头或错误正文。
+  async function historyImage(suffix, credential) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), cfg.historyImageTimeoutMs);
+    try {
+      const response = await fetchImpl(cfg.picpoetApiUrl + suffix, {
+        method: 'GET', redirect: 'error', signal: controller.signal,
+        headers: { Accept: 'image/jpeg', Authorization: `Bearer ${credential}` },
+      });
+      if (response.status >= 400) { await response.body?.cancel(); return { status: response.status }; }
+      if (response.status !== 200 || !/^image\/jpeg(?:\s*;|$)/i.test(response.headers.get('content-type') || '') || Number(response.headers.get('content-length')) > 2 * MiB) {
+        await response.body?.cancel(); fail(502, 'UPSTREAM_ERROR', '历史图片响应无效或过大');
+      }
+      const chunks = []; let size = 0;
+      if (response.body) for await (const chunk of response.body) {
+        size += chunk.length;
+        if (size > 2 * MiB) { controller.abort(); fail(502, 'UPSTREAM_ERROR', '历史图片过大'); }
+        chunks.push(Buffer.from(chunk));
+      }
+      const bytes = Buffer.concat(chunks, size);
+      if (bytes.length < 3 || bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff) fail(502, 'UPSTREAM_ERROR', '历史图片不是 JPEG');
+      return { status: 200, bytes };
+    } catch (error) {
+      if (error instanceof WebError) throw error;
+      fail(controller.signal.aborted ? 504 : 502, 'UPSTREAM_ERROR', controller.signal.aborted ? '历史图片读取超时' : '历史图片暂不可用');
+    } finally { clearTimeout(timer); }
   }
   function live(session) {
     if (!session?.active || session.expiresAt <= now()) { if (session) sessions.remove(session.id); unauthorized(); }
@@ -261,7 +328,7 @@ export function createWebServer({ config: cfg = config, fetch: fetchImpl = globa
     if (session.refreshPromise) await session.refreshPromise.catch(() => {});
     if (session.refreshToken) accepted(await upstream(cfg.dashboardApiUrl, '/picpoet/auth/logout', 'POST', { refreshToken: session.refreshToken }));
   }
-  async function api(req, res, pathname) {
+  async function api(req, res, pathname, query) {
     const route = routeFor(req.method, pathname);
     if (!route) fail(404, 'NOT_FOUND', '接口不存在');
     const id = sessionId(req);
@@ -326,9 +393,17 @@ export function createWebServer({ config: cfg = config, fetch: fetchImpl = globa
       result = await jwt(session, route.suffix, 'POST', {});
     } else {
       live(session);
+      if (kind === 'history-image') {
+        const image = await historyImage(route.suffix, session.credential);
+        if (image.status === 401) { sessions.remove(session.id); unauthorized(); }
+        live(session); accepted(image);
+        res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Content-Length': image.bytes.length });
+        res.end(image.bytes); return;
+      }
+      if (kind === 'history' && req.method === 'DELETE') fields(await jsonBody(req, cfg), []);
       const upload = kind === 'create-generation' ? await multipart(req, cfg) : {};
       live(session);
-      result = await upstream(cfg.picpoetApiUrl, kind === 'create-generation' ? '/generations' : route.suffix, req.method, upload.body, session.credential, upload.contentType);
+      result = await upstream(cfg.picpoetApiUrl, kind === 'create-generation' ? '/generations' : kind === 'history-list' ? `/history${query}` : route.suffix, req.method, upload.body, session.credential, upload.contentType);
       if (result.status === 401) { sessions.remove(session.id); unauthorized(); }
       live(session);
       accepted(result);
@@ -365,16 +440,22 @@ export function createWebServer({ config: cfg = config, fetch: fetchImpl = globa
     concurrent++;
     try {
       if (concurrent > cfg.maxConcurrent) fail(503, 'BUSY', '服务繁忙');
-      if (req.headers.host !== new URL(cfg.publicOrigin).host) fail(403, 'HOST_REJECTED', '请求主机无效');
-      if ((!['GET', 'HEAD'].includes(req.method) || req.headers.origin) && req.headers.origin !== cfg.publicOrigin) fail(403, 'ORIGIN_REJECTED', '请求来源无效');
+      const allowedOrigins = cfg.publicOrigins || [cfg.publicOrigin];
+      const allowedHosts = cfg.publicHosts || allowedOrigins.map(origin => new URL(origin).host);
+      if (!allowedHosts.includes(req.headers.host)) fail(403, 'HOST_REJECTED', '请求主机无效');
+      if ((!['GET', 'HEAD'].includes(req.method) || req.headers.origin) && !allowedOrigins.includes(req.headers.origin)) {
+        fail(403, 'ORIGIN_REJECTED', '请求来源无效');
+      }
       let pathname;
       try { pathname = decodeURIComponent((req.url || '').split('?')[0]); } catch { bad(); }
       if (!pathname.startsWith('/') || pathname.startsWith('//') || /[\\\x00-\x1f\x7f]/.test(pathname) || pathname.split('/').some(p => p.startsWith('.'))) fail(404, 'NOT_FOUND', '路径不存在');
       if (pathname === '/web-api' || pathname.startsWith('/web-api/')) {
         // 官网允许来自搜索引擎和外站的普通导航；仅业务接口拒绝跨站读取。
         if (req.headers['sec-fetch-site'] === 'cross-site') fail(403, 'ORIGIN_REJECTED', '请求来源无效');
-        if (req.url.includes('?')) bad();
-        await api(req, res, pathname.slice('/web-api'.length));
+        const apiPath = pathname.slice('/web-api'.length);
+        const index = req.url.indexOf('?');
+        const query = historyQuery(req.method, apiPath, index < 0 ? undefined : req.url.slice(index + 1));
+        await api(req, res, apiPath, query);
       } else await staticFile(req, res, pathname);
     } catch (error) {
       if (res.headersSent) { res.destroy(); return; }
@@ -393,5 +474,7 @@ export function createWebServer({ config: cfg = config, fetch: fetchImpl = globa
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const server = createWebServer();
-  server.listen(config.port, config.host, () => console.log(`Picpoet Web: ${config.publicOrigin}`));
+  server.listen(config.port, config.host, () => {
+    for (const origin of config.publicOrigins) console.log(`Picpoet Web: ${origin}`);
+  });
 }

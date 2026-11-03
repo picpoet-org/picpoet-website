@@ -1,15 +1,39 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { validateImage, imageDimensions, prepareImage, MAX_IMAGE_BYTES, generationAttempt, generationForm, orderAttempt, safePaymentURL, orderStatus, createAPI, createScope, pollGeneration, wait, errorMessage, ApiError, uuid } from '../shared/create-core.mjs';
+import { validateImage, imageDimensions, prepareImage, MAX_IMAGE_BYTES, MAX_SOURCE_IMAGE_BYTES, generationAttempt, generationForm, orderAttempt, safePaymentURL, orderStatus, createAPI, createScope, pollGeneration, wait, errorMessage, ApiError, uuid } from '../shared/create-core.mjs';
 import { poemData, wrapText, cardLayout, CARD } from '../shared/poem-card.mjs';
 const ID = 'a1aa1111-1111-4111-8111-111111111111';
 const PLAN = 'b2bb2222-2222-4222-8222-222222222222';
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });
 
-test('上传只接受四种图片 MIME、非空且原图不超过 10 MiB', () => {
-  for (const type of ['image/jpeg', 'image/png', 'image/gif', 'image/webp']) assert.doesNotThrow(() => validateImage({ type, size: MAX_IMAGE_BYTES }));
-  for (const file of [null, { type: 'image/svg+xml', size: 10 }, { type: 'image/jpeg', size: 0 }, { type: 'image/png', size: MAX_IMAGE_BYTES + 1 }, { type: 'image/jpeg', size: NaN }]) assert.throws(() => validateImage(file));
+test('createAPI 显式 DELETE，默认无 body GET、有 body POST 保持兼容', async () => {
+  const calls = [];
+  const api = createAPI({ fetchImpl: async (url, options) => { calls.push({ url, ...options }); return json({ deleted: true }); } });
+  await api('/history?limit=20'); await api('/login', { body: {} }); await api(`/history/${ID}`, { method: 'DELETE' });
+  assert.deepEqual(calls.map(call => call.method), ['GET', 'POST', 'DELETE']);
+  assert.equal(calls[2].body, undefined);
+  assert.ok(calls.every(call => call.credentials === 'same-origin' && call.redirect === 'error' && call.cache === 'no-store'));
+});
+
+test('只接受四种图片 MIME，原图允许到 25 MiB，超过一个字节拒绝', () => {
+  assert.equal(MAX_SOURCE_IMAGE_BYTES, 25 * 1024 * 1024);
+  for (const type of ['image/jpeg', 'image/png', 'image/gif', 'image/webp']) assert.doesNotThrow(() => validateImage({ type, size: MAX_SOURCE_IMAGE_BYTES }));
+  assert.doesNotThrow(() => validateImage({ type: 'image/jpeg', size: 21241635 }));
+  for (const file of [null, { type: 'image/svg+xml', size: 10 }, { type: 'image/jpeg', size: 0 }, { type: 'image/png', size: MAX_SOURCE_IMAGE_BYTES + 1 }, { type: 'image/jpeg', size: NaN }]) assert.throws(() => validateImage(file));
+});
+test('25 MiB 原图可本地压缩，重编码输出仍限制 10 MiB', async () => {
+  assert.equal(MAX_IMAGE_BYTES, 10 * 1024 * 1024);
+  const file = { type: 'image/jpeg', size: MAX_SOURCE_IMAGE_BYTES };
+  const output = new Blob(['compressed'], { type: 'image/jpeg' });
+  let encoded = output;
+  const options = {
+    decode: async () => ({ width: 4000, height: 3000, close() {} }),
+    makeCanvas: () => ({ getContext: () => ({ fillRect() {}, drawImage() {} }), toBlob: cb => cb(encoded) }),
+  };
+  assert.equal((await prepareImage(file, options)).blob, output);
+  encoded = { type: 'image/jpeg', size: MAX_IMAGE_BYTES + 1 };
+  await assert.rejects(prepareImage(file, options), /仍然过大/);
 });
 test('像素边界、横竖图缩放与小图不放大', () => {
   assert.deepEqual(imageDimensions(8000, 5000), { width: 2048, height: 1280 });
@@ -174,10 +198,11 @@ test('页面链接、label、noscript；用户数据使用纯文本，无持久�
   const html = await readFile(new URL('../create.html', import.meta.url), 'utf8');
   const script = await readFile(new URL('../shared/create.mjs', import.meta.url), 'utf8');
   assert.match(html, /<noscript>/); assert.match(html, /aria-live="polite"/);
-  assert.match(html, /<option value="zh">简体中文<\/option>/);
-  assert.doesNotMatch(html, /value="zh-Hans"/);
   for (const path of ['shared/picpoet-tokens.css', 'styles.css', 'shared/create.css', 'shared/create.mjs']) assert.ok(html.includes(path));
-  for (const id of ['image', 'email', 'password', 'otp', 'verify-email', 'pay-method', 'poem-language']) assert.ok(html.includes(`for="${id}"`));
+  const forms = html + await readFile(new URL('../login.html', import.meta.url), 'utf8') + await readFile(new URL('../account.html', import.meta.url), 'utf8');
+  for (const id of ['image', 'email', 'password', 'otp', 'verify-email']) assert.ok(forms.includes(`for="${id}"`));
+  for (const removed of ['poem-language', '体裁、格律等使用官方服务默认设置。', '与下载、系统分享使用同一张 PNG', '这里是预览区域，并非示例作品。']) assert.ok(!forms.includes(removed));
+  assert.doesNotMatch(forms, /id="pay-method"/);
   assert.doesNotMatch(script, /\.innerHTML\s*=|localStorage\.|sessionStorage\./);
   assert.match(script, /link\.rel = 'noopener noreferrer'/);
 });

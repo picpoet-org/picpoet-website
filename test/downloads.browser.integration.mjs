@@ -103,7 +103,7 @@ try {
         const label = `${pathname.replaceAll('/', '-')}-${width}-${mode}`;
         const publishedCount = manifest.platforms.filter((platform) => platform.artifacts.length).length;
         const artifactCount = manifest.platforms.reduce((count, platform) => count + platform.artifacts.length, 0);
-        const statusText = publishedCount ? `${publishedCount} 个平台已有安装包。请选择与你的系统及架构匹配的版本。` : '目前暂无公开安装包。各平台发布后，这里将提供直接下载。';
+        const statusText = publishedCount ? '' : '暂无安装包';
         const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
         const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true });
         const cdp = (method, params) => send(method, params, sessionId);

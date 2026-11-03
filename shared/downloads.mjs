@@ -15,7 +15,7 @@ function render(platform) {
   const content = card.querySelector('[data-release-content]');
   content.replaceChildren();
   if (!platform.artifacts.length) {
-    content.append(node('p', '暂未发布', 'release-unavailable'), node('p', '安装包就绪后将在此提供下载。可先阅读使用说明，了解创作流程。'));
+    content.append(node('p', '暂未发布', 'release-unavailable'));
     return;
   }
   content.append(node('p', `版本 ${platform.versionName}`, 'release-version'),
@@ -46,18 +46,19 @@ if (recommended) {
 async function refreshReleases() {
   refresh.disabled = true;
   status.textContent = '正在读取发布信息…';
+  status.hidden = false;
   try {
     const manifest = await loadManifest(manifestUrl, { signal: AbortSignal.timeout(12000) });
     manifest.platforms.forEach(render);
     const published = manifest.platforms.filter((platform) => platform.artifacts.length).length;
-    status.textContent = published ? `${published} 个平台已有安装包。请选择与你的系统及架构匹配的版本。` : '目前暂无公开安装包。各平台发布后，这里将提供直接下载。';
+    status.textContent = published ? '' : '暂无安装包';
   } catch {
     // 清空旧下载状态，避免把旧清单误认为刚刚校验过的发布信息。
     document.querySelectorAll('[data-release-content]').forEach((content) => {
       content.replaceChildren(node('p', '暂时无法读取发布信息，请稍后刷新。', 'release-unavailable'));
     });
     status.textContent = '发布信息加载未完成，请检查网络后重试。';
-  } finally { refresh.disabled = false; }
+  } finally { status.hidden = !status.textContent; refresh.disabled = false; }
 }
 refresh.addEventListener('click', refreshReleases);
 await refreshReleases();

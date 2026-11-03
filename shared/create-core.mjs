@@ -1,5 +1,6 @@
 // 页面与 node:test 共用的边界校验、请求身份及生命周期。
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+export const MAX_SOURCE_IMAGE_BYTES = 25 * 1024 * 1024;
 export const MAX_IMAGE_PIXELS = 40_000_000;
 export const UUID = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 export const POLL_LIMIT = 40;
@@ -9,8 +10,8 @@ export function validateImage(file) {
   if (!file || !['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
     throw new Error('请选择 JPEG、PNG、WebP 或 GIF 图片；动图仅使用浏览器解码的首帧。');
   }
-  if (!Number.isSafeInteger(file.size) || file.size <= 0 || file.size > MAX_IMAGE_BYTES) {
-    throw new Error('原图需大于 0 且不超过 10 MiB。');
+  if (!Number.isSafeInteger(file.size) || file.size <= 0 || file.size > MAX_SOURCE_IMAGE_BYTES) {
+    throw new Error('原图需大于 0 且不超过 25 MiB。');
   }
 }
 export function imageDimensions(width, height) {
@@ -118,7 +119,7 @@ export function createScope() {
   };
 }
 export function createAPI({ fetchImpl = globalThis.fetch, timeoutMs = 35_000 } = {}) {
-  return async function request(path, { body, signal } = {}) {
+  return async function request(path, { body, signal, method = body === undefined ? 'GET' : 'POST' } = {}) {
     const controller = new AbortController();
     const abort = () => controller.abort();
     if (signal?.aborted) throw staleError();
@@ -127,7 +128,7 @@ export function createAPI({ fetchImpl = globalThis.fetch, timeoutMs = 35_000 } =
     try {
       const multipart = body instanceof FormData;
       const response = await fetchImpl(`/web-api${path}`, {
-        method: body === undefined ? 'GET' : 'POST', credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal: controller.signal,
+        method, credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal: controller.signal,
         headers: { Accept: 'application/json', ...(body !== undefined && !multipart ? { 'Content-Type': 'application/json' } : {}) },
         body: body === undefined ? undefined : multipart ? body : JSON.stringify(body),
       });

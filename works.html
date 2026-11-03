@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="重读每一次创作。压缩照片与诗词保留 90 天，喜欢的作品请及时下载。">
+  <meta name="referrer" content="no-referrer">
+  <title>我的作品 · 图赋 PicPoet</title>
+  <link rel="icon" href="assets/picpoet-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="shared/picpoet-tokens.css">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="shared/create.css">
+  <script type="module" src="shared/create.mjs"></script>
+</head>
+<body class="create-page works-page" data-user-page="works">
+  <a class="skip-link" href="#main">跳到主要内容</a>
+  <header class="site-header">
+    <a class="brand" href="index.html"><img src="assets/picpoet-mark.svg" width="32" height="32" alt="">图赋 PicPoet</a>
+    <nav aria-label="主导航"><a href="index.html">首页</a><a href="create.html">在线创作</a><a href="works.html" aria-current="page">我的作品</a><a href="account.html">个人中心</a></nav>
+  </header>
+  <main id="main" class="shell" tabindex="-1">
+    <section class="create-intro works-intro">
+      <div class="works-intro-copy"><p class="eyebrow">图赋 · 让照片有诗可读</p><h1>我的作品</h1><p class="lede">重读每一次创作。压缩照片与诗词保留 90 天，喜欢的作品请及时下载。</p></div>
+      <a href="create.html" class="button primary">开始新的创作</a>
+    </section>
+    <noscript><p class="notice">此页面需要 JavaScript，请启用后重试。</p></noscript>
+    <p id="page-status" class="create-status" role="status" aria-live="polite" tabindex="-1">正在检查登录状态…</p>
+    <button id="retry-session" class="button secondary" type="button" hidden>重试连接</button>
+    <aside id="login-gate" class="notice" hidden>
+      <div><h2>登录后继续</h2><p>使用同一个账户，继续创作、查看作品和管理次数。</p></div>
+      <a id="login-link" class="button primary" href="login.html">登录 / 注册</a>
+    </aside>
+    <section id="history" class="create-panel history-panel" aria-labelledby="history-title">
+      <div class="section-top"><h2 id="history-title">作品集</h2><button id="refresh-history" type="button" class="button secondary" disabled>刷新历史</button></div>
+      <p id="history-status" class="create-status" role="status" aria-live="polite">登录后查看历史。</p>
+      <button id="history-retry" type="button" class="button secondary" hidden>重试历史列表</button>
+      <div id="history-list" class="history-grid" aria-busy="false"></div>
+      <button id="history-more" type="button" class="button secondary" hidden>加载更多历史</button>
+      <dialog id="history-detail" class="history-detail" aria-labelledby="history-detail-title" hidden>
+        <div class="section-top"><h3 id="history-detail-title">诗词详情</h3><button id="history-dialog-close" class="history-dialog-close" type="button" aria-label="关闭作品详情" autofocus>×</button></div>
+        <p id="history-time" class="fine-print"></p>
+        <p id="history-detail-status" class="create-status" role="status" aria-live="polite"></p>
+        <img id="history-photo" alt="历史保存的压缩照片">
+        <div class="poem-text"><p id="history-cipai"></p><p id="history-body"></p></div>
+        <div class="actions"><button id="history-render" type="button" class="button secondary">生成分享图</button><a id="history-download" class="button primary" download="picpoet-history-poem.png" hidden>下载分享图</a><button id="history-delete" type="button" class="button secondary">永久删除</button></div>
+        <p id="history-export-status" class="create-status" role="status" aria-live="polite"></p>
+        <img id="history-card" alt="历史诗词分享图，不含照片，正文见上方" hidden>
+      </dialog>
+      <dialog id="history-delete-dialog" aria-labelledby="history-delete-title" aria-describedby="history-delete-description">
+        <h3 id="history-delete-title">永久删除这份历史？</h3>
+        <p id="history-delete-description">这份诗词及服务端任务结果副本将被清除，无法恢复。若照片仍被其他作品引用，会继续保留。此操作不会取消当前正在进行的其他创作。</p>
+        <div class="actions"><button id="history-delete-cancel" type="button" class="button secondary" autofocus>取消，保留历史</button><button id="history-delete-confirm" type="button" class="button primary">确定永久删除</button></div>
+      </dialog>
+    </section>
+  </main>
+  <footer class="site-footer shell"><span>图赋 PicPoet · 让照片有诗可读</span><nav aria-label="页脚导航"><a href="docs.html">使用说明</a><a href="pricing.html">费用说明</a><a href="downloads.html">下载客户端</a></nav></footer>
+</body>
+</html>
