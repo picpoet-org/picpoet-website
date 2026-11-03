@@ -74,8 +74,10 @@ export function safePaymentURL(raw, pageURL = 'https://picpoet.jqknono.com') {
   if (typeof raw !== 'string' || raw.length > 8192 || /[\u0000-\u0020\u007f\\]/u.test(raw)) throw new Error('支付链接无效，请重新获取支付链接。');
   let url, page;
   try { url = new URL(raw); page = new URL(pageURL); } catch { throw new Error('支付链接无效，请重新获取支付链接。'); }
+  // 仅明确的本地联调入口允许 HTTP 收银台，公网及 HTTPS 页面仍要求 HTTPS。
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(page.hostname);
-  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || (url.protocol !== 'https:' && (!local || page.protocol === 'https:'))) {
+  const allowHTTP = page.protocol === 'http:' && (local || page.origin === 'http://192.168.31.7:18090');
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || (url.protocol !== 'https:' && !allowHTTP)) {
     throw new Error('已阻止不安全的支付链接：正式环境仅允许 HTTPS。');
   }
   return url.href;

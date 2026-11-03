@@ -129,6 +129,18 @@ test('支付 URL 只允许绝对 HTTP(S)，生产 HTTPS，拒绝危险协议与�
   assert.throws(() => safePaymentURL('http://pay.example', 'http://production.example'));
   assert.throws(() => safePaymentURL('http://pay.example', 'https://localhost'));
 });
+test('局域网联调入口允许 HTTP 收银台，其他来源及危险链接仍拒绝', () => {
+  const page = 'http://192.168.31.7:18090/account.html';
+  const payment = 'http://192.168.31.7:13100/api/payment/cashier/test-order';
+  assert.equal(safePaymentURL(payment, page), payment);
+  assert.equal(safePaymentURL('https://pay.example/path', page), 'https://pay.example/path');
+  for (const origin of ['https://192.168.31.7:18090', 'http://192.168.31.7:8080', 'http://192.168.31.8:18090', 'http://192.168.31.7.evil.example:18090', 'http://production.example', 'https://picpoet.jqknono.com']) {
+    assert.throws(() => safePaymentURL(payment, origin));
+  }
+  for (const raw of ['javascript:alert(1)', 'data:text/html,x', '//pay.example/path', '/pay', 'http://user:pass@192.168.31.7:13100/pay']) {
+    assert.throws(() => safePaymentURL(raw, page));
+  }
+});
 test('支付链接存在、跳转或 paid 本身都不冒充到账', () => {
   assert.match(orderStatus({ status: 'pending', payment: { paymentUrl: 'https://pay.example' } }), /待/);
   assert.match(orderStatus({ status: 'paid' }), /请查询到账/);
