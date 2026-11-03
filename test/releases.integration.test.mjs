@@ -63,8 +63,9 @@ test('设备识别为下载页推荐对应平台，同时保留完整平台列�
 
 test('部署同步后根目录和 pages 子路径包含相同清单、页面与下载模块', async () => {
   execFileSync(process.execPath, ['scripts/sync-public.mjs'], { cwd: root });
-  for (const resource of ['index.html', 'docs.html', 'downloads.html', 'pricing.html', 'styles.css',
-    'shared/downloads.mjs', 'shared/releases.mjs', 'releases/stable.json']) {
+  for (const resource of ['index.html', 'docs.html', 'downloads.html', 'pricing.html', 'create.html', 'styles.css',
+    'shared/downloads.mjs', 'shared/releases.mjs', 'releases/stable.json',
+    'shared/create.css', 'shared/create.mjs', 'shared/create-core.mjs', 'shared/poem-card.mjs', 'assets/fonts/OFL.txt']) {
     let source = await readFile(new URL(`../${resource}`, import.meta.url), 'utf8');
     if (resource.endsWith('.html')) {
       const canonical = `${deployment.websiteUrl}/${resource === 'index.html' ? '' : resource}`;
@@ -82,7 +83,11 @@ test('部署同步后根目录和 pages 子路径包含相同清单、页面与�
   const robots = await readFile(new URL('../public/robots.txt', import.meta.url), 'utf8');
   assert.ok(robots.includes(`Sitemap: ${deployment.websiteUrl}/sitemap.xml`));
   const sitemap = await readFile(new URL('../public/sitemap.xml', import.meta.url), 'utf8');
-  for (const page of ['', 'downloads.html', 'docs.html', 'pricing.html']) {
+  for (const page of ['', 'downloads.html', 'docs.html', 'pricing.html', 'create.html']) {
     assert.ok(sitemap.includes(`<loc>${deployment.websiteUrl}/${page}</loc>`));
+  }
+  const font = await readFile(new URL('../assets/fonts/LXGWWenKai-Regular.ttf', import.meta.url));
+  for (const prefix of ['public/', 'public/pages/']) {
+    assert.deepEqual(await readFile(new URL(`../${prefix}assets/fonts/LXGWWenKai-Regular.ttf`, import.meta.url)), font);
   }
 });

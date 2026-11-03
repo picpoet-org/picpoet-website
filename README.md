@@ -37,6 +37,43 @@ npm run dev
 - `/docs.html`：使用说明
 - `/pricing.html`：定价
 - `/downloads.html`：下载资源
+- `/create.html`：注册账户的在线创作、纯诗词分享 PNG、次数套餐购买
+
+## 网页版创作（本地验收）
+
+网页版复用 Dashboard 的 Picpoet 邮箱注册／OTP 验证、账户及额度，通过官方异步任务生成诗词。分享卡在浏览器以文楷绘制，沿用客户端的纸色、1080px 宽度和品牌底纹，不包含原照片。图片选中后仅在本机解码、缩小及 JPEG 重编码（移除原图 EXIF）；点击生成才上传。结果不作为永久作品库保存，请及时下载。
+
+工作目录 `website/`，Node.js 20+：
+
+```bash
+# 两个上游需分别启动；以下是默认本地端口，不会加载任何 .env。
+DASHBOARD_API_URL=http://127.0.0.1:8080/api/v1 \
+PICPOET_API_URL=http://127.0.0.1:8081/v1 npm run dev:web
+```
+
+打开 <http://127.0.0.1:8090/create.html>。此地址的 Host/Origin 必须与 `WEB_PUBLIC_ORIGIN` 一致（默认 `http://127.0.0.1:8090`），不能混用 localhost。单独的 `npm run dev` 仅预览静态内容，没有 `/web-api` 业务能力。
+
+- `scripts/web-server.mjs` 同时托管 `public/` 和固定 `/web-api` 同源代理；只用用户自己的 JWT / 业务凭证，不需要模型、Dashboard 内部或 payments 服务密钥。
+- 账户令牌只在服务端内存中保管，浏览器仅持有 HttpOnly、SameSite=Strict Cookie。HTTPS 时启用 Secure；生产环境要求设置 `NODE_ENV=production` 和 HTTPS `WEB_PUBLIC_ORIGIN`。
+- 会话默认 30 分钟固定有效期，进程重启后失效，最多 1000 个；通过 `WEB_SESSION_TTL_MS`、`WEB_MAX_SESSIONS` 调整。首次登录按需新增业务凭证，不撤销其他设备凭证。上游尚无单凭证撤销接口，退出只撤销登录刷新凭证并清除本地会话。
+- 上传默认最多 10 MiB，浏览器限制 4000 万像素、长边 2048px；后端再次校验边界。`WEB_MAX_IMAGE_BYTES` 可降低服务端限制；增大不会改变前端限制。
+- `WEB_HOST` / `WEB_PORT` 默认为 `127.0.0.1` / `8090`；上游超时 `WEB_UPSTREAM_TIMEOUT_MS` 默认 30000，读取请求超时 `WEB_BODY_TIMEOUT_MS` 默认 15000。
+- Dashboard 需开启 Picpoet、邮箱认证与购买功能，配置邮件、独立数据库、支付及可信结算信息；Picpoet Server 需具备官方生成、额度结算和模型服务能力。参考各仓库说明，不向前端配置服务密钥。
+- 套餐价格来自服务端；用户明确下单后打开支付宝 PC 网页或 WAP 收银台。跳转不表示到账，通过订单详情和余额确认。重试保留请求编号；会话丢失后从账户订单列表恢复，不盲目重新购买。
+
+### 验证与发布边界
+
+```bash
+npm test
+npm run public:sync
+npm run test:browser:create  # 需要 google-chrome；独立 HTTP 替身，不花费模型/支付额度
+```
+
+测试覆盖账户会话、原样 multipart、配额查询、任务重试、订单幂等、刷新并发、安全边界，以及 Chrome 375/1280px 的注册、上传、生成、PNG、购买状态与退出隔离。真实邮件、真实模型、沙箱付款和移动系统分享需在配置环境另行验收；测试替身通过不等于真实上游联通。
+
+**现有 ESA 纯静态发布不具备 BFF 能力。** 上线前须为同一官网 origin 的 `/web-api/*` 部署 Node 服务并配置同源路由，或由 Node 服务统一托管官网；反向代理保留公开 Host，API 不缓存。本文不执行线上变更。当前会话为单进程内存，扩容前应建设共享会话存储、可信代理限流和业务凭证生命周期管理；不要仅上传 `public/` 就宣称网页版可用。
+
+字体位于 `assets/fonts/`，附 `OFL.txt`；与客户端 `LXGWWenKai-Regular.ttf` 相同。本次保留完整字体以覆盖任意生成汉字，约 25 MiB，发布前可评估保留完整字形的 WOFF2 压缩。
 
 首页与说明对应当前 Flutter 客户端的单张照片创作、元数据保存、本机历史与分享图流程。下载页分别展示 Android、OpenHarmony、Linux、macOS 和 Windows，使用自有 CDN 安装包直链。平台能力与实际发布包区分展示。
 

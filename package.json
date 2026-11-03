@@ -4,6 +4,9 @@
   "private": false,
   "description": "Public website for Picpoet documentation, pricing, and downloads.",
   "scripts": {
+    "dev:web": "npm run public:sync && node scripts/web-server.mjs",
+    "start:web": "node scripts/web-server.mjs",
+    "test:browser:create": "node test/create.browser.integration.mjs",
     "dev": "python3 -m http.server 8080 --bind 127.0.0.1 --directory public",
     "start": "python3 -m http.server 8080 --bind 127.0.0.1 --directory public",
     "test": "node --test test/*.test.mjs",

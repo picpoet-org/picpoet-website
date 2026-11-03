@@ -2,14 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const pages = ['index.html', 'docs.html', 'pricing.html', 'downloads.html'];
+const pages = ['index.html', 'docs.html', 'pricing.html', 'downloads.html', 'create.html'];
 const readPage = (name) => readFile(new URL(`../${name}`, import.meta.url), 'utf8');
 
 test('官网导航统一通向使用说明、定价和下载，页内链接均有对应内容', async () => {
   const contents = new Map(await Promise.all(pages.map(async (name) => [name, await readPage(name)])));
   for (const [name, html] of contents) {
+    if (name === 'create.html') continue;
     const nav = html.match(/<nav aria-label="主导航">([\s\S]*?)<\/nav>/)[1];
-    assert.deepEqual([...nav.matchAll(/href="([^"]+)"/g)].map((match) => match[1]), ['docs.html', 'pricing.html', 'downloads.html']);
+    assert.deepEqual([...nav.matchAll(/href="([^"]+)"/g)].map((match) => match[1]), ['create.html', 'docs.html', 'pricing.html', 'downloads.html']);
     assert.match(nav, /class="nav-cta" href="downloads.html"/);
     for (const [, href] of html.matchAll(/<a\b[^>]*href="([^"]+)"/g)) {
       const [target, anchor] = href.split('#');
