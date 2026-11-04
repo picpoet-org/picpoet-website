@@ -76,7 +76,7 @@ export function generationForm(attempt) {
   return form;
 }
 export function orderAttempt(planId, payMethod, makeUUID) {
-  if (!UUID.test(planId) || !['alipay_page', 'alipay_wap'].includes(payMethod)) throw new Error('套餐或支付方式无效，请刷新套餐。');
+  if (!UUID.test(planId) || !['alipay_page', 'alipay_wap', 'alipay_qrcode'].includes(payMethod)) throw new Error('套餐或支付方式无效，请刷新套餐。');
   return Object.freeze({ planId, payMethod, requestId: uuid(makeUUID) });
 }
 export function safePaymentURL(raw, pageURL = 'https://picpoet.jqknono.com') {
@@ -92,7 +92,7 @@ export function safePaymentURL(raw, pageURL = 'https://picpoet.jqknono.com') {
   return url.href;
 }
 export function orderStatus(order) {
-  if (order.status === 'paid') return order.delivery?.mode === 'auto_redeem' && order.delivery.creditsGranted > 0 ? `已到账 ${order.delivery.creditsGranted} 次` : '已支付，请查询到账并刷新余额';
+  if (order.status === 'paid') return order.delivery?.mode === 'auto_redeem' && order.delivery.creditsGranted > 0 ? `已到账 ${order.delivery.creditsGranted} 次` : '已支付 · 待到账';
   return ({ pending: '待支付／待确认到账', closed: '订单已关闭' })[order.status] || '订单状态待确认';
 }
 export class ApiError extends Error {

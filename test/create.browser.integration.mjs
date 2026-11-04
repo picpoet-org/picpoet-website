@@ -27,7 +27,9 @@ let generationResult = { verse: { kind: 'ci', title: '山月 <不是标签>', ci
 const user = { id: 'user-one', email: 'reader@example.test', emailVerified: true };
 let failLogin = false, failVerify = false;
 const orderCreatedAt = new Date().toISOString();
-const order = () => ({ id: ID, createdAt: orderCreatedAt, status: paid ? 'paid' : 'pending', credits: 10, amountMinor: 100, currency: 'CNY', payment: { paymentUrl: 'https://pay.example.test/checkout' }, ...(paid ? { delivery: { mode: 'auto_redeem', creditsGranted: 10 } } : {}) });
+let orderMethod = 'alipay_wap';
+const channelQR = 'https://qr.alipay.com/test-channel-order';
+const order = () => ({ id: ID, payMethod: orderMethod, createdAt: orderCreatedAt, status: paid ? 'paid' : 'pending', credits: 10, amountMinor: 100, currency: 'CNY', payment: orderMethod === 'alipay_qrcode' ? { qrCode: channelQR } : { paymentUrl: 'https://pay.example.test/checkout' }, ...(paid ? { delivery: { mode: 'auto_redeem', creditsGranted: 10 } } : {}) });
 const reply = (res, status, body) => { res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(body)); };
 const server = http.createServer(async (req, res) => {
   try {
@@ -365,8 +367,8 @@ try {
   assert.equal(await evaluate('document.querySelector(".payment-link").target'), '');
   assert.equal(await evaluate('document.querySelector(".payment-link").textContent'), '前往支付宝支付');
   assert.ok(!(await evaluate('document.querySelector("#orders").textContent')).includes('已到账'));
-  await click('[data-action="details"]');
-  await until(`document.querySelector('#orders').textContent.includes('已到账 10 次') && document.querySelector('#balance').textContent.includes('付费剩余 10')`, '手动查询到账');
+  assert.equal(await evaluate(`document.querySelector('[data-action="details"]')`), null);
+  await until(`document.querySelector('#orders').textContent.includes('已到账 10 次') && document.querySelector('#balance').textContent.includes('付费剩余 10')`, '自动查询到账并刷新余额');
   assert.deepEqual(calls.find(c => c.path.endsWith('/details')).body, {});
   assert.equal(await evaluate('localStorage.length + sessionStorage.length'), 0);
   // 刷新恢复 activeGenerationId，仅 GET 查询，不重新 POST。
@@ -493,10 +495,9 @@ try {
   await click('#orders-panel > summary');
   assert.equal(await evaluate(`document.querySelector('#orders-panel').open`), true);
   assert.equal(await evaluate(`document.querySelector('#pay-method') === null`), true);
-  await click('#orders [data-action="details"]');
-  await until(`document.querySelector('.order-feedback')?.textContent.includes('已到账') && !document.querySelector('#refresh-orders').disabled`, '到账提示属于对应订单');
+  await until(`document.querySelector('.order-status')?.textContent.includes('已到账') && !document.querySelector('#refresh-orders').disabled`, '自动更新订单到账状态');
   assert.equal(await evaluate(`document.querySelector('#purchase-status').hidden`), true);
-  for (const [width, expected] of [[1280, 'alipay_page'], [375, 'alipay_wap']]) {
+  for (const [width, expected] of [[1280, 'alipay_qrcode'], [375, 'alipay_wap']]) {
     await cdp('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: false });
     await click('#plans button');
     await until(`!document.querySelector('#refresh-orders').disabled && document.querySelector('#purchase-status').hidden`, '自动支付方式下单成功');
@@ -511,16 +512,20 @@ try {
   assert.equal(await evaluate(`document.querySelector('.order-created').dateTime`), orderCreatedAt);
   paid = false;
   await click('#refresh-orders');
+  await until(`document.querySelector('.payment-link') && !document.querySelector('#refresh-orders').disabled`, '旧WAP订单保留网页支付入口');
+  assert.equal(await evaluate(`document.querySelector('.payment-qr') === null`), true, '网页支付链接不能伪装成渠道付款码');
+  orderMethod = 'alipay_qrcode';
+  await click('#refresh-orders');
   await until(`document.querySelector('.payment-qr') && !document.querySelector('#refresh-orders').disabled`, '订单内支付二维码');
   for (const width of [1280, 375]) {
     await cdp('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: false });
-    assert.equal(await evaluate(`getComputedStyle(document.querySelector('.order-payment-qr')).display !== 'none'`), width > 700);
-    assert.equal(await evaluate(`getComputedStyle(document.querySelector('.payment-link')).display !== 'none'`), width <= 700);
+    assert.equal(await evaluate(`getComputedStyle(document.querySelector('.order-payment-qr')).display !== 'none'`), true);
+    assert.equal(await evaluate(`document.querySelector('.payment-link') === null`), true);
     assert.equal(await evaluate(`document.querySelector('.payment-qr').closest('.order-item') !== null && document.querySelector('.payment-qr').closest('dialog') === null`), true);
     assert.equal(await evaluate(`document.documentElement.scrollWidth <= innerWidth`), true);
   }
   const qrPixels = await evaluate(`(() => { const c = document.querySelector('.payment-qr'); return { width:c.width, height:c.height, pixels:Array.from(c.getContext('2d').getImageData(0,0,c.width,c.height).data) }; })()`);
-  assert.equal(jsQR(new Uint8ClampedArray(qrPixels.pixels), qrPixels.width, qrPixels.height)?.data, 'https://pay.example.test/checkout');
+  assert.equal(jsQR(new Uint8ClampedArray(qrPixels.pixels), qrPixels.width, qrPixels.height)?.data, channelQR, '扫码内容必须逐字等于渠道返回的付款码');
   pagedOrders = [{ ...order(), createdAt: new Date(Date.now() - 599_000).toISOString() }];
   await click('#refresh-orders');
   await until(`document.querySelector('.payment-qr') && !document.querySelector('#refresh-orders').disabled`, '到期前可支付');
@@ -528,7 +533,6 @@ try {
   pagedOrders = null;
   await click('#refresh-orders');
   await until(`document.querySelector('.payment-qr') && !document.querySelector('#refresh-orders').disabled`, '恢复有效测试订单');
-  await click('#orders [data-action="details"]');
   await until(`!document.querySelector('.payment-qr') && !document.querySelector('#refresh-orders').disabled`, '已到账订单移除二维码');
   pagedOrders = Array.from({ length: 12 }, (_, index) => ({ ...order(), id: `12345678-1234-4234-8234-${String(index + 1).padStart(12, '0')}` }));
   await click('#refresh-orders');

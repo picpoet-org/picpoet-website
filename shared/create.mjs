@@ -21,6 +21,8 @@ export function mountCreatePage(doc = document) {
   const orderPageSize = 5;
   let orderPage = 0;
   let orderExpiryTimer;
+  let orderQueryTimer;
+  const orderQueryAttempts = new Map();
   const text = (id, value) => { if ($(id)) $(id).textContent = value; };
   const show = (id, yes) => { if ($(id)) $(id).hidden = !yes; };
   const verified = () => user?.emailVerified === true;
@@ -111,6 +113,8 @@ export function mountCreatePage(doc = document) {
   // 所有异步操作绑定当前账户世代；旧请求、图片解码和绘图都不能写回新账户。
   function resetAccount() {
     clearTimeout(orderExpiryTimer);
+    clearTimeout(orderQueryTimer);
+    orderQueryAttempts.clear();
     waitingPoems.setActive(false);
     scope.reset(); pollScope.reset(); busy.clear(); imageVersion++;
     ready = true; polling = false;
@@ -214,7 +218,7 @@ export function mountCreatePage(doc = document) {
       button.addEventListener('click', () => {
         if (!verified() || pendingOrder || busy.has('orders')) return;
         void action('orders', 'purchase-status', async ticket => {
-          pendingOrder = orderAttempt(plan.id, $('pay-method')?.value || (matchMedia('(max-width: 700px)').matches ? 'alipay_wap' : 'alipay_page'));
+          pendingOrder = orderAttempt(plan.id, $('pay-method')?.value || (matchMedia('(max-width: 700px)').matches ? 'alipay_wap' : 'alipay_qrcode'));
           text('order-request-id', `下单请求编号：${pendingOrder.requestId}`); sync();
           await submitOrder(ticket);
         });
@@ -243,6 +247,7 @@ export function mountCreatePage(doc = document) {
     clearTimeout(orderExpiryTimer);
     const now = Date.now();
     orders = orders.filter(order => order.status !== 'pending' || !Number.isFinite(Date.parse(order.createdAt)) || Date.parse(order.createdAt) + 600_000 > now);
+    scheduleOrderQuery();
     const deadlines = orders.filter(order => order.status === 'pending').map(order => Date.parse(order.createdAt) + 600_000).filter(Number.isFinite);
     if (deadlines.length) orderExpiryTimer = setTimeout(renderOrders, Math.max(1, Math.min(...deadlines) - now));
     orderPage = Math.min(orderPage, Math.max(0, Math.ceil(orders.length / orderPageSize) - 1));
@@ -257,6 +262,7 @@ export function mountCreatePage(doc = document) {
         const info = doc.createElement('div'); info.className = 'order-info';
         heading.textContent = `${order.credits ?? '—'} 次创作`;
         const status = doc.createElement('span'); status.className = 'order-status';
+        status.setAttribute('role', 'status');
         const label = orderStatus(order);
         status.textContent = label.startsWith('已到账') ? label : ({ paid: '已支付 · 待到账', pending: '待支付确认', closed: '已关闭' })[order.status] || '待确认';
         status.dataset.state = label.startsWith('已到账') ? 'delivered' : 'pending';
@@ -270,19 +276,23 @@ export function mountCreatePage(doc = document) {
         const price = doc.createElement('p'); price.className = 'order-price'; price.textContent = money(order.amountMinor, order.currency); article.append(price);
       }
       const actions = doc.createElement('div'); actions.className = 'actions';
-      const query = doc.createElement('button'); query.type = 'button'; query.className = 'button secondary'; query.textContent = '查询到账'; query.dataset.action = 'details';
-      query.addEventListener('click', () => void orderAction(order.id, 'details'));
-      actions.append(query);
       if (order.status === 'pending') {
-        if (order.payment?.paymentUrl) {
+        if (order.payment?.qrCode || order.payment?.paymentUrl) {
           try {
-            const href = safePaymentURL(order.payment.paymentUrl, location.href);
             const paymentArea = doc.createElement('div'); paymentArea.className = 'order-payment';
-            const qr = doc.createElement('figure'); qr.className = 'order-payment-qr';
-            const caption = doc.createElement('figcaption'); caption.textContent = '支付宝扫码支付';
-            qr.append(paymentQR(doc, href), caption);
-            const link = doc.createElement('a'); link.href = href; link.className = 'button primary payment-link'; link.textContent = '前往支付宝支付';
-            paymentArea.append(qr, link); article.append(paymentArea);
+            if (order.payment.qrCode) {
+              safePaymentURL(order.payment.qrCode, location.href);
+              const channelURL = order.payment.qrCode;
+              const qr = doc.createElement('figure'); qr.className = 'order-payment-qr';
+              const caption = doc.createElement('figcaption'); caption.textContent = '支付宝扫码支付';
+              qr.append(paymentQR(doc, channelURL), caption);
+              paymentArea.append(qr);
+            } else {
+              const href = safePaymentURL(order.payment.paymentUrl, location.href);
+              const link = doc.createElement('a'); link.href = href; link.className = 'button primary payment-link'; link.textContent = '前往支付宝支付';
+              paymentArea.append(link);
+            }
+            article.append(paymentArea);
           } catch (error) {
             const warning = doc.createElement('p'); warning.textContent = errorMessage(error); article.append(warning);
           }
@@ -291,7 +301,7 @@ export function mountCreatePage(doc = document) {
         payment.addEventListener('click', () => void orderAction(order.id, 'payment'));
         actions.append(payment);
       }
-      article.append(actions);
+      if (actions.childElementCount) article.append(actions);
       if (pageName === 'account') {
         const feedback = doc.createElement('p'); feedback.id = orderFeedbackId(order.id);
         feedback.className = 'create-status order-feedback'; feedback.hidden = true;
@@ -309,6 +319,46 @@ export function mountCreatePage(doc = document) {
     if (!Array.isArray(data)) throw new Error('订单列表响应无效，请重试。');
     orders = data.map(validOrder); renderOrders();
   }
+  // 付款结果始终由服务端核验；逐单串行查询，避免慢请求重叠与无限重试。
+  function needsOrderQuery(order) {
+    return (order.status === 'pending' || (order.status === 'paid' && !order.delivery?.creditsGranted))
+      && Date.parse(order.createdAt) + 600_000 > Date.now()
+      && (orderQueryAttempts.get(order.id) || 0) < 120;
+  }
+  function scheduleOrderQuery() {
+    clearTimeout(orderQueryTimer);
+    if (!user || doc.hidden || !orders.some(needsOrderQuery)) return;
+    orderQueryTimer = setTimeout(() => void queryPendingOrders(), 3000);
+  }
+  async function queryPendingOrders() {
+    if (!user || doc.hidden) return;
+    if (busy.has('orders')) { scheduleOrderQuery(); return; }
+    const ticket = scope.capture();
+    busy.add('orders');
+    try {
+      let changed = false;
+      for (const previous of orders.filter(needsOrderQuery)) {
+        if (doc.hidden) break;
+        orderQueryAttempts.set(previous.id, (orderQueryAttempts.get(previous.id) || 0) + 1);
+        try {
+          const order = validOrder(await request(ticket, `/orders/${previous.id}/details`, {}));
+          const index = orders.findIndex(item => item.id === order.id);
+          if (index >= 0) orders[index] = order;
+          changed ||= orderStatus(previous) !== orderStatus(order);
+        } catch (error) {
+          if (!scope.current(ticket) || error.name === 'AbortError') return;
+          if (error.status === 401) { resetAccount(); showLogin(); return; }
+          // 暂时失败保留原状态，下一轮在次数与有效期限制内重试。
+        }
+      }
+      if (changed) { renderOrders(); await refreshBalance(ticket); }
+    } catch (error) {
+      if (scope.current(ticket) && error.status === 401) { resetAccount(); showLogin(); }
+    } finally {
+      if (scope.current(ticket)) { busy.delete('orders'); sync(); scheduleOrderQuery(); }
+    }
+  }
+  doc.addEventListener('visibilitychange', scheduleOrderQuery);
   async function submitOrder(ticket) {
     announce('正在下单…', 'purchase-status');
     const order = await request(ticket, '/orders', pendingOrder);
@@ -566,7 +616,7 @@ export function mountCreatePage(doc = document) {
   $('refresh-plans').addEventListener('click', () => void loadPlans());
   $('refresh-orders').addEventListener('click', () => void action('orders', $('orders-status') ? 'orders-status' : 'purchase-status', ticket => loadOrders(ticket)));
   $('retry-order').addEventListener('click', () => { if (pendingOrder) void action('orders', 'purchase-status', ticket => submitOrder(ticket)); });
-  if ($('pay-method')) $('pay-method').value = matchMedia('(max-width: 700px)').matches ? 'alipay_wap' : 'alipay_page';
+  if ($('pay-method')) $('pay-method').value = matchMedia('(max-width: 700px)').matches ? 'alipay_wap' : 'alipay_qrcode';
   }
   if ($('login-link')) $('login-link').href = loginDestination(pageName + '.html', location.hash);
   if ($('continue-link')) $('continue-link').href = returnTo;

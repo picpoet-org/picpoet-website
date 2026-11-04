@@ -214,11 +214,12 @@ test('注册/OTP → 登录 → 余额 → 原样 multipart 生成 → 购买 �
   assert.equal(f.calls.at(-1).headers.authorization, `Bearer ${CREDENTIAL}`);
   assert.equal((await f.request(`/web-api/generations/${ID}`)).data.status, 'succeeded');
   assert.deepEqual((await f.request(`/web-api/generations/${ID}/result`)).data.poem, ['山月照清泉']);
-  const orderBody = { planId: ID, requestId: OTHER, payMethod: 'alipay_page' };
+  const orderBody = { planId: ID, requestId: OTHER, payMethod: 'alipay_qrcode' };
   const order = await f.request('/web-api/orders', { method: 'POST', body: orderBody });
   assert.equal(order.data.payment.paymentUrl, 'https://payments.example/checkout');
   noSecrets(order);
   const claim = f.calls.at(-1).body.claimToken;
+  assert.equal(f.calls.at(-1).body.payMethod, 'alipay_qrcode');
   assert.match(claim, /^[a-f0-9]{64}$/);
   assert.equal(f.calls.at(-1).body.deliveryMode, 'auto_redeem');
   assert.equal(f.calls.at(-1).headers.authorization, `Bearer ${ACCESS}`);

@@ -127,6 +127,7 @@ test('任务重试使用同一个冻结快照和 UUID，只提交 image/generati
   assert.throws(() => uuid(() => 'bad'));
 });
 test('订单快照保留请求编号与支付方式，不含 claimToken 或其它鉴权字段', () => {
+  assert.equal(orderAttempt(PLAN, 'alipay_qrcode', () => ID).payMethod, 'alipay_qrcode');
   const order = orderAttempt(PLAN, 'alipay_page', () => ID);
   assert.deepEqual(order, { planId: PLAN, payMethod: 'alipay_page', requestId: ID });
   assert.equal(Object.isFrozen(order), true);
@@ -153,7 +154,7 @@ test('局域网联调入口允许 HTTP 收银台，其他来源及危险链接�
 });
 test('支付链接存在、跳转或 paid 本身都不冒充到账', () => {
   assert.match(orderStatus({ status: 'pending', payment: { paymentUrl: 'https://pay.example' } }), /待/);
-  assert.match(orderStatus({ status: 'paid' }), /请查询到账/);
+  assert.match(orderStatus({ status: 'paid' }), /待到账/);
   assert.equal(orderStatus({ status: 'paid', delivery: { mode: 'auto_redeem', creditsGranted: 10 } }), '已到账 10 次');
   assert.equal(orderStatus({ status: 'closed' }), '订单已关闭');
 });
