@@ -16,6 +16,9 @@ for (const entry of publicFiles) {
   await cp(source, target, { recursive: true });
 }
 
+await mkdir(path.join(publicDirectory, 'shared/vendor'), { recursive: true });
+await cp(path.join(root, 'node_modules/qrcode-generator/dist/qrcode.mjs'), path.join(publicDirectory, 'shared/vendor/qrcode.mjs'));
+
 // 部署域名单一来源；预览和兼容路径仍使用相对资源，索引归一到正式官网。
 const pageFiles = publicFiles.filter((entry) => entry.endsWith('.html'));
 for (const page of pageFiles) {

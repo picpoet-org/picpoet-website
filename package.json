@@ -16,5 +16,11 @@
     "test": "node --test test/*.test.mjs",
     "releases:check": "node scripts/check-releases.mjs",
     "public:sync": "npm run releases:check && node scripts/sync-public.mjs"
+  },
+  "dependencies": {
+    "qrcode-generator": "^2.0.4"
+  },
+  "devDependencies": {
+    "jsqr": "^1.4.0"
   }
 }

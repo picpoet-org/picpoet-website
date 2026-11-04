@@ -1,6 +1,7 @@
 // 工作目录 website/：node test/create.browser.integration.mjs
 // 自包含本机 HTTP 替身 + Chrome CDP；不读取 .env、不调用真实支付或模型。
 import assert from 'node:assert/strict';
+import jsQR from 'jsqr';
 import http from 'node:http';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
@@ -25,7 +26,8 @@ let historyItems = [historyItem(ID), historyItem(PLAN)];
 let generationResult = { verse: { kind: 'ci', title: '山月 <不是标签>', cipai: '浣溪沙', lines: ['山月照清泉，松风入梦来。', '', '一纸留诗意，千山共此怀。'] }, poem: ['非优先正文'], text: '非优先文本', metadata: { title: '照片标题不可用' } };
 const user = { id: 'user-one', email: 'reader@example.test', emailVerified: true };
 let failLogin = false, failVerify = false;
-const order = () => ({ id: ID, status: paid ? 'paid' : 'pending', credits: 10, amountMinor: 100, currency: 'CNY', payment: { paymentUrl: 'https://pay.example.test/checkout' }, ...(paid ? { delivery: { mode: 'auto_redeem', creditsGranted: 10 } } : {}) });
+const orderCreatedAt = new Date().toISOString();
+const order = () => ({ id: ID, createdAt: orderCreatedAt, status: paid ? 'paid' : 'pending', credits: 10, amountMinor: 100, currency: 'CNY', payment: { paymentUrl: 'https://pay.example.test/checkout' }, ...(paid ? { delivery: { mode: 'auto_redeem', creditsGranted: 10 } } : {}) });
 const reply = (res, status, body) => { res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(body)); };
 const server = http.createServer(async (req, res) => {
   try {
@@ -92,10 +94,10 @@ const server = http.createServer(async (req, res) => {
     }
     const allowed = ['create.html', 'login.html', 'account.html', 'works.html', 'test/fixtures/create-workflow.html', 'shared/user-navigation.mjs', 'styles.css', 'shared/create.css', 'shared/create.mjs', 'shared/create-core.mjs', 'shared/history.mjs', 'shared/poem-card.mjs', 'shared/picpoet-tokens.css', 'assets/picpoet-mark.svg'];
     const file = pathname.slice(1);
-    if (!allowed.includes(file) && file !== 'shared/waiting-poems.mjs') { res.writeHead(404); res.end(); return; }
+    if (!allowed.includes(file) && !['shared/waiting-poems.mjs', 'shared/payment-qr.mjs', 'shared/vendor/qrcode.mjs'].includes(file)) { res.writeHead(404); res.end(); return; }
     const type = file.endsWith('.mjs') ? 'text/javascript' : file.endsWith('.css') ? 'text/css' : file.endsWith('.svg') ? 'image/svg+xml' : 'text/html';
     res.writeHead(200, { 'Content-Type': type, 'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'" });
-    const content = await readFile(new URL(file, root));
+    const content = await readFile(new URL(file === 'shared/vendor/qrcode.mjs' ? 'node_modules/qrcode-generator/dist/qrcode.mjs' : file, root));
     res.end(file === 'test/fixtures/create-workflow.html' ? content.toString().replaceAll('href="shared/', 'href="/shared/').replaceAll('src="shared/', 'src="/shared/').replaceAll('href="styles.css', 'href="/styles.css').replaceAll('src="assets/', 'src="/assets/').replaceAll('href="assets/', 'href="/assets/') : content);
   } catch (error) { reply(res, 500, { message: error.message }); }
 });
@@ -360,8 +362,8 @@ try {
   const creations = calls.filter(c => c.path === '/web-api/orders' && c.method === 'POST');
   assert.equal(creations.length, 2); assert.deepEqual(creations[0].body, creations[1].body);
   assert.equal(creations[0].body.claimToken, undefined); assert.equal(creations[0].body.payMethod, 'alipay_wap');
-  assert.equal(await evaluate('document.querySelector(".payment-link").target'), '_blank');
-  assert.equal(await evaluate('document.querySelector(".payment-link").rel'), 'noopener noreferrer');
+  assert.equal(await evaluate('document.querySelector(".payment-link").target'), '');
+  assert.equal(await evaluate('document.querySelector(".payment-link").textContent'), '前往支付宝支付');
   assert.ok(!(await evaluate('document.querySelector("#orders").textContent')).includes('已到账'));
   await click('[data-action="details"]');
   await until(`document.querySelector('#orders').textContent.includes('已到账 10 次') && document.querySelector('#balance').textContent.includes('付费剩余 10')`, '手动查询到账');
@@ -504,9 +506,30 @@ try {
   await until(`!document.querySelector('#refresh-orders').disabled`, '展开后刷新订单');
   assert.equal(await evaluate(`document.querySelector('#orders-panel').open`), true);
   assert.equal(await evaluate(`document.querySelectorAll('#balance dt').length === 2 && document.querySelectorAll('#balance strong').length === 2`), true);
-  assert.equal(await evaluate(`document.querySelector('.order-reference')?.open`), false);
-  await click('.order-reference summary');
-  assert.equal(await evaluate(`document.querySelector('.order-reference').open`), true);
+  assert.equal(await evaluate(`document.querySelector('.order-reference')`), null);
+  assert.equal(await evaluate(`!!document.querySelector('.order-info .request-id') && !!document.querySelector('.order-created')`), true);
+  assert.equal(await evaluate(`document.querySelector('.order-created').dateTime`), orderCreatedAt);
+  paid = false;
+  await click('#refresh-orders');
+  await until(`document.querySelector('.payment-qr') && !document.querySelector('#refresh-orders').disabled`, '订单内支付二维码');
+  for (const width of [1280, 375]) {
+    await cdp('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: false });
+    assert.equal(await evaluate(`getComputedStyle(document.querySelector('.order-payment-qr')).display !== 'none'`), width > 700);
+    assert.equal(await evaluate(`getComputedStyle(document.querySelector('.payment-link')).display !== 'none'`), width <= 700);
+    assert.equal(await evaluate(`document.querySelector('.payment-qr').closest('.order-item') !== null && document.querySelector('.payment-qr').closest('dialog') === null`), true);
+    assert.equal(await evaluate(`document.documentElement.scrollWidth <= innerWidth`), true);
+  }
+  const qrPixels = await evaluate(`(() => { const c = document.querySelector('.payment-qr'); return { width:c.width, height:c.height, pixels:Array.from(c.getContext('2d').getImageData(0,0,c.width,c.height).data) }; })()`);
+  assert.equal(jsQR(new Uint8ClampedArray(qrPixels.pixels), qrPixels.width, qrPixels.height)?.data, 'https://pay.example.test/checkout');
+  pagedOrders = [{ ...order(), createdAt: new Date(Date.now() - 599_000).toISOString() }];
+  await click('#refresh-orders');
+  await until(`document.querySelector('.payment-qr') && !document.querySelector('#refresh-orders').disabled`, '到期前可支付');
+  await until(`document.querySelector('#orders').textContent === '暂无订单' && !document.querySelector('.payment-qr')`, '十分钟到期自动移除订单与二维码');
+  pagedOrders = null;
+  await click('#refresh-orders');
+  await until(`document.querySelector('.payment-qr') && !document.querySelector('#refresh-orders').disabled`, '恢复有效测试订单');
+  await click('#orders [data-action="details"]');
+  await until(`!document.querySelector('.payment-qr') && !document.querySelector('#refresh-orders').disabled`, '已到账订单移除二维码');
   pagedOrders = Array.from({ length: 12 }, (_, index) => ({ ...order(), id: `12345678-1234-4234-8234-${String(index + 1).padStart(12, '0')}` }));
   await click('#refresh-orders');
   await until(`document.querySelector('#orders-page').textContent === '1 / 3' && !document.querySelector('#refresh-orders').disabled`, '12 个订单分为三页');
@@ -524,6 +547,7 @@ try {
   await click('#plans button');
   await until(`!document.querySelector('#refresh-orders').disabled && document.querySelector('#orders-page').textContent.startsWith('1 /')`, '下单返回旧订单时回第一页');
   assert.equal(await evaluate(`document.querySelector('#orders .order-item').dataset.orderId`), ID);
+  assert.equal(await evaluate(`document.querySelector('#orders-panel').open && document.activeElement.dataset.orderId === ${JSON.stringify(ID)}`), true, '购买后展开并聚焦返回的待支付订单');
   await click('#plans button');
   await until(`!document.querySelector('#refresh-orders').disabled`, '再次复用同一订单');
   assert.equal(await evaluate(`document.querySelectorAll('#orders [data-order-id="${ID}"]').length`), 1);

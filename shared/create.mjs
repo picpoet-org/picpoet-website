@@ -1,6 +1,7 @@
 import { createAPI, createScope, errorMessage, prepareImage, generationAttempt, generationForm, orderAttempt, safePaymentURL, orderStatus, pollGeneration, UUID, staleError } from './create-core.mjs';
 import { poemData, renderPoemCard } from './poem-card.mjs';
 import { mountHistory } from './history.mjs';
+import { paymentQR } from './payment-qr.mjs';
 import { mountWaitingPoems } from './waiting-poems.mjs';
 export * from './create-core.mjs';
 import { safeReturnTo, loginDestination } from './user-navigation.mjs';
@@ -19,6 +20,7 @@ export function mountCreatePage(doc = document) {
   let task = null, poem = null, pendingOrder = null, plans = [], orders = [], imageVersion = 0;
   const orderPageSize = 5;
   let orderPage = 0;
+  let orderExpiryTimer;
   const text = (id, value) => { if ($(id)) $(id).textContent = value; };
   const show = (id, yes) => { if ($(id)) $(id).hidden = !yes; };
   const verified = () => user?.emailVerified === true;
@@ -108,6 +110,7 @@ export function mountCreatePage(doc = document) {
   }
   // 所有异步操作绑定当前账户世代；旧请求、图片解码和绘图都不能写回新账户。
   function resetAccount() {
+    clearTimeout(orderExpiryTimer);
     waitingPoems.setActive(false);
     scope.reset(); pollScope.reset(); busy.clear(); imageVersion++;
     ready = true; polling = false;
@@ -237,6 +240,11 @@ export function mountCreatePage(doc = document) {
     renderOrders();
   }
   function renderOrders() {
+    clearTimeout(orderExpiryTimer);
+    const now = Date.now();
+    orders = orders.filter(order => order.status !== 'pending' || !Number.isFinite(Date.parse(order.createdAt)) || Date.parse(order.createdAt) + 600_000 > now);
+    const deadlines = orders.filter(order => order.status === 'pending').map(order => Date.parse(order.createdAt) + 600_000).filter(Number.isFinite);
+    if (deadlines.length) orderExpiryTimer = setTimeout(renderOrders, Math.max(1, Math.min(...deadlines) - now));
     orderPage = Math.min(orderPage, Math.max(0, Math.ceil(orders.length / orderPageSize) - 1));
     $('orders').replaceChildren();
     if (!orders.length) { text('orders', '暂无订单'); sync(); return; }
@@ -252,9 +260,11 @@ export function mountCreatePage(doc = document) {
         const label = orderStatus(order);
         status.textContent = label.startsWith('已到账') ? label : ({ paid: '已支付 · 待到账', pending: '待支付确认', closed: '已关闭' })[order.status] || '待确认';
         status.dataset.state = label.startsWith('已到账') ? 'delivered' : 'pending';
-        const details = doc.createElement('details'); details.className = 'order-reference';
-        const summary = doc.createElement('summary'); summary.textContent = '订单编号';
-        details.append(summary, id); info.append(heading, status, details); article.append(info);
+        const created = doc.createElement('time'); created.className = 'order-created';
+        const date = new Date(order.createdAt);
+        created.textContent = Number.isFinite(date.getTime()) ? `创建于 ${date.toLocaleString('zh-CN', { hour12: false })}` : '创建时间未知';
+        if (Number.isFinite(date.getTime())) created.dateTime = date.toISOString();
+        info.append(heading, status, id, created); article.append(info);
       } else article.append(heading, id);
       if (order.amountMinor !== undefined && order.currency) {
         const price = doc.createElement('p'); price.className = 'order-price'; price.textContent = money(order.amountMinor, order.currency); article.append(price);
@@ -267,13 +277,17 @@ export function mountCreatePage(doc = document) {
         if (order.payment?.paymentUrl) {
           try {
             const href = safePaymentURL(order.payment.paymentUrl, location.href);
-            const link = doc.createElement('a'); link.href = href; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.className = 'button primary payment-link'; link.textContent = '打开支付链接（新窗口）';
-            actions.append(link);
+            const paymentArea = doc.createElement('div'); paymentArea.className = 'order-payment';
+            const qr = doc.createElement('figure'); qr.className = 'order-payment-qr';
+            const caption = doc.createElement('figcaption'); caption.textContent = '支付宝扫码支付';
+            qr.append(paymentQR(doc, href), caption);
+            const link = doc.createElement('a'); link.href = href; link.className = 'button primary payment-link'; link.textContent = '前往支付宝支付';
+            paymentArea.append(qr, link); article.append(paymentArea);
           } catch (error) {
             const warning = doc.createElement('p'); warning.textContent = errorMessage(error); article.append(warning);
           }
         }
-        const payment = doc.createElement('button'); payment.type = 'button'; payment.className = 'button secondary'; payment.textContent = '重新获取支付链接'; payment.dataset.action = 'payment';
+        const payment = doc.createElement('button'); payment.type = 'button'; payment.className = 'button secondary'; payment.textContent = '刷新支付'; payment.dataset.action = 'payment';
         payment.addEventListener('click', () => void orderAction(order.id, 'payment'));
         actions.append(payment);
       }
@@ -301,6 +315,12 @@ export function mountCreatePage(doc = document) {
     validOrder(order); pendingOrder = null; orderPage = 0; saveOrder(order, true);
     if ($('orders-panel')) $('orders-panel').open = true;
     announce(pageName === 'account' ? '' : `${orderStatus(order)}。`, 'purchase-status');
+    const target = $('orders').querySelector(`[data-order-id="${order.id}"]`);
+    if (target) {
+      target.tabIndex = -1;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    }
   }
   function orderFeedbackId(id) {
     return pageName === 'account' ? `order-feedback-${id}` : 'purchase-status';

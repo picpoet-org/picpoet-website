@@ -49,7 +49,16 @@ export async function prepareImage(file, { decode = globalThis.createImageBitmap
     if (canvas) { canvas.width = 0; canvas.height = 0; }
   }
 }
-export function uuid(make = () => globalThis.crypto.randomUUID()) {
+export function secureUUID(crypto = globalThis.crypto) {
+  if (typeof crypto?.randomUUID === 'function') return crypto.randomUUID();
+  if (typeof crypto?.getRandomValues !== 'function') throw new Error('浏览器不支持安全请求编号，请使用新版浏览器。');
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+export function uuid(make = secureUUID) {
   const id = make();
   if (!UUID.test(id)) throw new Error('浏览器无法创建请求编号，请在 HTTPS 或本机地址使用新版浏览器。');
   return id.toLowerCase();

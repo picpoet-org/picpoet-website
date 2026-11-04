@@ -153,17 +153,26 @@
 .account-page .order-list { margin-top: 0; }
 .account-page .orders-pagination { display: flex; align-items: center; justify-content: center; gap: 12px; padding-top: 20px; border-top: 1px solid var(--pp-color-line); }
 .account-page #orders-page { min-width: 48px; text-align: center; font-variant-numeric: tabular-nums; color: var(--create-muted); }
-.account-page .order-item { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(140px, auto); gap: 16px 24px; align-items: center; }
+.account-page .order-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px 16px; align-items: start; padding-block: 16px; }
 .account-page .order-info { min-width: 0; }
 .account-page .order-info h3 { font-size: 1rem; margin: 0 0 8px; }
 .account-page .order-price { font-size: 1.125rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .account-page .order-status[data-state="delivered"] { border-color: var(--pp-color-ink); }
-.account-page .order-reference { border: 0; margin: 8px 0 0; }
-.account-page .order-reference summary { width: fit-content; color: var(--create-muted); font-size: .8125rem; font-weight: 400; padding-block: 10px; }
-.account-page .order-reference .request-id { margin-top: 4px; }
+.account-page .order-info .request-id { margin: 8px 0 4px; font-size: .75rem; }
+.account-page .order-created { display: block; font-size: .8125rem; color: var(--create-muted); font-variant-numeric: tabular-nums; }
+.create-page .order-payment-qr { margin: 0; text-align: center; }
+.create-page .payment-qr { display: block; width: 160px; height: 160px; max-width: 100%; margin-inline: auto; }
+.create-page .order-payment-qr figcaption { margin-top: 4px; font-size: .8125rem; }
+.create-page .order-payment .payment-link { display: none; }
+.account-page .order-payment { grid-column: 3; grid-row: span 2; }
+.account-page .order-item > .actions { grid-column: 1 / 3; flex-direction: row; justify-content: flex-start; gap: 8px; }
+.account-page .order-item > .actions .button { min-height: 40px; padding: 6px 12px; }
 .account-page .order-item .actions { margin: 0; justify-content: flex-end; flex-direction: column; align-items: stretch; }
 .account-page .order-item .actions .button { font-size: .875rem; }
 @media (max-width: 700px) {
+	.create-page .order-payment-qr { display: none; }
+	.create-page .order-payment .payment-link { display: inline-flex; }
+	.account-page .order-payment { grid-column: 1 / -1; grid-row: auto; }
 	.account-page .order-item { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; }
 	.account-page .order-item .actions { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; }
 	.account-page .order-item .actions .button { width: auto; flex: 1 1 140px; }

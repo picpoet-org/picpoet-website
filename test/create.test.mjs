@@ -3,6 +3,16 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { validateImage, imageDimensions, prepareImage, MAX_IMAGE_BYTES, MAX_SOURCE_IMAGE_BYTES, generationAttempt, generationForm, orderAttempt, safePaymentURL, orderStatus, createAPI, createScope, pollGeneration, wait, errorMessage, ApiError, uuid } from '../shared/create-core.mjs';
 import { poemData, wrapText, cardLayout, CARD } from '../shared/poem-card.mjs';
+import { secureUUID } from '../shared/create-core.mjs';
+
+test('局域网 HTTP 缺少 randomUUID 时用安全随机数生成 UUID v4', () => {
+  assert.equal(secureUUID({ getRandomValues: bytes => bytes.fill(255) }), 'ffffffff-ffff-4fff-bfff-ffffffffffff');
+  const crypto = { getRandomValues: bytes => globalThis.crypto.getRandomValues(bytes) };
+  const ids = Array.from({ length: 100 }, () => uuid(() => secureUUID(crypto)));
+  assert.equal(new Set(ids).size, 100);
+  assert.throws(() => secureUUID({}), /安全请求编号/);
+  assert.equal(secureUUID({ randomUUID: () => 'native-uuid' }), 'native-uuid');
+});
 const ID = 'a1aa1111-1111-4111-8111-111111111111';
 const PLAN = 'b2bb2222-2222-4222-8222-222222222222';
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });
@@ -216,5 +226,5 @@ test('页面链接、label、noscript；用户数据使用纯文本，无持久�
   for (const removed of ['poem-language', '体裁、格律等使用官方服务默认设置。', '与下载、系统分享使用同一张 PNG', '这里是预览区域，并非示例作品。']) assert.ok(!forms.includes(removed));
   assert.doesNotMatch(forms, /id="pay-method"/);
   assert.doesNotMatch(script, /\.innerHTML\s*=|localStorage\.|sessionStorage\./);
-  assert.match(script, /link\.rel = 'noopener noreferrer'/);
+  assert.doesNotMatch(script, /link\.target = '_blank'/);
 });
