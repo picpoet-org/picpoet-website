@@ -124,7 +124,7 @@
 .account-page .quiet-button { background: transparent; border: 1px solid transparent; color: var(--create-muted); }
 .account-page .quiet-button:hover:not(:disabled) { background: var(--pp-color-panel); color: var(--pp-color-ink); }
 .account-page .account-identity { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
-.account-page #account-name { margin: 0; font-size: 1.125rem; }
+.account-page .account-identity #account-name { margin: 0; font-size: 1.125rem; }
 .account-page .account-badge, .account-page .order-status { display: inline-block; font-size: .8125rem; border: 1px solid var(--pp-color-line); border-radius: var(--pp-radius-1); padding: 2px 8px; background: var(--pp-color-paper); }
 .account-page .account-balance { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 24px 0; padding: 24px 0; border-block: 1px solid var(--pp-color-line); }
 .account-page .account-balance > div { padding-inline: 24px; }
