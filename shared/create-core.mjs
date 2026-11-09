@@ -75,6 +75,11 @@ export function generationForm(attempt) {
   if (attempt.poemLanguage) form.set('poemLanguage', attempt.poemLanguage);
   return form;
 }
+// 默认付款方式：窄屏用手机网站支付，宽屏用电脑网站支付（支付宝收银台内可扫码或登录付款）。
+export function defaultPayMethod(narrow) {
+  return narrow ? 'alipay_wap' : 'alipay_page';
+}
+
 export function orderAttempt(planId, payMethod, makeUUID) {
   if (!UUID.test(planId) || !['alipay_page', 'alipay_wap', 'alipay_qrcode'].includes(payMethod)) throw new Error('套餐或支付方式无效，请刷新套餐。');
   return Object.freeze({ planId, payMethod, requestId: uuid(makeUUID) });

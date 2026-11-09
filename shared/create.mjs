@@ -1,4 +1,4 @@
-import { createAPI, createScope, errorMessage, prepareImage, generationAttempt, generationForm, orderAttempt, safePaymentURL, orderStatus, pollGeneration, UUID, staleError } from './create-core.mjs';
+import { createAPI, createScope, errorMessage, prepareImage, generationAttempt, generationForm, orderAttempt, defaultPayMethod, safePaymentURL, orderStatus, pollGeneration, UUID, staleError } from './create-core.mjs';
 import { poemData, renderPoemCard } from './poem-card.mjs';
 import { mountHistory } from './history.mjs';
 import { paymentQR } from './payment-qr.mjs';
@@ -218,7 +218,7 @@ export function mountCreatePage(doc = document) {
       button.addEventListener('click', () => {
         if (!verified() || pendingOrder || busy.has('orders')) return;
         void action('orders', 'purchase-status', async ticket => {
-          pendingOrder = orderAttempt(plan.id, $('pay-method')?.value || (matchMedia('(max-width: 700px)').matches ? 'alipay_wap' : 'alipay_qrcode'));
+          pendingOrder = orderAttempt(plan.id, $('pay-method')?.value || defaultPayMethod(matchMedia('(max-width: 700px)').matches));
           text('order-request-id', `下单请求编号：${pendingOrder.requestId}`); sync();
           await submitOrder(ticket);
         });
@@ -616,7 +616,7 @@ export function mountCreatePage(doc = document) {
   $('refresh-plans').addEventListener('click', () => void loadPlans());
   $('refresh-orders').addEventListener('click', () => void action('orders', $('orders-status') ? 'orders-status' : 'purchase-status', ticket => loadOrders(ticket)));
   $('retry-order').addEventListener('click', () => { if (pendingOrder) void action('orders', 'purchase-status', ticket => submitOrder(ticket)); });
-  if ($('pay-method')) $('pay-method').value = matchMedia('(max-width: 700px)').matches ? 'alipay_wap' : 'alipay_qrcode';
+  if ($('pay-method')) $('pay-method').value = defaultPayMethod(matchMedia('(max-width: 700px)').matches);
   }
   if ($('login-link')) $('login-link').href = loginDestination(pageName + '.html', location.hash);
   if ($('continue-link')) $('continue-link').href = returnTo;

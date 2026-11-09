@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { validateImage, imageDimensions, prepareImage, MAX_IMAGE_BYTES, MAX_SOURCE_IMAGE_BYTES, generationAttempt, generationForm, orderAttempt, safePaymentURL, orderStatus, createAPI, createScope, pollGeneration, wait, errorMessage, ApiError, uuid } from '../shared/create-core.mjs';
+import { validateImage, imageDimensions, prepareImage, MAX_IMAGE_BYTES, MAX_SOURCE_IMAGE_BYTES, generationAttempt, generationForm, orderAttempt, defaultPayMethod, safePaymentURL, orderStatus, createAPI, createScope, pollGeneration, wait, errorMessage, ApiError, uuid } from '../shared/create-core.mjs';
 import { poemData, wrapText, cardLayout, CARD } from '../shared/poem-card.mjs';
 import { secureUUID } from '../shared/create-core.mjs';
 
@@ -132,6 +132,11 @@ test('订单快照保留请求编号与支付方式，不含 claimToken 或其�
   assert.deepEqual(order, { planId: PLAN, payMethod: 'alipay_page', requestId: ID });
   assert.equal(Object.isFrozen(order), true);
   assert.throws(() => orderAttempt(PLAN, 'alipay_app', () => ID));
+});
+test('默认付款方式：电脑端电脑网站支付，手机端手机网站支付，均可生成订单快照', () => {
+  assert.equal(defaultPayMethod(false), 'alipay_page');
+  assert.equal(defaultPayMethod(true), 'alipay_wap');
+  for (const narrow of [false, true]) assert.equal(orderAttempt(PLAN, defaultPayMethod(narrow), () => ID).payMethod, defaultPayMethod(narrow));
 });
 test('支付 URL 只允许绝对 HTTP(S)，生产 HTTPS，拒绝危险协议与凭据', () => {
   assert.equal(safePaymentURL('https://pay.example/path?a=1'), 'https://pay.example/path?a=1');

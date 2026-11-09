@@ -497,7 +497,7 @@ try {
   assert.equal(await evaluate(`document.querySelector('#pay-method') === null`), true);
   await until(`document.querySelector('.order-status')?.textContent.includes('已到账') && !document.querySelector('#refresh-orders').disabled`, '自动更新订单到账状态');
   assert.equal(await evaluate(`document.querySelector('#purchase-status').hidden`), true);
-  for (const [width, expected] of [[1280, 'alipay_qrcode'], [375, 'alipay_wap']]) {
+  for (const [width, expected] of [[1280, 'alipay_page'], [375, 'alipay_wap']]) {
     await cdp('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: false });
     await click('#plans button');
     await until(`!document.querySelector('#refresh-orders').disabled && document.querySelector('#purchase-status').hidden`, '自动支付方式下单成功');
