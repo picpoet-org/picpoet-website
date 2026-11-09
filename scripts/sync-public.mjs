@@ -1,6 +1,7 @@
 import { cp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { versionAssets } from './asset-version.mjs';
 import { deployment, validatePublishedManifest } from './deployment-config.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -27,6 +28,7 @@ for (const page of pageFiles) {
   const html = await readFile(file, 'utf8');
   await writeFile(file, html.replace('  </head>', `    <link rel="canonical" href="${canonical}" />\n  </head>`));
 }
+await versionAssets(publicDirectory, pageFiles);
 await writeFile(path.join(publicDirectory, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${deployment.websiteUrl}/sitemap.xml\n`);
 await writeFile(path.join(publicDirectory, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${pageFiles.map((page) => `  <url><loc>${deployment.websiteUrl}/${page === 'index.html' ? '' : page}</loc></url>`).join('\n')}\n</urlset>\n`);
 

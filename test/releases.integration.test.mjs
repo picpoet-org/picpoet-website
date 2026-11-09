@@ -72,7 +72,9 @@ test('部署同步后根目录和 pages 子路径包含相同清单、页面与�
       source = source.replace('  </head>', `    <link rel="canonical" href="${canonical}" />\n  </head>`);
     }
     for (const prefix of ['public/', 'public/pages/']) {
-      assert.equal(await readFile(new URL(`../${prefix}${resource}`, import.meta.url), 'utf8'), source);
+      // 交付内容与源文件一致；样式与模块地址额外携带 10 位内容版本。
+      const published = await readFile(new URL(`../${prefix}${resource}`, import.meta.url), 'utf8');
+      assert.equal(published.replace(/(\.(?:css|mjs))\?v=[0-9a-f]{10}/g, '$1'), source);
     }
   }
   const html = await readFile(new URL('../public/downloads.html', import.meta.url), 'utf8');
