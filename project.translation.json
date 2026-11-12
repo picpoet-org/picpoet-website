@@ -1,0 +1,44 @@
+{
+  "specifiedFolders": [
+    {
+      "sourceFolder": {
+        "path": "src/locales/zh-cn",
+        "lang": "zh-cn"
+      },
+      "targetFolders": [
+        {
+          "path": "src/locales/zh-hk",
+          "lang": "zh-hk"
+        },
+        {
+          "path": "src/locales/zh-tw",
+          "lang": "zh-tw"
+        },
+        {
+          "path": "src/locales/en-us",
+          "lang": "en-us"
+        },
+        {
+          "path": "src/locales/ko-kr",
+          "lang": "ko-kr"
+        },
+        {
+          "path": "src/locales/ja-jp",
+          "lang": "ja-jp"
+        }
+      ]
+    }
+  ],
+  "customPrompts": [
+    "本项目是照片诗词创作网站。仅翻译 JSON 字符串值，保留所有键名、对象数组结构、HTML 标记和 {brand}、{count} 等占位符原样。{brand} 由程序统一注入，所有产品名使用 {brand}，不要加入图赋或翻译 PicPoet。zh-hk 使用香港繁體中文及香港常用詞；zh-tw 使用臺灣繁體中文及臺灣常用詞；en-us 使用自然英文；ko-kr 使用自然韩语；ja-jp 使用自然日语。作品诗句示例可以翻译以辅助理解，所有版本号、金额、系统要求和协议名准确保留。"
+  ],
+  "translationIntervalDays": -1,
+  "currentVendor": "openrouter",
+  "vendors": [
+    {
+      "name": "openrouter",
+      "apiEndpoint": "http://192.168.31.2:34046/v1",
+      "model": "openrouter/openrouter/free"
+    }
+  ]
+}

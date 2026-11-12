@@ -72,7 +72,7 @@ export async function loadCardFont(text) {
   const pending = cardFontFaces.filter(([file, range]) => !loadedFaces.has(file) && points.some(point => covers(range, point)));
   try {
     await Promise.all(pending.map(async ([file]) => {
-      const font = new FontFace(CARD_FONT_FAMILY, `url("${new URL(`../assets/fonts/lxgw-wenkai/${file}`, import.meta.url).href}")`, { display: 'swap', style: 'normal', weight: '400' });
+      const font = new FontFace(CARD_FONT_FAMILY, `url("${new URL(`/assets/fonts/lxgw-wenkai/${file}`, location.origin).href}")`, { display: 'swap', style: 'normal', weight: '400' });
       await font.load();
       document.fonts.add(font);
       loadedFaces.add(file);
@@ -85,8 +85,8 @@ export async function loadCardFont(text) {
     throw new Error('文楷字体未能启用，分享图尚未生成。请点击“重绘分享图”。');
   }
 }
-export async function renderPoemCard(data) {
-  await loadCardFont([data.title, data.cipai, data.body, '图赋', 'PicPoet', '词牌 · '].join(''));
+export async function renderPoemCard(data, { brand = '图赋' } = {}) {
+  await loadCardFont([data.title, data.cipai, data.body, brand, '词牌 · '].join(''));
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('浏览器无法创建分享画布。');
@@ -111,7 +111,7 @@ export async function renderPoemCard(data) {
     const scale = Math.min(1, layout.body.height * .72 / 278, (CARD.width - 192) * .72 / 450);
     ctx.translate(CARD.width / 2, layout.body.y + layout.body.height / 2);
     ctx.scale(scale, scale); ctx.globalAlpha = .06;
-    drawLine('图赋', 150, 20, 0, -42); drawLine('PicPoet', 64, 8, 0, 88);
+    drawLine(brand, brand === '图赋' ? 150 : 86, brand === '图赋' ? 20 : 8, 0, 0);
     ctx.restore();
     if (layout.divider !== undefined) {
       const y = layout.divider + 6;

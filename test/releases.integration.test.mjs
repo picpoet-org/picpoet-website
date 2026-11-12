@@ -2,12 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { detectPlatform, formatSize, loadManifest, validateManifest } from '../shared/releases.mjs';
 import { androidVersionCode, deployment, validatePublishedManifest } from '../scripts/deployment-config.mjs';
 
-const root = fileURLToPath(new URL('../', import.meta.url));
 const base = JSON.parse(await readFile(new URL('../releases/stable.json', import.meta.url), 'utf8'));
 function publishedManifest() {
   const manifest = structuredClone(base);
@@ -63,26 +60,28 @@ test('设备识别为下载页推荐对应平台，同时保留完整平台列�
   assert.equal(base.platforms.find((platform) => platform.id === 'ohos').name, 'HarmonyOS');
 });
 
-test('部署同步后根目录和 pages 子路径包含相同清单、页面与下载模块', async () => {
-  execFileSync(process.execPath, ['scripts/sync-public.mjs'], { cwd: root });
-  for (const resource of ['index.html', 'docs.html', 'downloads.html', 'pricing.html', 'create.html', 'works.html', 'account.html', 'login.html', 'styles.css',
-    'shared/downloads.mjs', 'shared/releases.mjs', 'releases/stable.json',
-    'shared/user-navigation.mjs', 'shared/history.mjs', 'shared/create.css', 'shared/create.mjs', 'shared/create-core.mjs', 'shared/poem-card.mjs', 'shared/poem-card-font.mjs', 'assets/fonts/OFL.txt', 'assets/fonts/lxgw-wenkai/7acda61a02bc8863.woff2']) {
-    let source = await readFile(new URL(`../${resource}`, import.meta.url), 'utf8');
-    if (resource.endsWith('.html')) {
-      const canonical = `${deployment.websiteUrl}/${resource === 'index.html' ? '' : resource}`;
-      source = source.replace('  </head>', `    <link rel="canonical" href="${canonical}" />\n  </head>`);
-    }
+test('Vue 预渲染交付保留根目录、pages 兼容入口及本地字体与清单', async () => {
+  for (const resource of ['releases/stable.json', 'assets/fonts/OFL.txt', 'assets/fonts/lxgw-wenkai/7acda61a02bc8863.woff2']) {
+    const source = await readFile(new URL(`../${resource}`, import.meta.url));
     for (const prefix of ['public/', 'public/pages/']) {
-      // 交付内容与源文件一致；样式与模块地址额外携带 10 位内容版本。
-      const published = await readFile(new URL(`../${prefix}${resource}`, import.meta.url), 'utf8');
-      assert.equal(published.replace(/(\.(?:css|mjs))\?v=[0-9a-f]{10}/g, '$1'), source);
+      assert.deepEqual(await readFile(new URL(`../${prefix}${resource}`, import.meta.url)), source);
+    }
+  }
+  const buildManifest = JSON.parse(await readFile(new URL('../public/.vite/manifest.json', import.meta.url), 'utf8'));
+  const entry = buildManifest['src/entry-client.mjs'];
+  assert.match(entry.file, /^app\/entry-client-[\w-]+\.js$/);
+  for (const name of ['index', 'docs', 'downloads', 'pricing', 'create', 'works', 'account', 'login']) {
+    for (const prefix of ['public/', 'public/pages/']) {
+      const page = await readFile(new URL(`../${prefix}${name}.html`, import.meta.url), 'utf8');
+      assert.ok(page.includes(`src="/${entry.file}"`));
+      assert.ok(page.includes('<main id="main"'));
+      assert.equal((page.match(/rel="canonical"/g) || []).length, 1);
     }
   }
   const html = await readFile(new URL('../public/downloads.html', import.meta.url), 'utf8');
   for (const platform of base.platforms) assert.ok(html.includes(`data-platform="${platform.id}"`));
   assert.match(html, /id="download-status"/);
-  assert.match(html, /shared\/downloads\.mjs/);
+  assert.match(html, /\/app\/entry-client-/);
   assert.equal((html.match(/rel="canonical"/g) ?? []).length, 1);
   const robots = await readFile(new URL('../public/robots.txt', import.meta.url), 'utf8');
   assert.ok(robots.includes(`Sitemap: ${deployment.websiteUrl}/sitemap.xml`));

@@ -119,8 +119,7 @@ figcaption { border-top: 1px solid var(--pp-color-line); padding-top: 14px; colo
 .platform-requirement { font-size: .9375rem; }
 [data-release-content] { border-top: 1px solid var(--pp-color-line); margin-top: 24px; padding-top: 20px; }
 [data-release-content] > :last-child { margin-bottom: 0; }
-.download-card.is-recommended { border-color: var(--pp-color-accent-dark); box-shadow: inset 0 3px 0 var(--pp-color-accent-dark); }
-.download-card .platform-recommendation { width: fit-content; max-width: 100%; padding: 4px 10px; border: 1px solid var(--pp-color-line); border-radius: var(--pp-radius-1); background: var(--pp-color-panel); color: var(--pp-color-ink); font-size: .875rem; font-weight: 650; margin-block: 0 18px; }
+.download-card.is-recommended, .download-card.recommended { border-color: var(--pp-color-accent-dark); box-shadow: inset 0 3px 0 var(--pp-color-accent-dark); }
 .download-card .release-version { color: var(--pp-color-ink); font-weight: 650; margin-bottom: 4px; }
 .release-date { font-size: .875rem; margin-bottom: 16px; }
 .release-notes { padding-inline-start: 1.25em; color: var(--text-secondary); font-size: .9375rem; margin-block: 16px 24px; }

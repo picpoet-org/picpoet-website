@@ -6,7 +6,7 @@
 FROM node:22-alpine AS build
 WORKDIR /src
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts
+RUN npm ci --ignore-scripts
 COPY . .
 RUN npm run public:sync
 

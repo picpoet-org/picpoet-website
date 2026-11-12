@@ -2,6 +2,9 @@
   "name": "picpoet-website",
   "version": "0.1.0",
   "private": false,
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "description": "Public website for Picpoet documentation, pricing, and downloads.",
   "scripts": {
     "dev:web": "npm run public:sync && node scripts/web-server.mjs",
@@ -10,17 +13,29 @@
     "start:web:official": "node scripts/web-official-dev.mjs",
     "dev:stack": "node scripts/dev-stack.mjs",
     "dev:stack:gui": "node scripts/dev-stack-gui.mjs",
-    "test:browser:create": "node test/create.browser.integration.mjs",
-    "dev": "python3 -m http.server 8080 --bind 127.0.0.1 --directory public",
+    "test:browser:create": "node test/vue.browser.integration.mjs",
+    "dev": "vite",
+    "format:check": "prettier --check 'src/**/*.{vue,mjs,css}' vite.config.mjs scripts/check-locales.mjs scripts/sync-public.mjs scripts/translate.mjs test/vue.browser.integration.mjs test/i18n.integration.test.mjs",
     "start": "python3 -m http.server 8080 --bind 127.0.0.1 --directory public",
-    "test": "node --test test/*.test.mjs",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "build": "npm run releases:check && node scripts/sync-public.mjs",
+    "build:all": "npm run releases:check && node scripts/sync-public.mjs --all-locales",
+    "translate": "node scripts/translate.mjs",
+    "locales:check": "node scripts/check-locales.mjs",
     "releases:check": "node scripts/check-releases.mjs",
-    "public:sync": "npm run releases:check && node scripts/sync-public.mjs"
+    "public:sync": "npm run build"
   },
   "dependencies": {
-    "qrcode-generator": "^2.0.4"
+    "qrcode-generator": "^2.0.4",
+    "vue": "^3.5.45",
+    "vue-i18n": "^11.4.18"
   },
   "devDependencies": {
-    "jsqr": "^1.4.0"
+    "@playwright/test": "^1.65.0",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "@vue/server-renderer": "^3.5.45",
+    "jsqr": "^1.4.0",
+    "prettier": "^3.10.0",
+    "vite": "^7.3.8"
   }
 }

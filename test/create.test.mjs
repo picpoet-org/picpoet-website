@@ -223,11 +223,11 @@ test('轮询成功/失败/过期终止，未知状态报错，取消后不回写
   await assert.rejects(wait(100, controller.signal), { name: 'AbortError' });
 });
 test('页面链接、label、noscript；用户数据使用纯文本，无持久敏感存储', async () => {
-  const html = await readFile(new URL('../create.html', import.meta.url), 'utf8');
-  const script = await readFile(new URL('../shared/create.mjs', import.meta.url), 'utf8');
+  const html = await readFile(new URL('../public/create.html', import.meta.url), 'utf8');
+  const script = await readFile(new URL('../src/composables/useGeneration.mjs', import.meta.url), 'utf8');
   assert.match(html, /<noscript>/); assert.match(html, /aria-live="polite"/);
-  for (const path of ['shared/picpoet-tokens.css', 'styles.css', 'shared/create.css', 'shared/create.mjs']) assert.ok(html.includes(path));
-  const forms = html + await readFile(new URL('../login.html', import.meta.url), 'utf8') + await readFile(new URL('../account.html', import.meta.url), 'utf8');
+  assert.match(html, /<script type="module" src="\/app\/entry-client-[\w-]+\.js"/);
+  const forms = html + await readFile(new URL('../public/login.html', import.meta.url), 'utf8') + await readFile(new URL('../public/account.html', import.meta.url), 'utf8');
   for (const id of ['image', 'email', 'password', 'otp', 'verify-email']) assert.ok(forms.includes(`for="${id}"`));
   for (const removed of ['poem-language', '体裁、格律等使用官方服务默认设置。', '与下载、系统分享使用同一张 PNG', '这里是预览区域，并非示例作品。']) assert.ok(!forms.includes(removed));
   assert.doesNotMatch(forms, /id="pay-method"/);

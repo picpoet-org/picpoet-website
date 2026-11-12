@@ -1,6 +1,6 @@
-# Picpoet website
+# 图赋 / PicPoet website
 
-Picpoet 的公开网站，集中维护产品使用说明、定价信息和下载入口。
+Vue 3 + Vite 网站，维护产品说明、下载、在线创作与独立 Node BFF。简体中文品牌为 **图赋**，其余语言品牌为 **PicPoet**。
 
 ## 正式发布地址
 
@@ -22,14 +22,40 @@ https://downloads.nullprivate.com/picpoet/release/android/0.1.0/picpoet-0.1.0-ar
 
 ## 本地预览
 
-要求 Python 3 和 Node.js 20+，命令工作目录为 `website/`：
+要求 Node.js 22.13+，命令工作目录为 `website/`：
 
 ```bash
-npm run public:sync
+npm ci
 npm run dev
 ```
 
-打开 <http://localhost:8080>。
+打开 <http://127.0.0.1:8080>。Vite 实时预渲染 Vue 组件并提供热更新；业务请求 `/web-api` 代理到本机 `18090` BFF，BFF 启动方式见下文。仅查看公开内容时无需启动业务后端。`npm run build` / `public:sync` 生成 `public/`，`npm start` 使用 Python 3 静态预览该产物。
+
+## Vue 与多语言结构
+
+- `src/views/`：首页、说明、定价、下载、创作、作品、账户、登录八个页面。
+- `src/components/`：共用页头、页脚、响应式菜单、会话提示、二维码、订单和发布信息。
+- `src/composables/`：会话取消与账户世代、图片与生成任务、历史图片和对话框、订单幂等与限次轮询、发布清单。
+- `src/locales/zh-cn/`：简体中文文案源；内容、SEO、错误和业务提示均按键读取。其他字典由自研翻译工具生成。
+- `shared/`：复用图片压缩、任务协议、诗词排版、本地字体与清单校验；旧 DOM 页面控制器已由 Vue 替代。
+- `scripts/sync-public.mjs`：从同一套 Vue 组件预渲染完整 HTML，再挂载客户端；Vite 维护带内容 hash 的 JS/CSS。`public/` 与 `.build/` 是忽略的生成目录。
+
+保留根目录 `.html` 地址和 `/pages/` 兼容入口。非简体中文使用 `/zh-hk/`、`/zh-tw/`、`/en-us/`、`/ko-kr/`、`/ja-jp/` 路径；共享页头按语言生成站内地址，保留当前页面与登录目标。每个已交付语言均有对应 `lang`、canonical 和 hreflang。语言选择不写 Cookie 或浏览器存储；界面语言与请求的 `poemLanguage` 分开，目前作诗继续使用后端支持的 `zh`。
+
+### 首期语言与翻译待办
+
+规划语言为简体中文、香港繁体中文、台湾繁体中文、英文、韩文、日文。**当前仅简体中文已经生成并验收。** 首次 `project-translator-cli` 执行的 30 个目标文件均被配置上游以 `401 Invalid API key` 拒绝；用户选择先保留翻译待办。其余五种语言未放入占位译文，导航只展示完整字典的语言。
+
+凭据由本机 `~/.project-translator/config.json` 或该工具支持的环境变量提供；项目 `project.translation.json` 仅保存映射、提示词和非秘密 vendor 元数据。更新本机认证后，在本仓库运行：
+
+```bash
+npm run translate       # 先校验项目与有效配置，再调用 project-translator-cli
+npm run locales:check  # 六种语言的文件、键、占位符和品牌检查
+npm run build:all      # 严格六语言预渲染
+node test/vue.browser.integration.mjs --all-locales
+```
+
+翻译包装脚本核对 `failedFiles`、取消及致命错误，CLI 退出码 0 也不代替翻译成功。目标译文统一通过 CLI 更新；源文、提示词或 vendor 调整后重新生成，保持所有 `{brand}`、`{count}` 等占位符。当前 `npm run build` 仅交付完整字典的语言并提示待办；正式六语言交付以 `build:all` 和六语言浏览器验收成功为准。
 
 ## 页面
 
@@ -44,15 +70,15 @@ npm run dev
 - `/account.html`：个人中心，账户信息、剩余次数、套餐购买与订单
 - `/login.html`：独立登录、注册和邮箱验证；成功后回到原目标页
 
-主导航统一为「首页 / 在线创作 / 我的作品 / 个人中心」。公共介绍页面不依赖账号 API；使用说明、定价和下载继续保留。用户页面共享 HttpOnly 会话，各页仅加载自身需要的业务数据。登录 `returnTo` 只允许已知站内页面及指定锚点，不接受外站 URL；跨页不会保存密码或业务凭证到浏览器存储。
+主导航统一为「首页 / 在线创作 / 我的作品 / 下载客户端 / 个人中心」。公共介绍页面不依赖账号 API；使用说明、定价和下载继续保留。用户页面共享 HttpOnly 会话，各页仅加载自身需要的业务数据。登录 `returnTo` 只允许已知站内页面及指定锚点，不接受外站 URL；跨页不会保存密码或业务凭证到浏览器存储。
 
-创作中的图片与尚未下载的分享图仍只在当前页面内存；离开前请保存作品，进行中的服务端任务可返回创作页恢复。历史作品在独立作品页查看。`test/fixtures/create-workflow.html` 仅用于既有业务全路径回归，不同步到 `public/`；浏览器测试同时验证真实独立页面及登录回跳。
+创作中的图片与尚未下载的分享图仍只在当前页面内存；离开或切换语言前请保存作品，进行中的服务端任务可返回创作页恢复。历史作品在独立作品页查看。浏览器正向测试直接验证预渲染的真实 Vue 页面及登录回跳，不维护另一套测试专用业务页面。
 
 ## 网页版创作（本地验收）
 
 网页版复用 Dashboard 的 Picpoet 邮箱注册／OTP 验证、账户及额度，通过官方异步任务生成诗词。分享卡在浏览器以文楷绘制，沿用客户端的纸色、1080px 宽度和品牌底纹，不包含原照片。文楷使用 ZSFT 发布的霞鹜文楷 v1.530 Regular 网页分片，缓存在 `assets/fonts/lxgw-wenkai/`；绘制时只启用当次文字覆盖的同源 woff2，不请求外部字体，也不再下载完整 TTF。图片选中后仅在本机解码、缩小及 JPEG 重编码（移除原图 EXIF）；点击生成才上传。历史启用后，新提交的账户官方成功任务保存压缩照片与诗词 90 天，可提前永久删除；不保存原图、不回填旧任务。是否已保存以历史接口记录为准，需要长期保留的作品请下载。
 
-工作目录 `website/`，Node.js 20+：
+工作目录 `website/`，Node.js 22.13+：
 
 ```bash
 # 两个上游需分别启动；以下是默认本地端口，不会加载任何 .env。
@@ -60,7 +86,7 @@ DASHBOARD_API_URL=http://127.0.0.1:8080/api/v1 \
 PICPOET_API_URL=http://127.0.0.1:8081/v1 npm run dev:web
 ```
 
-打开 <http://127.0.0.1:18090/create.html>。此地址的 Host/Origin 必须与 `WEB_PUBLIC_ORIGIN` 一致（默认 `http://127.0.0.1:18090`），不能混用 localhost。单独的 `npm run dev` 仅预览静态内容，没有 `/web-api` 业务能力。
+打开 <http://127.0.0.1:18090/create.html>。此地址的 Host/Origin 必须与 `WEB_PUBLIC_ORIGIN` 一致（默认 `http://127.0.0.1:18090`），不能混用 localhost。需要前端热更新时另运行 `npm run dev`，使用 <http://127.0.0.1:8080/create.html>；开发代理将同源请求转给 BFF，令牌继续留在 BFF 内存。
 
 一键启动前后端联调（推荐）：
 
@@ -99,7 +125,7 @@ npm run dev:web:official
 
 ### 账户历史：接口与启用前置条件
 
-创作页“我的历史”独立于当前选图、任务和作品。登录后与成功生成后读取列表，支持游标分页、详情、压缩照片、完整诗词、纯诗词分享 PNG 和显式二次确认永久删除。历史以统一账户归属，不局限当前浏览器或某个业务凭证。照片通过同源 Cookie 请求 Blob，缩略图进入视口附近才加载；登出/账户切换会取消请求、清除内容并释放对象 URL，浏览器持久存储不写入历史。
+独立作品页在登录后读取历史列表，支持游标分页、详情、压缩照片、完整诗词、纯诗词分享 PNG 和显式二次确认永久删除。历史以统一账户归属，不局限当前浏览器或某个业务凭证。照片通过同源 Cookie 请求 Blob，缩略图进入视口附近才加载；登出/账户切换会取消请求、清除内容并释放对象 URL，浏览器持久存储不写入历史。
 
 | 网站同源接口 | 官方上游 | 约束 |
 | --- | --- | --- |
@@ -126,13 +152,14 @@ npm run dev:web:official
 npm test
 npm run public:sync
 npm run test:browser:create  # 需要 google-chrome；独立 HTTP 替身，不花费模型/支付额度
+npm run format:check
 ```
 
-测试覆盖账户会话、原样 multipart、配额查询、任务重试、订单幂等、刷新并发、安全边界，以及 Chrome 375/768/900/1280px 的注册、上传、生成、PNG、购买状态与退出隔离。历史测试覆盖分页白名单、二进制大小/超时/重定向/隐私头、未登录与跨站拦截、列表/详情/分页/PNG 实际下载、原生对话框取消和确认删除、历史 503 不影响创作及登出迟到响应隔离。测试照片由 Canvas 合成。真实邮件、真实模型、沙箱付款和移动系统分享需在配置环境另行验收；测试替身通过不等于真实上游联通。
+Node 测试覆盖账户会话、原样 multipart、配额查询、任务重试、订单幂等、刷新并发、安全边界和预渲染交付。Vue Chrome 正向验收覆盖八页 hydration、375/768/900/1280px 导航布局、注册与 OTP、登录回跳、上传、生成、PNG 实际下载、历史详情与分享图、取消和确认删除、购买到账及退出；测试照片由 Canvas 合成，实际页面经独立 BFF 访问 HTTP 替身并启用正式 CSP。真实邮件、模型、沙箱付款和移动系统分享需另行验收；替身通过不等于真实上游联通。
 
 **现有 ESA 纯静态发布不具备 BFF 能力。** 上线前须为同一官网 origin 的 `/web-api/*` 部署 Node 服务并配置同源路由，或由 Node 服务统一托管官网；反向代理保留公开 Host，API 不缓存。本文不执行线上变更。当前会话为单进程内存，扩容前应建设共享会话存储、可信代理限流和业务凭证生命周期管理；不要仅上传 `public/` 就宣称网页版可用。
 
-字体位于 `assets/fonts/`，附 `OFL.txt`；与客户端 `LXGWWenKai-Regular.ttf` 相同。本次保留完整字体以覆盖任意生成汉字，约 25 MiB，发布前可评估保留完整字形的 WOFF2 压缩。
+字体位于 `assets/fonts/`，附 `OFL.txt`；使用本地 WOFF2 分片，按当次作品所需字形加载。生成分享图的底纹按界面语言使用“图赋”或“PicPoet”。
 
 首页与说明对应当前 Flutter 客户端的单张照片创作、元数据保存、本机历史与分享图流程。下载页分别展示 Android、iOS、HarmonyOS（华为鸿蒙）、Linux、macOS 和 Windows，使用自有 CDN 安装包直链。平台能力与实际发布包区分展示。
 
@@ -163,7 +190,7 @@ Android 当前已验证产物为 `arm64-v8a` / `apk`，仅在完整引擎及安�
 4. 运行 `npm run releases:check`、`npm test`、`npm run public:sync`。
 5. 部署 `public/` 并刷新清单 CDN 缓存，再验证下载直链与 Android 升级提示。
 
-根路径和 `/pages/` 均同步相同清单及脚本。网站脚本相对于自身定位 `../releases/stable.json`，无需硬编码官网域名。清单建议响应 `Content-Type: application/json`、`Cache-Control: no-cache` 或较短 TTL；安装包使用包含版本的稳定地址和正确 MIME 类型，可配置 `Content-Disposition: attachment`。清单请求不跟随重定向，使用最终可直接返回 JSON 的地址。
+根路径和 `/pages/` 均同步相同清单；Vue 按兼容上下文读取站内 `/releases/stable.json` 或 `/pages/releases/stable.json`，无需硬编码官网域名。清单建议响应 `Content-Type: application/json`、`Cache-Control: no-cache` 或较短 TTL；安装包使用包含版本的稳定地址和正确 MIME 类型，可配置 `Content-Disposition: attachment`。清单请求不跟随重定向，使用最终可直接返回 JSON 的地址。
 
 Android 正式构建脚本自动注入 `--dart-define=PICPOET_UPDATE_MANIFEST_URL=https://picpoet.jqknono.com/releases/stable.json`。在客户端目录执行 `python3 android/packaging/init-signing.py` 完成本机交互式证书初始化并加密备份后，执行 `python3 android/packaging/build-release.py`。Flutter 源版本声明为 `version: 0.1.0`，Android 系统必需的整数字段按 `主版本 × 1000000 + 次版本 × 1000 + 修订版本` 自动生成，当前为 `1000`；界面与下载路径仅显示 `0.1.0`。次版本和修订版本各小于 1000，生成值为正整数且不超过 2100000000。每次正式发布递增语义版本即可。
 
@@ -177,9 +204,9 @@ npm run releases:check
 npm run public:sync
 ```
 
-正向集成测试覆盖 HTTP 发布清单、五平台直链、未发布状态、设备推荐，以及根目录与 `/pages/` 同步交付。上线前对真实 CDN 链接、Android 覆盖安装和各平台安装包补充验收。静态网站在清单加载失败时提示重试，不把网络故障展示为最新版本或未发布。
+正向集成测试覆盖 HTTP 发布清单、六平台直链、未发布状态、设备推荐，以及根目录与 `/pages/` 同步交付。上线前对真实 CDN 链接、Android 覆盖安装和各平台安装包补充验收。静态网站在清单加载失败时提示重试，不把网络故障展示为最新版本或未发布。
 
-在本地预览运行且已安装 Chrome 的环境中，可以额外执行零依赖浏览器集成验证：
+在本地预览运行且已安装 Chrome 的环境中，可以额外执行下载页浏览器集成验证：
 
 ```bash
 node test/downloads.browser.integration.mjs
@@ -202,7 +229,7 @@ esa-cli deploy --assets ./public --name picpoet-website --environment production
 
 在 ESA 控制台将 `picpoet.jqknono.com` 绑定到该 Pages 项目，并按控制台指引配置 DNS 和 HTTPS 证书。`esa.jsonc` 负责静态资源目录；自定义域名绑定、DNS 与证书须在服务端完成，不由本地构建脚本代办。
 
-同步脚本根据 `deployment.json` 为页面生成正式官网 canonical、`robots.txt` 和 `sitemap.xml`。保留 `/pages/` 兼容产物，相对资源仍适用于本地预览；旧 `jqknono.com/pages/*` 路由若继续保留，可在 ESA 单独配置跳转到正式官网。上线后检查官网、清单和真实安装包路径均可通过 HTTPS 访问，清单直接返回 JSON。
+同步脚本根据 `deployment.json` 为已交付语言生成正式官网 canonical、hreflang、`robots.txt` 和 `sitemap.xml`。保留 `/pages/` 兼容产物，资源使用同源根路径；旧 `jqknono.com/pages/*` 路由若继续保留，可在 ESA 单独配置跳转到正式官网。上线后检查官网、清单和真实安装包路径均可通过 HTTPS 访问，清单直接返回 JSON。
 
 ### Website 联调端口冲突处理
 

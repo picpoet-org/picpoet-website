@@ -125,10 +125,10 @@ try {
           if (method === 'Log.entryAdded' && params.entry.level === 'error') errors.push(params.entry);
           if (method === 'Network.requestWillBeSent') {
             const url = new URL(params.request.url);
-            if (url.pathname.endsWith('/releases/stable.json')) requests.push(params.request.url);
+            if (url.pathname.endsWith('/releases/stable.json') && params.type === 'Fetch') requests.push(params.request.url);
             if (url.protocol.startsWith('http') && url.origin !== base.origin) externalRequests.push(url.href);
           }
-          if (method === 'Network.responseReceived' && params.response.url.endsWith('/releases/stable.json')) {
+          if (method === 'Network.responseReceived' && params.type === 'Fetch' && params.response.url.endsWith('/releases/stable.json')) {
             manifestResponses.push({ url: params.response.url, status: params.response.status });
           }
           if (method === 'Fetch.requestPaused') {
@@ -233,7 +233,7 @@ try {
             } else {
               assert.equal(card.unavailable, undefined);
               assert.equal(card.version, `版本 ${platform.versionName}`);
-              assert.equal(card.date, `发布于 ${new Date(platform.publishedAt).toISOString().slice(0, 10)} · ${platform.minimumSystem}`);
+              assert.equal(card.date, `发布于 ${new Date(platform.publishedAt).toLocaleDateString('zh-CN')} · ${platform.minimumSystem}`);
             }
             for (const [index, expected] of platform.artifacts.entries()) {
               const artifact = card.artifacts[index];

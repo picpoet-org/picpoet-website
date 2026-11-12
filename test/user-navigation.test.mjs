@@ -10,7 +10,7 @@ test('登录返回仅允许已知站内用户页面及受限锚点', () => {
 });
 
 test('用户页面分工明确，创作页不包含登录表单订单或历史列表', async () => {
-  const page = name => readFile(new URL(`../${name}.html`, import.meta.url), 'utf8');
+  const page = name => readFile(new URL(`../public/${name}.html`, import.meta.url), 'utf8');
   const create = await page('create');
   assert.match(create, /id="create-form"/);
   for (const id of ['auth-form', 'orders', 'plans', 'history-list']) assert.ok(!create.includes(`id="${id}"`));
