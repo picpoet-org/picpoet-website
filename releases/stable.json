@@ -26,8 +26,18 @@
       ]
     },
     {
+      "id": "ios",
+      "name": "iOS",
+      "minimumSystem": "以发布包的系统要求为准",
+      "versionName": null,
+      "versionCode": null,
+      "publishedAt": null,
+      "notes": [],
+      "artifacts": []
+    },
+    {
       "id": "ohos",
-      "name": "OpenHarmony",
+      "name": "HarmonyOS",
       "minimumSystem": "以发布包的系统要求为准",
       "versionName": null,
       "versionCode": null,

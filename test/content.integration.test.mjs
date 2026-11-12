@@ -26,10 +26,13 @@ test('首页以诗意叙事引导下载，并保留费用、隐私与真实使�
   assert.match(home, /有些瞬间，<br\s*\/><span>值得再读一遍。/);
   assert.match(home, /让 Picpoet 为照片写下诗句/);
   assert.match(home, /class="landscape-boat"/);
-  assert.match(home, /非实际生成作品/);
+  assert.doesNotMatch(home, /非实际生成作品|诗意示例/);
   assert.match(home, /href="docs.html#privacy">隐私与数据/);
   assert.match(home, /href="pricing.html">费用说明/);
+  assert.match(docs, /网站在线创作/);
+  assert.match(docs, /客户端 App/);
   assert.match(docs, /API key/);
-  assert.match(docs, /所选照片及生成所需内容会发送至配置的模型服务/);
+  assert.match(docs, /所选照片及生成所需内容会发送至你配置的模型服务/);
+  assert.match(docs, /分享图都不包含原照片/);
   assert.match(pricing, /免费软件不包含云端模型额度/);
 });

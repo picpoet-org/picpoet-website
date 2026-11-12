@@ -1,4 +1,5 @@
 import { canvasBlob } from './create-core.mjs';
+import { CARD_FONT_FAMILY, cardFontFaces } from './poem-card-font.mjs';
 
 export const CARD = Object.freeze({ width: 1080, padding: 96, top: 88, bottom: 64, titleSize: 72, bodySize: 48, maxHeight: 14000, maxCharacters: 20000 });
 export function poemData(result) {
@@ -52,30 +53,44 @@ export function cardLayout(data, measure) {
   if (height > CARD.maxHeight) throw new Error('诗词过长，分享图超过安全尺寸。文字仍可阅读和复制。');
   return { width: CARD.width, height, blocks, body, divider };
 }
-let fontPromise;
-export async function loadCardFont() {
-  if (!fontPromise) {
-    fontPromise = (async () => {
-      if (!globalThis.FontFace || !document.fonts) throw new Error('当前浏览器不支持文楷字体加载，请更换浏览器。');
-      const font = new FontFace('PicpoetCard', `url("${new URL('../assets/fonts/LXGWWenKai-Regular.ttf', import.meta.url).href}")`);
-      let timer;
-      try {
-        await Promise.race([font.load(), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('font timeout')), 20000); })]);
-        document.fonts.add(font);
-        await document.fonts.load('48px PicpoetCard', '图赋山水');
-        if (font.status !== 'loaded' || !document.fonts.check('48px PicpoetCard')) throw new Error('font unavailable');
-      } catch { throw new Error('文楷字体未能加载，分享图尚未生成。请检查网络后点击“重绘分享图”。'); }
-      finally { clearTimeout(timer); }
-    })().catch(error => { fontPromise = undefined; throw error; });
+const loadedFaces = new Set();
+function codePoint(value) {
+  const point = value.codePointAt(0);
+  return Number.isInteger(point) && point >= 0 && point <= 0x10ffff ? point : null;
+}
+function covers(range, point) {
+  for (const part of range.split(',')) {
+    const [start, end = start] = part.trim().slice(2).split('-').map(item => Number.parseInt(item, 16));
+    if (point >= start && point <= end) return true;
   }
-  return fontPromise;
+  return false;
+}
+/** 只启用本次文字覆盖到的站点内 woff2 分片，不请求外部字体。 */
+export async function loadCardFont(text) {
+  if (!globalThis.FontFace || !document.fonts) throw new Error('当前浏览器不支持文楷字体加载，请更换浏览器。');
+  const points = [...new Set([...text].map(codePoint).filter(point => point !== null))];
+  const pending = cardFontFaces.filter(([file, range]) => !loadedFaces.has(file) && points.some(point => covers(range, point)));
+  try {
+    await Promise.all(pending.map(async ([file]) => {
+      const font = new FontFace(CARD_FONT_FAMILY, `url("${new URL(`../assets/fonts/lxgw-wenkai/${file}`, import.meta.url).href}")`, { display: 'swap', style: 'normal', weight: '400' });
+      await font.load();
+      document.fonts.add(font);
+      loadedFaces.add(file);
+    }));
+    const sample = [...text].slice(0, 32).join('') || '图赋';
+    await document.fonts.load(`48px "${CARD_FONT_FAMILY}"`, sample);
+    if (!document.fonts.check(`48px "${CARD_FONT_FAMILY}"`, sample)) throw new Error('font unavailable');
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('当前浏览器')) throw error;
+    throw new Error('文楷字体未能启用，分享图尚未生成。请点击“重绘分享图”。');
+  }
 }
 export async function renderPoemCard(data) {
-  await loadCardFont();
+  await loadCardFont([data.title, data.cipai, data.body, '图赋', 'PicPoet', '词牌 · '].join(''));
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('浏览器无法创建分享画布。');
-  const measure = (glyph, size) => { ctx.font = `${size}px PicpoetCard`; return ctx.measureText(glyph).width; };
+  const measure = (glyph, size) => { ctx.font = `${size}px "${CARD_FONT_FAMILY}"`; return ctx.measureText(glyph).width; };
   const layout = cardLayout(data, measure);
   canvas.width = layout.width; canvas.height = layout.height;
   const colors = getComputedStyle(document.documentElement);
@@ -85,7 +100,7 @@ export async function renderPoemCard(data) {
     ctx.strokeStyle = color('line', '#d7d3c9'); ctx.lineWidth = 1; ctx.strokeRect(36, 36, canvas.width - 72, canvas.height - 72);
     const drawLine = (text, size, spacing, center, top) => {
       const glyphs = graphemes(text);
-      ctx.font = `${size}px PicpoetCard`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+      ctx.font = `${size}px "${CARD_FONT_FAMILY}"`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
       const widths = glyphs.map(g => ctx.measureText(g).width);
       let x = center - (widths.reduce((a, b) => a + b, 0) + Math.max(0, glyphs.length - 1) * spacing) / 2;
       glyphs.forEach((g, i) => { ctx.fillText(g, x, top); x += widths[i] + spacing; });

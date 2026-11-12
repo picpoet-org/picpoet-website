@@ -36,7 +36,7 @@ npm run dev
 登录账户购买由 Dashboard 服务端复用创建时间未超过 5 分钟的未支付订单，匹配同账户、套餐、价格、币种、次数、支付方式与交付方式。再次点击不延长复用窗口；已支付、已关闭和超时订单不复用。数据库事务串行处理同账户的并发创建；网页按返回订单 ID 去重并定位到第一页。匿名购买继续使用原 requestId 幂等规则。
 
 - `/index.html`：产品首页
-- `/docs.html`：使用说明
+- `/docs.html`：使用说明，分别说明网站在线创作与客户端 App 的当前能力
 - `/pricing.html`：定价
 - `/downloads.html`：下载资源
 - `/create.html`：选图、在线创作、纯诗词分享 PNG，仅展示轻量次数提示
@@ -50,7 +50,7 @@ npm run dev
 
 ## 网页版创作（本地验收）
 
-网页版复用 Dashboard 的 Picpoet 邮箱注册／OTP 验证、账户及额度，通过官方异步任务生成诗词。分享卡在浏览器以文楷绘制，沿用客户端的纸色、1080px 宽度和品牌底纹，不包含原照片。图片选中后仅在本机解码、缩小及 JPEG 重编码（移除原图 EXIF）；点击生成才上传。历史启用后，新提交的账户官方成功任务保存压缩照片与诗词 90 天，可提前永久删除；不保存原图、不回填旧任务。是否已保存以历史接口记录为准，需要长期保留的作品请下载。
+网页版复用 Dashboard 的 Picpoet 邮箱注册／OTP 验证、账户及额度，通过官方异步任务生成诗词。分享卡在浏览器以文楷绘制，沿用客户端的纸色、1080px 宽度和品牌底纹，不包含原照片。文楷使用 ZSFT 发布的霞鹜文楷 v1.530 Regular 网页分片，缓存在 `assets/fonts/lxgw-wenkai/`；绘制时只启用当次文字覆盖的同源 woff2，不请求外部字体，也不再下载完整 TTF。图片选中后仅在本机解码、缩小及 JPEG 重编码（移除原图 EXIF）；点击生成才上传。历史启用后，新提交的账户官方成功任务保存压缩照片与诗词 90 天，可提前永久删除；不保存原图、不回填旧任务。是否已保存以历史接口记录为准，需要长期保留的作品请下载。
 
 工作目录 `website/`，Node.js 20+：
 
@@ -134,13 +134,13 @@ npm run test:browser:create  # 需要 google-chrome；独立 HTTP 替身，不�
 
 字体位于 `assets/fonts/`，附 `OFL.txt`；与客户端 `LXGWWenKai-Regular.ttf` 相同。本次保留完整字体以覆盖任意生成汉字，约 25 MiB，发布前可评估保留完整字形的 WOFF2 压缩。
 
-首页与说明对应当前 Flutter 客户端的单张照片创作、元数据保存、本机历史与分享图流程。下载页分别展示 Android、OpenHarmony、Linux、macOS 和 Windows，使用自有 CDN 安装包直链。平台能力与实际发布包区分展示。
+首页与说明对应当前 Flutter 客户端的单张照片创作、元数据保存、本机历史与分享图流程。下载页分别展示 Android、iOS、HarmonyOS（华为鸿蒙）、Linux、macOS 和 Windows，使用自有 CDN 安装包直链。平台能力与实际发布包区分展示。
 
 ## 统一发布清单
 
 `releases/stable.json` 是网站下载页和 Android 升级检查的共同数据源。Android 已提供首版 `0.1.0` ARM64 安装包，其余平台保持“暂未发布”。`artifacts: []` 表示“暂未发布”；接入真实产物后自动展示版本、更新说明、架构、大小与 SHA-256。下载页会推荐可能匹配的系统，用户仍需核对架构。
 
-清单包含 `schemaVersion: 1` 和五项 `platforms`。每个平台包含：
+清单包含 `schemaVersion: 1` 和六项 `platforms`。每个平台包含：
 
 | 字段 | 内容 |
 | --- | --- |
@@ -153,7 +153,7 @@ npm run test:browser:create  # 需要 google-chrome；独立 HTTP 替身，不�
 
 Android 额外提供固定的 `applicationId: org.picpoet.app.android` 与 `minSdk`。每个安装包包含 `arch`、`format`、`url`、`sha256`、`sizeBytes`。`url` 使用不含凭据、可公开访问的 HTTPS CDN 绝对地址；安装包上传完成后再加入清单。`sha256` 是最终签名安装包的 64 位十六进制校验值，`sizeBytes` 为实际字节数。更新说明按纯文本展示。
 
-Android 当前已验证产物为 `arm64-v8a` / `apk`，仅在完整引擎及安装验收通过后声明其他 ABI。其余平台按最终构建填写实际架构；OpenHarmony 支持 `hap` / `app`，Linux 支持 `tar.gz` / `AppImage` / `deb` / `rpm` / `zip`，macOS 支持 `dmg` / `pkg` / `zip`，Windows 支持 `exe` / `msi` / `zip`。包格式受支持表示页面可分发该格式，不代表当前已经生成该产物。
+Android 当前已验证产物为 `arm64-v8a` / `apk`，仅在完整引擎及安装验收通过后声明其他 ABI。其余平台按最终构建填写实际架构；iOS 支持 `ipa`，HarmonyOS 支持 `hap` / `app`，Linux 支持 `tar.gz` / `AppImage` / `deb` / `rpm` / `zip`，macOS 支持 `dmg` / `pkg` / `zip`，Windows 支持 `exe` / `msi` / `zip`。包格式受支持表示页面可分发该格式，不代表当前已经生成该产物。
 
 发布流程：
 

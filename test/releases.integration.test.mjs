@@ -12,7 +12,7 @@ const base = JSON.parse(await readFile(new URL('../releases/stable.json', import
 function publishedManifest() {
   const manifest = structuredClone(base);
   for (const platform of manifest.platforms) {
-    const format = { android: 'apk', ohos: 'hap', linux: 'tar.gz', macos: 'dmg', windows: 'zip' }[platform.id];
+    const format = { android: 'apk', ios: 'ipa', ohos: 'hap', linux: 'tar.gz', macos: 'dmg', windows: 'zip' }[platform.id];
     platform.versionName = '0.1.0';
     platform.versionCode = androidVersionCode(platform.versionName);
     platform.publishedAt = '2026-10-24T00:00:00Z';
@@ -24,7 +24,7 @@ function publishedManifest() {
   return manifest;
 }
 
-test('发布清单经 HTTP 读取后提供五个平台的版本和直链', async (t) => {
+test('发布清单经 HTTP 读取后提供六个平台的版本和直链', async (t) => {
   const manifest = publishedManifest();
   assert.equal(validatePublishedManifest(manifest), manifest);
   assert.equal(manifest.platforms.find((platform) => platform.id === 'android').versionCode, 1000);
@@ -42,7 +42,7 @@ test('发布清单经 HTTP 读取后提供五个平台的版本和直链', async
   }
 });
 
-test('空发布清单支持如实呈现五个平台的待发布状态', () => {
+test('空发布清单支持如实呈现六个平台的待发布状态', () => {
   const unpublished = structuredClone(base);
   for (const platform of unpublished.platforms) {
     Object.assign(platform, { versionName: null, versionCode: null, publishedAt: null, notes: [], artifacts: [] });
@@ -53,19 +53,21 @@ test('空发布清单支持如实呈现五个平台的待发布状态', () => {
 
 test('设备识别为下载页推荐对应平台，同时保留完整平台列表', () => {
   const devices = [
-    ['Mozilla Android 14', 'android'], ['Mozilla OpenHarmony Linux', 'ohos'],
+    ['Mozilla Android 14', 'android'], ['Mozilla HarmonyOS', 'ohos'], ['Mozilla OpenHarmony Linux', 'ohos'],
     ['Mozilla Windows NT 10.0', 'windows'], ['Mozilla Macintosh', 'macos'],
-    ['Mozilla X11 Linux x86_64', 'linux'], ['Mozilla iPhone Mac OS X', null],
+    ['Mozilla X11 Linux x86_64', 'linux'], ['Mozilla iPhone Mac OS X', 'ios'],
   ];
   for (const [agent, platform] of devices) assert.equal(detectPlatform(agent), platform);
-  assert.equal(base.platforms.length, 5);
+  assert.equal(base.platforms.length, 6);
+  assert.equal(base.platforms.find((platform) => platform.id === 'ios').name, 'iOS');
+  assert.equal(base.platforms.find((platform) => platform.id === 'ohos').name, 'HarmonyOS');
 });
 
 test('部署同步后根目录和 pages 子路径包含相同清单、页面与下载模块', async () => {
   execFileSync(process.execPath, ['scripts/sync-public.mjs'], { cwd: root });
   for (const resource of ['index.html', 'docs.html', 'downloads.html', 'pricing.html', 'create.html', 'works.html', 'account.html', 'login.html', 'styles.css',
     'shared/downloads.mjs', 'shared/releases.mjs', 'releases/stable.json',
-    'shared/user-navigation.mjs', 'shared/history.mjs', 'shared/create.css', 'shared/create.mjs', 'shared/create-core.mjs', 'shared/poem-card.mjs', 'assets/fonts/OFL.txt']) {
+    'shared/user-navigation.mjs', 'shared/history.mjs', 'shared/create.css', 'shared/create.mjs', 'shared/create-core.mjs', 'shared/poem-card.mjs', 'shared/poem-card-font.mjs', 'assets/fonts/OFL.txt', 'assets/fonts/lxgw-wenkai/7acda61a02bc8863.woff2']) {
     let source = await readFile(new URL(`../${resource}`, import.meta.url), 'utf8');
     if (resource.endsWith('.html')) {
       const canonical = `${deployment.websiteUrl}/${resource === 'index.html' ? '' : resource}`;
@@ -88,8 +90,8 @@ test('部署同步后根目录和 pages 子路径包含相同清单、页面与�
   for (const page of ['', 'downloads.html', 'docs.html', 'pricing.html', 'create.html']) {
     assert.ok(sitemap.includes(`<loc>${deployment.websiteUrl}/${page}</loc>`));
   }
-  const font = await readFile(new URL('../assets/fonts/LXGWWenKai-Regular.ttf', import.meta.url));
+  const font = await readFile(new URL('../assets/fonts/lxgw-wenkai/7acda61a02bc8863.woff2', import.meta.url));
   for (const prefix of ['public/', 'public/pages/']) {
-    assert.deepEqual(await readFile(new URL(`../${prefix}assets/fonts/LXGWWenKai-Regular.ttf`, import.meta.url)), font);
+    assert.deepEqual(await readFile(new URL(`../${prefix}assets/fonts/lxgw-wenkai/7acda61a02bc8863.woff2`, import.meta.url)), font);
   }
 });

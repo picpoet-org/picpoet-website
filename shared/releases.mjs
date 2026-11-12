@@ -1,7 +1,7 @@
 // 网站与发布脚本共享清单校验；公开安装包使用最终 HTTPS CDN 地址。
-export const platformIds = ['android', 'ohos', 'linux', 'macos', 'windows'];
+export const platformIds = ['android', 'ios', 'ohos', 'linux', 'macos', 'windows'];
 const formats = {
-  android: ['apk'], ohos: ['hap', 'app'], linux: ['tar.gz', 'AppImage', 'deb', 'rpm', 'zip'],
+  android: ['apk'], ios: ['ipa'], ohos: ['hap', 'app'], linux: ['tar.gz', 'AppImage', 'deb', 'rpm', 'zip'],
   macos: ['dmg', 'pkg', 'zip'], windows: ['exe', 'msi', 'zip'],
 };
 const text = (value) => typeof value === 'string' && value.trim().length > 0;
@@ -22,7 +22,7 @@ export function validateManifest(manifest) {
   requireValue(Array.isArray(manifest.platforms), 'platforms 应为数组');
   const ids = manifest.platforms.map((platform) => platform?.id);
   requireValue(ids.length === platformIds.length && new Set(ids).size === ids.length &&
-    platformIds.every((id) => ids.includes(id)), '完整提供五个平台且每个平台唯一');
+    platformIds.every((id) => ids.includes(id)), '完整提供六个平台且每个平台唯一');
   for (const platform of manifest.platforms) {
     const label = platform.id;
     requireValue(text(platform.name) && text(platform.minimumSystem), `${label} 提供名称与系统要求`);
@@ -70,9 +70,9 @@ export async function loadManifest(url, { fetchImpl = fetch, signal } = {}) {
   return validateManifest(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)));
 }
 export function detectPlatform(userAgent) {
-  if (/OpenHarmony|HarmonyOS|OHOS/i.test(userAgent)) return 'ohos';
+  if (/HarmonyOS|OpenHarmony|OHOS/i.test(userAgent)) return 'ohos';
   if (/Android/i.test(userAgent)) return 'android';
-  if (/iPhone|iPad|iPod/i.test(userAgent)) return null;
+  if (/iPhone|iPad|iPod/i.test(userAgent)) return 'ios';
   if (/Windows/i.test(userAgent)) return 'windows';
   if (/Macintosh|Mac OS X/i.test(userAgent)) return 'macos';
   if (/Linux/i.test(userAgent)) return 'linux';

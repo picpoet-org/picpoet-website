@@ -76,12 +76,12 @@ try {
   const response = await fetch(new URL('releases/stable.json', base));
   assert.equal(response.status, 200);
   const real = await response.json();
-  assert.equal(real.platforms.length, 5);
+  assert.equal(real.platforms.length, 6);
   const empty = structuredClone(real);
   for (const platform of empty.platforms) {
     Object.assign(platform, { versionName: null, versionCode: null, publishedAt: null, notes: [], artifacts: [] });
   }
-  const formats = { android: 'apk', ohos: 'hap', linux: 'tar.gz', macos: 'dmg', windows: 'zip' };
+  const formats = { android: 'apk', ios: 'ipa', ohos: 'hap', linux: 'tar.gz', macos: 'dmg', windows: 'zip' };
   const fixture = structuredClone(empty);
   const versionName = '0.1.0';
   for (const platform of fixture.platforms) {

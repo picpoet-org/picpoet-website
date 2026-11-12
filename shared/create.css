@@ -79,7 +79,7 @@
 .create-page summary { min-height: 48px; padding-block: 12px; font-size: .9375rem; font-weight: 650; overflow-wrap: anywhere; }
 .create-page summary::marker { color: var(--pp-color-accent-dark); }
 .create-page details > :last-child { margin-bottom: 0; }
-.create-page .privacy-note { font-size: .875rem; color: var(--text-secondary); }
+
 .create-page .image-picker { padding: 16px; border: 1px dashed var(--pp-color-muted); border-radius: var(--pp-radius-2); background: var(--pp-color-paper); }
 .create-page .image-picker label { margin-top: 0; }
 .create-page .image-picker p { margin-bottom: 12px; }

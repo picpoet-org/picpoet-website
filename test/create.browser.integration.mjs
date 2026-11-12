@@ -12,12 +12,13 @@ const ID = 'a1aa1111-1111-4111-8111-111111111111';
 const PLAN = 'b2bb2222-2222-4222-8222-222222222222';
 const root = new URL('../', import.meta.url);
 // 提前核对网站交付资源，缺失时直接报告路径，而不是等待绘图超时。
-const cardFont = await readFile(new URL('assets/fonts/LXGWWenKai-Regular.ttf', root)).catch(error => {
-  throw new Error('浏览器测试需要网站字体 assets/fonts/LXGWWenKai-Regular.ttf，请完成字体交付后重跑。', { cause: error });
+const cardFontDirectory = new URL('assets/fonts/lxgw-wenkai/', root);
+const cardFontSample = await readFile(new URL('7acda61a02bc8863.woff2', cardFontDirectory)).catch(error => {
+  throw new Error('浏览器测试需要网站字体 assets/fonts/lxgw-wenkai/，请完成字体缓存后重跑。', { cause: error });
 });
-const calls = [], runtimeErrors = [];
+const calls = [], runtimeErrors = [], fontRequests = [];
 let authenticated = false, active = null, generationID = ID, generationPosts = 0, orderPosts = 0, paid = false;
-let fontEnabled = false, unauthorized = false, delayedBalance = null, holdBalance = false, taskStatus = 'succeeded';
+let unauthorized = false, delayedBalance = null, holdBalance = false, taskStatus = 'succeeded';
 let emptyOrders = null;
 let pagedOrders = null;
 let historyMode = 'disabled', historyImage = null, holdHistory = '', delayedHistory = null, failHistoryPage = false;
@@ -90,11 +91,15 @@ const server = http.createServer(async (req, res) => {
       if (path === `/generations/${generationID}` || path === `/generations/${ID}`) return reply(res, 200, { id: generationID, status: taskStatus, resultAvailableUntil: '2027-01-01T00:00:00Z' });
       return reply(res, 404, {});
     }
-    if (pathname === '/assets/fonts/LXGWWenKai-Regular.ttf') {
-      if (!fontEnabled) { res.writeHead(404); res.end(); return; }
-      res.writeHead(200, { 'Content-Type': 'font/ttf', 'Cache-Control': 'no-store' }); res.end(cardFont); return;
+    const fontFile = pathname.match(/^\/assets\/fonts\/lxgw-wenkai\/([0-9a-f]{16}\.woff2)$/)?.[1];
+    if (fontFile || pathname === '/assets/fonts/LXGWWenKai-Regular.ttf') {
+      fontRequests.push(pathname);
+      if (!fontFile) { res.writeHead(404); res.end(); return; }
+      res.writeHead(200, { 'Content-Type': 'font/woff2', 'Cache-Control': 'no-store' });
+      res.end(fontFile === '7acda61a02bc8863.woff2' ? cardFontSample : await readFile(new URL(fontFile, cardFontDirectory)));
+      return;
     }
-    const allowed = ['create.html', 'login.html', 'account.html', 'works.html', 'test/fixtures/create-workflow.html', 'shared/user-navigation.mjs', 'styles.css', 'shared/create.css', 'shared/create.mjs', 'shared/create-core.mjs', 'shared/history.mjs', 'shared/poem-card.mjs', 'shared/picpoet-tokens.css', 'assets/picpoet-mark.svg'];
+    const allowed = ['create.html', 'login.html', 'account.html', 'works.html', 'test/fixtures/create-workflow.html', 'shared/user-navigation.mjs', 'styles.css', 'shared/create.css', 'shared/create.mjs', 'shared/create-core.mjs', 'shared/history.mjs', 'shared/poem-card.mjs', 'shared/poem-card-font.mjs', 'shared/picpoet-tokens.css', 'assets/picpoet-mark.svg'];
     const file = pathname.slice(1);
     if (!allowed.includes(file) && !['shared/waiting-poems.mjs', 'shared/payment-qr.mjs', 'shared/vendor/qrcode.mjs'].includes(file)) { res.writeHead(404); res.end(); return; }
     const type = file.endsWith('.mjs') ? 'text/javascript' : file.endsWith('.css') ? 'text/css' : file.endsWith('.svg') ? 'image/svg+xml' : 'text/html';
@@ -225,8 +230,10 @@ try {
   assert.equal(await evaluate(`!document.querySelector('#task-details').hidden && !document.querySelector('#task-details').open`), true, '任务详情按需展开');
   assert.equal(await evaluate('document.querySelector("#generation-inputs").disabled'), true, '失败重试保持输入冻结');
   await click('#retry-generation');
-  await until(`document.querySelector('#card-status').textContent.includes('文楷字体未能加载')`, '字体失败不可伪装成功');
-  assert.equal(await evaluate('document.querySelector("#download-card").hidden'), true);
+  await until(`!document.querySelector('#download-card').hidden`, '站点内文楷分片完成 PNG 导出');
+  assert.equal(fontRequests.some(path => path.endsWith('.woff2')), true, '分享图使用站点内文楷分片');
+  assert.equal(fontRequests.includes('/assets/fonts/LXGWWenKai-Regular.ttf'), false, '分享图不再下载完整文楷');
+  assert.equal(await evaluate('document.querySelector("#download-card").hidden'), false);
   assert.equal(await evaluate('document.querySelector("#poem-title").textContent'), '山月 <不是标签>');
   assert.equal(await evaluate('document.querySelector("#poem-body").textContent.includes("松风")'), true);
   const uploads = calls.filter(c => c.path === '/web-api/generations');
@@ -234,8 +241,8 @@ try {
   assert.equal(uploads[0].body.match(/name="generationId"\r\n\r\n([^\r]+)/)[1], uploads[1].body.match(/name="generationId"\r\n\r\n([^\r]+)/)[1]);
   assert.ok(uploads[0].body.includes('filename="photo.jpg"')); assert.ok(!uploads[0].body.includes('private-location'));
   for (const upload of uploads) assert.equal(upload.body.match(/name="poemLanguage"\r\n\r\n([^\r]+)/)?.[1], 'zh', '提交及重试均固定使用简体中文');
-  fontEnabled = true; await click('#redraw-card');
-  await until(`!document.querySelector('#download-card').hidden`, '字体恢复后 PNG 导出');
+  await click('#redraw-card');
+  await until(`!document.querySelector('#download-card').hidden`, '重绘继续使用已启用的文楷分片');
   assert.equal(await evaluate('document.querySelector("#download-card").href === document.querySelector("#poem-card").src'), true, '同一 PNG 预览与下载');
   assert.equal(await evaluate('document.querySelector("#poem-card").naturalWidth'), 1080);
   assert.equal(await evaluate(`document.querySelector('#history-status').textContent.includes('历史尚未启用')`), true, '历史 503 不影响当前生成与 PNG');
