@@ -3,6 +3,7 @@ import { createHmac, randomBytes } from 'node:crypto';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { invitationRedirect } from '../shared/invitation.mjs';
 import { createRateLimiter, createSessionStore } from './web-session.mjs';
 
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
@@ -456,7 +457,18 @@ export function createWebServer({ config: cfg = config, fetch: fetchImpl = globa
         const index = req.url.indexOf('?');
         const query = historyQuery(req.method, apiPath, index < 0 ? undefined : req.url.slice(index + 1));
         await api(req, res, apiPath, query);
-      } else await staticFile(req, res, pathname);
+      } else {
+        const index = (req.url || '').indexOf('?');
+        const invite = invitationRedirect(pathname, index < 0 ? '' : (req.url || '').slice(index + 1));
+        if (invite) {
+          if (!['GET', 'HEAD'].includes(req.method)) fail(405, 'METHOD_NOT_ALLOWED', '仅支持 GET/HEAD');
+          if (invite.status === 404) fail(404, 'NOT_FOUND', '路径不存在');
+          res.writeHead(invite.status, { Location: invite.location });
+          res.end();
+          return;
+        }
+        await staticFile(req, res, pathname);
+      }
     } catch (error) {
       if (res.headersSent) { res.destroy(); return; }
       if (error.status === 401) setCookie(res, cfg);

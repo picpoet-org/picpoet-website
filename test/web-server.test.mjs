@@ -538,3 +538,29 @@ test('静态目录只读 public，阻断编码 traversal / dotfile / 符号链�
   assert.equal((await f.request('/', { method: 'POST', body: {} })).status, 405);
   assert.equal(f.calls.length, 0);
 });
+
+test('邀请深路径 302 到登录页，注册原样转发 invitationCode', async t => {
+  const code = 'inv_0123456789abcdef0123456789abcdef';
+  const f = await fixture(t);
+  const redirected = await f.request(`/${ID}/invite_code=${code}?returnTo=create.html`);
+  assert.equal(redirected.status, 302);
+  assert.equal(redirected.headers.get('location'), `/login.html?invitationCode=${code}&returnTo=create.html`);
+  assert.equal(redirected.headers.get('cache-control'), 'no-store');
+  assert.equal(redirected.headers.get('referrer-policy'), 'no-referrer');
+  assert.equal(redirected.text, '');
+  const ignored = await f.request(`/${ID}/invite_code=${code}?returnTo=https://evil.example`);
+  assert.equal(ignored.headers.get('location'), `/login.html?invitationCode=${code}`);
+  assert.equal((await f.request(`/${ID}/invite_code=invite`)).status, 404);
+  assert.equal((await f.request(`/${ID}/invite_code=${code}`, { method: 'POST', body: {} })).status, 405);
+  const register = await f.request('/web-api/register', {
+    method: 'POST',
+    body: { email: USER.email, password: 'password123', invitationCode: code },
+  });
+  assert.equal(register.status, 201);
+  assert.equal(f.calls.at(-1).url, '/api/v1/picpoet/auth/register');
+  assert.deepEqual(f.calls.at(-1).body, {
+    email: USER.email,
+    password: 'password123',
+    invitationCode: code,
+  });
+});

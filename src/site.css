@@ -152,6 +152,38 @@
   block-size: 0.375rem;
   border-radius: 50%;
   background: var(--pp-color-accent-dark);
+  animation: writing-breath 1.6s ease-in-out infinite;
+}
+@keyframes writing-breath {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .create-page .task-progress:not(:empty)::before {
+    animation: none;
+  }
+}
+.create-page #app-metadata-title {
+  font-size: 1.0625rem;
+  font-weight: 400;
+}
+.create-page .copy-fallback {
+  inline-size: 100%;
+  min-block-size: 10em;
+  margin-block: 0.75rem;
+}
+.account-referral {
+  margin-block: 1.25rem;
+}
+.account-referral .invitation-link {
+  overflow-wrap: anywhere;
 }
 .create-page #generate:lang(zh) {
   /* 中文字体下沿留白较多，轻微下移内容以对齐视觉中心；总内边距和点击区域保持不变。 */

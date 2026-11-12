@@ -17,9 +17,12 @@ const {
   expiry,
   cardURL,
   cardStatus,
+  copyStatus,
+  copyFallback,
+  poemText,
   canShare,
   pick,
-  draw,
+  copy,
   query,
   submit,
   pause,
@@ -82,19 +85,18 @@ const {
                 :disabled="!image || !verified || !!task || busy.has('image')"
                 :aria-busy="busy.has('task')"
               >
-                {{ t(busy.has('image') ? 'create.processing' : 'create.generate') }}
+                {{
+                  t(
+                    busy.has('image')
+                      ? 'create.processing'
+                      : 'create.generate',
+                  )
+                }}
               </button>
             </fieldset>
           </form>
           <p id="image-status" class="fine-print" role="status" aria-live="polite">{{ imageStatus }}</p>
-          <p
-            id="generation-status"
-            class="create-status"
-            :class="{ 'task-progress': busy.has('task') && !task?.terminal }"
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-          >
+          <p id="generation-status" class="create-status" :class="{ 'task-progress': busy.has('task') && !task?.terminal }" role="status" aria-live="polite" aria-atomic="true">
             {{ generationStatus }}
           </p>
           <WaitingPoems :active="polling && ['queued', 'running'].includes(task?.status)" />
@@ -106,7 +108,8 @@ const {
               :hidden="!task || busy.has('task') || !!poem"
               @click="query"
             >
-              {{ t('waiting.resume') }}</button><button
+              {{ t('waiting.resume') }}</button
+            ><button
               id="retry-generation"
               class="button secondary"
               type="button"
@@ -152,7 +155,7 @@ const {
         <div id="result-content" :hidden="!poem">
           <p id="result-expiry" class="fine-print">{{ expiry }}</p>
           <figure id="card-preview" :hidden="!cardURL">
-            <img id="poem-card" :src="cardURL || undefined" :alt="t('create.cardAlt')" />
+            <img id="poem-card" :src="cardURL || undefined" :alt="t('sharing.cardAlt')" aria-describedby="poem-accessible" />
           </figure>
           <p id="card-status" class="create-status" role="status" aria-live="polite">{{ cardStatus }}</p>
           <div class="actions">
@@ -163,6 +166,12 @@ const {
               download="picpoet-poem.png"
               :hidden="!cardURL"
               >{{ t('common.download') }}</a><button
+              id="copy-poem"
+              class="button secondary"
+              type="button"
+              :disabled="busy.has('copy')"
+              @click="copy"
+            >{{ t('sharing.copy') }}</button><button
               id="share-card"
               class="button secondary"
               type="button"
@@ -171,17 +180,11 @@ const {
               @click="share"
             >
               {{ t('create.share') }}</button
-            ><button
-              id="redraw-card"
-              class="button secondary"
-              type="button"
-              :disabled="busy.has('card')"
-              @click="draw()"
             >
-              {{ t('create.redraw') }}
-            </button>
           </div>
-          <section class="poem-text" :aria-label="t('create.fullPoem')">
+          <p id="copy-status" class="fine-print" role="status">{{ copyStatus }}</p>
+          <textarea v-if="copyFallback" class="copy-fallback" :aria-label="t('sharing.selectText')" :value="poemText" readonly @focus="$event.target.select()" />
+          <section id="poem-accessible" class="poem-text" :class="{ 'sr-only': !!cardURL }" :aria-label="t('create.fullPoem')">
             <h3 id="poem-title">{{ poem?.title }}</h3>
             <p id="poem-cipai">{{ poem?.cipai ? t('common.cipai', { name: poem.cipai }) : '' }}</p>
             <p id="poem-body">{{ poem?.body }}</p>

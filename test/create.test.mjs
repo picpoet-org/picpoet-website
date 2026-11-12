@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { validateImage, imageDimensions, prepareImage, MAX_IMAGE_BYTES, MAX_SOURCE_IMAGE_BYTES, generationAttempt, generationForm, orderAttempt, defaultPayMethod, safePaymentURL, orderStatus, createAPI, createScope, pollGeneration, wait, errorMessage, ApiError, uuid } from '../shared/create-core.mjs';
-import { poemData, wrapText, cardLayout, CARD } from '../shared/poem-card.mjs';
+import { poemData, poemPlainText, wrapText, cardLayout, CARD } from '../shared/poem-card.mjs';
+import { createQRMatrix, drawQRCode } from '../shared/qr-code.mjs';
+import jsQR from 'jsqr';
 import { secureUUID } from '../shared/create-core.mjs';
 
 test('局域网 HTTP 缺少 randomUUID 时用安全随机数生成 UUID v4', () => {
@@ -16,6 +18,31 @@ test('局域网 HTTP 缺少 randomUUID 时用安全随机数生成 UUID v4', () 
 const ID = 'a1aa1111-1111-4111-8111-111111111111';
 const PLAN = 'b2bb2222-2222-4222-8222-222222222222';
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });
+
+test('分享二维码保留静区可解码，短诗长诗与二维码区域互不覆盖', () => {
+  const link = `https://picpoet.jqknono.com/${ID}/invite_code=inv_${'ab'.repeat(16)}`;
+  const matrix = createQRMatrix(link);
+  const size = (matrix.length + 8) * 4;
+  const pixels = new Uint8ClampedArray(size * size * 4).fill(255);
+  const context = {
+    fillStyle: '#fff', save() {}, restore() {},
+    fillRect(x, y, w, h) {
+      for (let row = y; row < y + h; row++) for (let col = x; col < x + w; col++) {
+        const offset = (row * size + col) * 4;
+        pixels[offset] = pixels[offset + 1] = pixels[offset + 2] = this.fillStyle === '#fff' ? 255 : 0;
+      }
+    },
+  };
+  assert.equal(drawQRCode(context, matrix), size);
+  assert.equal(jsQR(pixels, size, size)?.data, link);
+  for (const body of ['山月照清泉\n轻舟入远天', '山月照清泉\n'.repeat(40)]) {
+    const data = poemData({ verse: { title: '山水之间', lines: body.trim().split('\n') } });
+    const layout = cardLayout(data, (_glyph, fontSize) => fontSize, { qrSize: size });
+    assert.ok(layout.footer.y >= layout.body.y + layout.body.height + 48);
+    assert.equal(layout.height, Math.ceil(layout.footer.y + size + CARD.bottom));
+    assert.equal(poemPlainText(data), '山水之间\n' + body.trim());
+  }
+});
 
 test('createAPI 显式 DELETE，默认无 body GET、有 body POST 保持兼容', async () => {
   const calls = [];

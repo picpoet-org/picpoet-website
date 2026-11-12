@@ -1,6 +1,8 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
 import { createAPI, createScope, errorMessage } from '../../shared/create-core.mjs';
 import { useSite } from '../i18n/context.mjs';
+import { buildInvitationURL } from '../../shared/invitation.mjs';
+import deployment from '../../deployment.json';
 
 export function useSession() {
   const site = useSite();
@@ -15,6 +17,13 @@ export function useSession() {
   const busy = reactive(new Set());
   const verified = computed(() => user.value?.emailVerified === true);
   const balance = ref(null);
+  const invitationURL = computed(() =>
+    buildInvitationURL(user.value?.id, balance.value?.referral?.invitationCode, deployment.websiteUrl),
+  );
+  const grantedCredits = computed(() => {
+    const value = balance.value?.referral?.totalGrantedCredits;
+    return Number.isSafeInteger(value) && value >= 0 ? value : null;
+  });
   const resets = new Set();
   const error = (value) => {
     const original = errorMessage(value);
@@ -67,6 +76,19 @@ export function useSession() {
     balance.value = data;
     return data;
   }
+  async function ensureInvitationURL(ticket) {
+    if (!balance.value) {
+      try {
+        await refreshBalance(ticket);
+      } catch (cause) {
+        scope.assert(ticket);
+        if (cause.status === 401) throw cause;
+        // 余额暂不可用仍允许导出作品；调用方会提示此图未附邀请码。
+      }
+    }
+    scope.assert(ticket);
+    return invitationURL.value;
+  }
   async function loadSession() {
     retrySession.value = false;
     const success = await action('session', status, async (ticket) => {
@@ -118,6 +140,9 @@ export function useSession() {
     ready,
     verified,
     balance,
+    invitationURL,
+    grantedCredits,
+    ensureInvitationURL,
     status,
     retrySession,
     retryLogout,

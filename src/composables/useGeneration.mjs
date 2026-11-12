@@ -1,4 +1,4 @@
-import { ref, shallowRef, watch, onBeforeUnmount } from 'vue';
+import { ref, shallowRef, computed, watch, onBeforeUnmount } from 'vue';
 import {
   createScope,
   generationAttempt,
@@ -7,7 +7,7 @@ import {
   pollGeneration,
   UUID,
 } from '../../shared/create-core.mjs';
-import { poemData, renderPoemCard } from '../../shared/poem-card.mjs';
+import { poemData, poemPlainText, renderPoemCard } from '../../shared/poem-card.mjs';
 
 export function useGeneration(session) {
   const { t, scope, action, request, api, user, verified, busy, balance, failure, brand } = session;
@@ -24,6 +24,8 @@ export function useGeneration(session) {
     cardURL = ref(''),
     cardStatus = ref(''),
     canShare = ref(false);
+  const copyStatus = ref(''), copyFallback = ref(false);
+  const poemText = computed(() => poem.value ? poemPlainText(poem.value) : '');
   const pollScope = createScope();
   let cardBlob = null,
     imageVersion = 0;
@@ -41,6 +43,8 @@ export function useGeneration(session) {
     poem.value = null;
     expiry.value = '';
     cardStatus.value = '';
+    copyStatus.value = '';
+    copyFallback.value = false;
   }
   function reset() {
     imageVersion++;
@@ -88,14 +92,15 @@ export function useGeneration(session) {
     await action('card', cardStatus, async () => {
       clearCard();
       cardStatus.value = t('common.rendering');
-      const blob = await renderPoemCard(source, { brand });
+      const invitationURL = await session.ensureInvitationURL(ticket);
+      const blob = await renderPoemCard(source, { brand, invitationURL, invitationLabel: t('sharing.scan') });
       scope.assert(ticket);
       if (poem.value !== source || task.value !== target) return;
       cardBlob = blob;
       cardURL.value = URL.createObjectURL(blob);
       const file = new File([blob], 'picpoet-poem.png', { type: 'image/png' });
       canShare.value = typeof navigator.share === 'function' && !!navigator.canShare?.({ files: [file] });
-      cardStatus.value = '';
+      cardStatus.value = invitationURL ? '' : t('sharing.noInvitation');
     });
   }
   async function monitor(ticket) {
@@ -114,9 +119,7 @@ export function useGeneration(session) {
         },
         onStatus: (status) => {
           task.value = { ...target, status: status.status };
-          generationStatus.value = t(
-            (['queued', 'running'].includes(status.status) ? 'waiting.' : 'create.') + status.status,
-          );
+          generationStatus.value = t((['queued', 'running'].includes(status.status) ? 'waiting.' : 'create.') + status.status);
         },
       });
       scope.assert(ticket);
@@ -187,6 +190,25 @@ export function useGeneration(session) {
       }
     });
   }
+  async function copy() {
+    const source = poem.value;
+    if (!source) return;
+    await action('copy', copyStatus, async (ticket) => {
+      try {
+        if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
+        await navigator.clipboard.writeText(poemPlainText(source));
+        scope.assert(ticket);
+        if (poem.value !== source) return;
+        copyFallback.value = false;
+        copyStatus.value = t('sharing.copied');
+      } catch {
+        scope.assert(ticket);
+        if (poem.value !== source) return;
+        copyFallback.value = true;
+        copyStatus.value = t('sharing.copyManually');
+      }
+    });
+  }
   watch(user, (value) => {
     if (value) void action('balance', session.status, (ticket) => session.refreshBalance(ticket));
   });
@@ -213,6 +235,9 @@ export function useGeneration(session) {
     expiry,
     cardURL,
     cardStatus,
+    copyStatus,
+    copyFallback,
+    poemText,
     canShare,
     pick,
     draw,
@@ -221,5 +246,6 @@ export function useGeneration(session) {
     pause,
     newTask,
     share,
+    copy,
   };
 }

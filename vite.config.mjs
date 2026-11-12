@@ -1,12 +1,38 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { fileURLToPath } from 'node:url';
+import { invitationRedirect } from './shared/invitation.mjs';
 import { parseLocation } from './src/i18n/context.mjs';
 const root = fileURLToPath(new URL('.', import.meta.url));
 export default defineConfig({
   root,
   plugins: [
     vue(),
+    {
+      name: 'picpoet-invitation-redirect',
+      configureServer(server) {
+        server.middlewares.use((request, response, next) => {
+          const url = new URL(request.url || '/', 'http://localhost');
+          const invite = invitationRedirect(url.pathname, url.searchParams);
+          if (!invite) return next();
+          if (!['GET', 'HEAD'].includes(request.method || 'GET')) {
+            response.statusCode = 405;
+            response.end();
+            return;
+          }
+          if (invite.status === 404) {
+            response.statusCode = 404;
+            response.end();
+            return;
+          }
+          response.statusCode = invite.status;
+          response.setHeader('Cache-Control', 'no-store');
+          response.setHeader('Referrer-Policy', 'no-referrer');
+          response.setHeader('Location', invite.location);
+          response.end();
+        });
+      },
+    },
     {
       name: 'picpoet-vue-pages',
       configureServer(server) {

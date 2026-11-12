@@ -4,12 +4,15 @@ import http from 'node:http';
 import { once } from 'node:events';
 import { mkdir } from 'node:fs/promises';
 import { chromium } from '@playwright/test';
+import jsQR from 'jsqr';
 import { createWebServer, readConfig } from '../scripts/web-server.mjs';
 import { locales, pages, pagePath } from '../src/i18n/context.mjs';
 import { availableLocales } from '../scripts/check-locales.mjs';
 const root = new URL('../', import.meta.url);
 const ID = '12345678-1234-4234-8234-123456789abc';
 const USER = { id: ID, email: 'poet@example.com', emailVerified: true };
+const INVITATION_CODE = 'inv_' + 'a1'.repeat(16);
+const INVITATION_URL = `https://picpoet.jqknono.com/${ID}/invite_code=${INVITATION_CODE}`;
 const calls = [],
   errors = [];
 let generationId,
@@ -41,7 +44,7 @@ const upstream = http.createServer(async (req, res) => {
   if (path.endsWith('/auth/register')) return json(res, { user: USER, otpSent: true }, 201);
   if (path.includes('/auth/')) return json(res, { message: 'ok' });
   if (path.endsWith('/balance'))
-    return json(res, { free: { remaining: 3 }, paid: { remaining: order?.delivery ? 10 : 0 } });
+    return json(res, { free: { remaining: 3 }, paid: { remaining: (order?.delivery ? 10 : 0) + 6 }, referral: { invitationCode: INVITATION_CODE, totalGrantedCredits: 6, registrationRewardPerInvite: 3 } });
   if (path.endsWith('/plans'))
     return json(res, [{ id: ID, title: '10次创作', credits: 10, priceMinor: 100, currency: 'CNY' }]);
   if (path.endsWith('/orders') && req.method === 'GET') return json(res, order ? [order] : []);
@@ -116,6 +119,19 @@ const browser = await chromium.launch({
 });
 const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
 const page = await context.newPage();
+await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+async function decodeImageQR(selector) {
+  const pixels = await page.locator(selector).evaluate(async (image) => {
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(image, 0, 0);
+    return { width: canvas.width, height: canvas.height, bytes: Array.from(ctx.getImageData(0, 0, canvas.width, canvas.height).data) };
+  });
+  return jsQR(new Uint8ClampedArray(pixels.bytes), pixels.width, pixels.height)?.data;
+}
 page.on('pageerror', (error) => errors.push(error.message));
 page.on('console', (message) => {
   if (message.type() === 'error' || /Hydration.*mismatch/i.test(message.text())) errors.push(message.text());
@@ -155,80 +171,92 @@ try {
       await page.setViewportSize({ width, height: 900 });
       let baseline;
       for (const headerPage of ['index', 'works', 'create', 'downloads']) {
-      await page.goto(base + pagePath(headerPage, locale.id));
-      await page.waitForFunction(() => document.documentElement.dataset.hydrated === 'true');
-      const header = await page.locator('.site-header').boundingBox();
-      if (!baseline) baseline = header;
-      for (const key of ['x', 'width', 'height']) {
-        assert.ok(Math.abs(header[key] - baseline[key]) < 1, `${headerPage}/${width} 页眉 ${key} 一致`);
-      }
-      const toggle = page.locator('.menu-toggle');
-      if (await toggle.isVisible()) {
-        assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
-        await toggle.focus();
-        await toggle.press('Enter');
-        assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
-      }
-      assert.equal(await page.locator('header nav a').count(), 5);
-      const current = page.locator('header nav a[aria-current="page"]');
-      assert.equal(await current.getAttribute('href'), pagePath(headerPage, locale.id));
-      for (const link of await page.locator('header nav a').all()) assert.ok(await link.isVisible());
-      const navLayout = await page.locator('header nav a').evaluateAll((links) => links.map((link) => {
-        const box = link.getBoundingClientRect();
-        const content = link.querySelector('.nav-item-content').getBoundingClientRect();
-        const icon = link.querySelector('.nav-icon').getBoundingClientRect();
-        const label = link.querySelector('.nav-label').getBoundingClientRect();
-        const style = getComputedStyle(link);
-        return {
-          centeredX: Math.abs(content.x + content.width / 2 - box.x - box.width / 2),
-          centeredY: Math.abs(content.y + content.height / 2 - box.y - box.height / 2),
-          aligned: Math.abs(icon.y + icon.height / 2 - label.y - label.height / 2),
-          height: box.height,
-          underline: style.textDecorationLine,
-          border: style.borderTopColor,
-          current: link.getAttribute('aria-current') === 'page',
-        };
-      }));
-      for (const item of navLayout) {
-        assert.ok(item.centeredX < 1 && item.centeredY < 1, `${headerPage}/${width} 图文整体居中`);
-        assert.ok(item.aligned < 1, `${headerPage}/${width} 图标与文字行框对齐`);
-        assert.ok(item.height >= 44, `${headerPage}/${width} 导航点击区域足够`);
-        assert.equal(item.underline, 'none');
-      }
-      assert.notEqual(navLayout.find((item) => item.current).border, navLayout.find((item) => !item.current).border);
-      const beforeHover = await current.boundingBox();
-      await current.hover();
-      assert.deepEqual(await current.boundingBox(), beforeHover, '选中与悬停状态保持导航尺寸');
-      await page.keyboard.press('Tab');
-      await current.focus();
-      assert.ok(await current.evaluate((link) => getComputedStyle(link).outlineStyle !== 'none'), '键盘焦点轮廓可见');
-      assert.ok(await page.locator('#site-language').isVisible());
-      if (!(await toggle.isVisible())) {
-        const geometry = await page.locator('.site-header').evaluate((element) => {
-          const boxes = [...element.querySelectorAll('.brand, nav a, select')].map((node) => node.getBoundingClientRect());
-          return boxes.map((box) => box.y + box.height / 2);
-        });
-        assert.ok(Math.max(...geometry) - Math.min(...geometry) < 1, '品牌、导航、语言框垂直居中');
-      } else {
-        await page.locator('header nav a').first().focus();
-        await page.keyboard.press('Escape');
-        assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
-        assert.ok(await toggle.evaluate((element) => element === document.activeElement));
-      }
-      assert.ok(
-        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
-        `${locale.id}/${width} 无横向溢出`,
-      );
+        await page.goto(base + pagePath(headerPage, locale.id));
+        await page.waitForFunction(() => document.documentElement.dataset.hydrated === 'true');
+        const header = await page.locator('.site-header').boundingBox();
+        if (!baseline) baseline = header;
+        for (const key of ['x', 'width', 'height']) {
+          assert.ok(Math.abs(header[key] - baseline[key]) < 1, `${headerPage}/${width} 页眉 ${key} 一致`);
+        }
+        const toggle = page.locator('.menu-toggle');
+        if (await toggle.isVisible()) {
+          assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+          await toggle.focus();
+          await toggle.press('Enter');
+          assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
+        }
+        assert.equal(await page.locator('header nav a').count(), 5);
+        const current = page.locator('header nav a[aria-current="page"]');
+        assert.equal(await current.getAttribute('href'), pagePath(headerPage, locale.id));
+        for (const link of await page.locator('header nav a').all()) assert.ok(await link.isVisible());
+        const navLayout = await page.locator('header nav a').evaluateAll((links) =>
+          links.map((link) => {
+            const box = link.getBoundingClientRect();
+            const content = link.querySelector('.nav-item-content').getBoundingClientRect();
+            const icon = link.querySelector('.nav-icon').getBoundingClientRect();
+            const label = link.querySelector('.nav-label').getBoundingClientRect();
+            const style = getComputedStyle(link);
+            return {
+              centeredX: Math.abs(content.x + content.width / 2 - box.x - box.width / 2),
+              centeredY: Math.abs(content.y + content.height / 2 - box.y - box.height / 2),
+              aligned: Math.abs(icon.y + icon.height / 2 - label.y - label.height / 2),
+              height: box.height,
+              underline: style.textDecorationLine,
+              border: style.borderTopColor,
+              current: link.getAttribute('aria-current') === 'page',
+            };
+          }),
+        );
+        for (const item of navLayout) {
+          assert.ok(item.centeredX < 1 && item.centeredY < 1, `${headerPage}/${width} 图文整体居中`);
+          assert.ok(item.aligned < 1, `${headerPage}/${width} 图标与文字行框对齐`);
+          assert.ok(item.height >= 44, `${headerPage}/${width} 导航点击区域足够`);
+          assert.equal(item.underline, 'none');
+        }
+        assert.notEqual(
+          navLayout.find((item) => item.current).border,
+          navLayout.find((item) => !item.current).border,
+        );
+        const beforeHover = await current.boundingBox();
+        await current.hover();
+        assert.deepEqual(await current.boundingBox(), beforeHover, '选中与悬停状态保持导航尺寸');
+        await page.keyboard.press('Tab');
+        await current.focus();
+        assert.ok(
+          await current.evaluate((link) => getComputedStyle(link).outlineStyle !== 'none'),
+          '键盘焦点轮廓可见',
+        );
+        assert.ok(await page.locator('#site-language').isVisible());
+        if (!(await toggle.isVisible())) {
+          const geometry = await page.locator('.site-header').evaluate((element) => {
+            const boxes = [...element.querySelectorAll('.brand, nav a, select')].map((node) =>
+              node.getBoundingClientRect(),
+            );
+            return boxes.map((box) => box.y + box.height / 2);
+          });
+          assert.ok(Math.max(...geometry) - Math.min(...geometry) < 1, '品牌、导航、语言框垂直居中');
+        } else {
+          await page.locator('header nav a').first().focus();
+          await page.keyboard.press('Escape');
+          assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+          assert.ok(await toggle.evaluate((element) => element === document.activeElement));
+        }
+        assert.ok(
+          await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+          `${locale.id}/${width} 无横向溢出`,
+        );
       }
     }
   }
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto(base + '/login.html?returnTo=create.html');
-  await page.locator('#mode-register').click();
+  await page.goto(base + new URL(INVITATION_URL).pathname);
+  await page.locator('#mode-register[aria-pressed=true]').waitFor();
+  assert.equal(await page.locator('#invitation').inputValue(), INVITATION_CODE);
   await page.locator('#email').fill(USER.email);
   await page.locator('#password').fill('integration-password');
   await page.locator('#auth-submit').click();
   await page.locator('#otp').waitFor({ state: 'visible' });
+  assert.equal(calls.find((call) => call.path.endsWith('/auth/register')).body.invitationCode, INVITATION_CODE);
   await page.locator('#otp').fill('123456');
   await page.locator('#verify-form button[type=submit]').click();
   await page.locator('#mode-login[aria-pressed=true]').waitFor();
@@ -255,7 +283,9 @@ try {
       const context = canvas.getContext('2d');
       context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
       const metrics = context.measureText(button.textContent.trim());
-      const inkCenterY = text.top + metrics.fontBoundingBoxAscent -
+      const inkCenterY =
+        text.top +
+        metrics.fontBoundingBoxAscent -
         (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) / 2;
       return {
         horizontalOffset: Math.abs(text.left + text.width / 2 - box.left - box.width / 2),
@@ -274,11 +304,18 @@ try {
   const waiting = page.locator('#waiting-poems');
   const activePoem = waiting.locator('.waiting-poem.is-current');
   await waiting.waitFor({ state: 'visible' });
-  assert.equal(await page.locator('#generate').textContent().then((text) => text.trim()), '生成诗词');
+  assert.equal(
+    await page
+      .locator('#generate')
+      .textContent()
+      .then((text) => text.trim()),
+    '生成诗词',
+  );
   assert.equal(await page.locator('#generate').getAttribute('aria-busy'), 'true');
   assert.equal(await page.locator('#stop-poll').isVisible(), false);
   assert.equal(await waiting.locator('.waiting-poems-control').isVisible(), false);
   assert.equal(await activePoem.getAttribute('aria-hidden'), 'false');
+  assert.equal(await page.locator('#generation-status').evaluate((element) => getComputedStyle(element, '::before').animationName), 'none');
   assert.equal(await activePoem.evaluate((element) => getComputedStyle(element).transitionDuration), '0s');
   const stillPoem = await activePoem.textContent();
   await page.clock.fastForward(9000);
@@ -286,12 +323,20 @@ try {
 
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.mouse.move(0, 0);
-  await page.waitForFunction(() => getComputedStyle(document.querySelector('.waiting-poem')).transitionDuration.includes('0.45s'));
+  await page.waitForFunction(() =>
+    getComputedStyle(document.querySelector('.waiting-poem')).transitionDuration.includes('0.45s'),
+  );
   const beforePoem = await activePoem.textContent();
   const beforeStage = await waiting.boundingBox();
-  await page.clock.fastForward(9000);
-  await page.waitForFunction((previous) => document.querySelector('.waiting-poem.is-current').textContent !== previous, beforePoem);
-  await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.waiting-poem.is-current')).opacity) > 0.99);
+  assert.equal(await page.locator('#generation-status').evaluate((element) => getComputedStyle(element, '::before').animationName), 'writing-breath');
+  await page.clock.fastForward(3100);
+  await page.waitForFunction(
+    (previous) => document.querySelector('.waiting-poem.is-current').textContent !== previous,
+    beforePoem,
+  );
+  await page.waitForFunction(
+    () => Number(getComputedStyle(document.querySelector('.waiting-poem.is-current')).opacity) > 0.99,
+  );
   const afterStage = await waiting.boundingBox();
   assert.ok(Math.abs(beforeStage.height - afterStage.height) < 1, '诗句轮换时等待卡片高度稳定');
   assert.ok(Math.abs(beforeStage.y - afterStage.y) < 1, '诗句轮换时等待卡片位置稳定');
@@ -304,7 +349,11 @@ try {
   const control = waiting.locator('.waiting-poems-control');
   await page.keyboard.press('Tab');
   await control.focus();
-  assert.ok(await control.evaluate((button) => button.matches(':focus-visible') && button.getBoundingClientRect().height >= 44));
+  assert.ok(
+    await control.evaluate(
+      (button) => button.matches(':focus-visible') && button.getBoundingClientRect().height >= 44,
+    ),
+  );
   const focusedPoem = await activePoem.textContent();
   await page.clock.fastForward(9000);
   assert.equal(await activePoem.textContent(), focusedPoem, '键盘聚焦时停留当前诗句');
@@ -317,8 +366,13 @@ try {
   await control.press('Enter');
   await page.locator('#task-details summary').focus();
   await page.clock.fastForward(9000);
-  await page.waitForFunction((previous) => document.querySelector('.waiting-poem.is-current').textContent !== previous, focusedPoem);
-  await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.waiting-poem.is-current')).opacity) > 0.99);
+  await page.waitForFunction(
+    (previous) => document.querySelector('.waiting-poem.is-current').textContent !== previous,
+    focusedPoem,
+  );
+  await page.waitForFunction(
+    () => Number(getComputedStyle(document.querySelector('.waiting-poem.is-current')).opacity) > 0.99,
+  );
 
   for (const width of [375, 1280]) {
     await page.setViewportSize({ width, height: 900 });
@@ -326,6 +380,20 @@ try {
     await mkdir(new URL('.build/', root), { recursive: true });
     await waiting.screenshot({ path: new URL(`.build/waiting-poems-${width}.png`, root).pathname });
   }
+  await page.locator('#task-details summary').click();
+  await page.locator('#stop-poll').click();
+  await page.locator('#resume-generation').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#generation-status').textContent(), '已暂停自动更新，创作仍在继续。');
+  assert.equal(await waiting.isVisible(), false);
+  await page.locator('#resume-generation').click();
+  await waiting.waitFor({ state: 'visible' });
+  assert.match(await activePoem.textContent(), /行到水穷处/);
+  assert.equal(
+    calls.filter((call) => call.method === 'POST' && call.path === '/v1/generations').length,
+    1,
+    '继续进度只查询原创作',
+  );
+  await page.locator('#task-details summary').click();
   generationComplete = true;
   await page.clock.fastForward(3500);
   await page.locator('#download-card').waitFor({ state: 'visible', timeout: 20000 });
@@ -334,7 +402,20 @@ try {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   assert.equal(await page.locator('#poem-title').textContent(), verse.title);
   assert.equal(await page.locator('#poem-body').textContent(), verse.lines.join('\n'));
+  assert.equal(await page.locator('#redraw-card').count(), 0);
+  assert.ok(await page.locator('#poem-accessible').evaluate((node) => node.classList.contains('sr-only')));
+  await page.locator('#copy-poem').click();
+  await page.locator('#copy-status').filter({ hasText: '诗词已拷贝' }).waitFor();
+  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), [verse.title, ...verse.lines].join('\n'));
+  assert.equal(await decodeImageQR('#poem-card'), INVITATION_URL);
+  for (const width of [375, 1280]) {
+    await page.setViewportSize({ width, height: 1100 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    await page.locator('.result-panel').screenshot({ path: new URL(`.build/invitation-result-${width}.png`, root).pathname });
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
   const metadataTip = page.locator('#app-metadata-tip');
+  assert.equal(await page.locator('#app-metadata-title').evaluate((node) => getComputedStyle(node).fontWeight), '400');
   assert.ok(await metadataTip.isVisible());
   assert.match(await metadataTip.textContent(), /图赋 App，可将诗词和标签（tags）写入图片元数据/);
   assert.equal(await metadataTip.locator('a').first().getAttribute('href'), '/downloads.html');
@@ -352,6 +433,7 @@ try {
   await page.locator('#history-body').filter({ hasText: verse.lines[0] }).waitFor();
   await page.locator('#history-render').click();
   await page.locator('#history-download').waitFor({ state: 'visible' });
+  assert.equal(await decodeImageQR('#history-card'), INVITATION_URL);
   await page.locator('#history-delete').click();
   await page.locator('#history-delete-cancel').click();
   assert.ok(await page.locator('#history-detail').isVisible());
@@ -362,6 +444,8 @@ try {
     .filter({ has: page.locator('article') })
     .waitFor({ state: 'hidden' });
   await page.goto(base + '/account.html');
+  await page.locator('#referral-credits').filter({ hasText: '累计获赠 6 次' }).waitFor();
+  assert.equal(await page.locator('#invitation-link').getAttribute('href'), INVITATION_URL);
   await page.locator('[data-plan-id]').click();
   await page.locator('.payment-qr').waitFor({ state: 'visible' });
   await page.locator('.order-status').filter({ hasText: '已到账 10 次' }).waitFor({ timeout: 15000 });
@@ -386,7 +470,7 @@ try {
   await page.screenshot({ path: new URL('.build/vue-downloads.png', root).pathname, fullPage: true });
   assert.deepEqual(errors, []);
   console.log(
-    `Vue 浏览器正向验收通过：${ids.length} 种语言 × 8 页、七种宽度及四类页眉一致性、键盘菜单、注册验证登录、创作 PNG、历史导出删除、购买到账、退出与兼容路径。`,
+    `Vue 浏览器正向验收通过：${ids.length} 种语言 × 8 页、七种宽度及四类页眉一致性、三秒轮播与持续进度动画/减少动态效果、暂停继续、邀请链接注册、拷贝诗词、创作与历史 PNG 二维码解码、累计获赠展示、购买到账、退出与兼容路径。`,
   );
 } finally {
   await browser.close();

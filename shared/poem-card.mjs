@@ -1,7 +1,11 @@
 import { canvasBlob } from './create-core.mjs';
 import { CARD_FONT_FAMILY, cardFontFaces } from './poem-card-font.mjs';
+import { createQRMatrix, drawQRCode } from './qr-code.mjs';
 
 export const CARD = Object.freeze({ width: 1080, padding: 96, top: 88, bottom: 64, titleSize: 72, bodySize: 48, maxHeight: 14000, maxCharacters: 20000 });
+export function poemPlainText(data) {
+  return [data.title, data.cipai ? `词牌 · ${data.cipai}` : '', data.body].filter(Boolean).join('\n');
+}
 export function poemData(result) {
   const verse = result?.verse;
   if (verse != null && (typeof verse.title !== 'string' || !Array.isArray(verse.lines) || !verse.lines.every(line => typeof line === 'string'))) {
@@ -34,7 +38,7 @@ export function wrapText(text, measure, maxWidth, spacing = 0) {
   }
   return lines;
 }
-export function cardLayout(data, measure) {
+export function cardLayout(data, measure, { qrSize = 0 } = {}) {
   if ([data.title, data.body, data.cipai].join('').length > CARD.maxCharacters) throw new Error('诗词过长，超过安全绘图上限。文字仍可阅读和复制。');
   const width = CARD.width - 2 * CARD.padding;
   let y = CARD.top;
@@ -49,9 +53,10 @@ export function cardLayout(data, measure) {
   let divider;
   if (data.title || data.cipai) { y += 32; divider = y; y += 48; }
   const body = block(data.body, 48, 2.05, 2);
-  const height = Math.ceil(y + CARD.bottom);
+  const footer = qrSize ? { y: y + 48, qrSize } : null;
+  const height = Math.ceil(footer ? footer.y + qrSize + CARD.bottom : y + CARD.bottom);
   if (height > CARD.maxHeight) throw new Error('诗词过长，分享图超过安全尺寸。文字仍可阅读和复制。');
-  return { width: CARD.width, height, blocks, body, divider };
+  return { width: CARD.width, height, blocks, body, divider, footer };
 }
 const loadedFaces = new Set();
 function codePoint(value) {
@@ -82,16 +87,19 @@ export async function loadCardFont(text) {
     if (!document.fonts.check(`48px "${CARD_FONT_FAMILY}"`, sample)) throw new Error('font unavailable');
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('当前浏览器')) throw error;
-    throw new Error('文楷字体未能启用，分享图尚未生成。请点击“重绘分享图”。');
+    throw new Error('文楷字体未能启用，分享图尚未生成。可先拷贝诗词，稍后从我的作品下载分享图。');
   }
 }
-export async function renderPoemCard(data, { brand = '图赋' } = {}) {
-  await loadCardFont([data.title, data.cipai, data.body, brand, '词牌 · '].join(''));
+export async function renderPoemCard(data, { brand = '图赋', invitationURL = '', invitationLabel = '扫码，一起写诗' } = {}) {
+  const matrix = invitationURL ? createQRMatrix(invitationURL) : null;
+  const qrScale = 4;
+  const qrSize = matrix ? (matrix.length + 8) * qrScale : 0;
+  await loadCardFont([data.title, data.cipai, data.body, brand, '词牌 · ', invitationLabel].join(''));
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('浏览器无法创建分享画布。');
   const measure = (glyph, size) => { ctx.font = `${size}px "${CARD_FONT_FAMILY}"`; return ctx.measureText(glyph).width; };
-  const layout = cardLayout(data, measure);
+  const layout = cardLayout(data, measure, { qrSize });
   canvas.width = layout.width; canvas.height = layout.height;
   const colors = getComputedStyle(document.documentElement);
   const color = (name, fallback) => colors.getPropertyValue(`--pp-color-${name}`).trim() || fallback;
@@ -120,6 +128,15 @@ export async function renderPoemCard(data, { brand = '图赋' } = {}) {
     }
     ctx.fillStyle = color('ink', '#20201e');
     for (const block of layout.blocks) block.lines.forEach((line, i) => drawLine(line, block.size, block.spacing, CARD.width / 2, block.y + (i + .5) * block.size * block.leading));
+    if (layout.footer) {
+      const { y } = layout.footer;
+      const x = CARD.width - CARD.padding - qrSize;
+      drawQRCode(ctx, matrix, x, y, qrScale);
+      ctx.fillStyle = color('muted', '#6b6962');
+      const center = (CARD.padding + x - 32) / 2;
+      drawLine(brand, 34, 2, center, y + qrSize / 2 - 24);
+      drawLine(invitationLabel, 28, 1, center, y + qrSize / 2 + 28);
+    }
     const blob = await canvasBlob(canvas, 'image/png');
     if (blob.type !== 'image/png') throw new Error('PNG 导出失败，请重试。');
     return blob;

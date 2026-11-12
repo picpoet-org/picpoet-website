@@ -221,12 +221,17 @@ export function useHistory(session) {
     drawing.value = true;
     exportStatus.value = t('common.rendering');
     try {
-      const blob = await renderPoemCard(source.poem, { brand });
+      const invitationURL = await session.ensureInvitationURL(ticket);
+      const blob = await renderPoemCard(source.poem, {
+        brand,
+        invitationURL,
+        invitationLabel: t('sharing.scan'),
+      });
       scope.assert(ticket);
       if (version !== detailVersion || selected.value !== source) return;
       release(cardURL.value);
       cardURL.value = URL.createObjectURL(blob);
-      exportStatus.value = '';
+      exportStatus.value = invitationURL ? '' : t('sharing.noInvitation');
     } catch (cause) {
       if (scope.current(ticket) && version === detailVersion && cause.name !== 'AbortError')
         exportStatus.value = report(cause);

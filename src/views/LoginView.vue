@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed, nextTick, onMounted } from 'vue';
 import { useSession } from '../composables/useSession.mjs';
+import { readInvitation } from '../../shared/invitation.mjs';
 import { safeReturnTo } from '../../shared/user-navigation.mjs';
 import SessionGate from '../components/SessionGate.vue';
 const session = useSession();
@@ -22,6 +23,13 @@ const returnTo =
   typeof location === 'undefined'
     ? 'create.html'
     : safeReturnTo(new URLSearchParams(location.search).get('returnTo'));
+onMounted(() => {
+  // 仅在客户端读取邀请码，避免 SSR 与 hydration 因 query 不一致。
+  const code = readInvitation(location.search);
+  if (!code) return;
+  invitation.value = code;
+  mode.value = 'register';
+});
 const setMode = (value) => {
   mode.value = value;
   authStatus.value = '';

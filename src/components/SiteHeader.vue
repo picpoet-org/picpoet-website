@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue';
+import { readInvitation } from '../../shared/invitation.mjs';
 import { pagePath, useSite } from '../i18n/context.mjs';
 const { t, href, asset, brand, page, locale, compatibility, availableLocales } = useSite();
 const expanded = ref(false);
@@ -17,11 +18,14 @@ const items = [
   ['account', 'account', 'M5 20a7 7 0 0 1 14 0 M15.25 8a3.25 3.25 0 1 1-6.5 0 3.25 3.25 0 0 1 6.5 0'],
 ];
 function changeLanguage(event) {
-  // 仅保留站内登录目标、锚点和界面语言；照片和凭据继续只保存在内存。
+  // 仅保留站内登录目标、有效邀请码、锚点和界面语言；照片和凭据继续只保存在内存。
   const target = new URL(pagePath(page, event.target.value, compatibility), location.origin);
   if (page === 'login') {
-    const returnTo = new URLSearchParams(location.search).get('returnTo');
+    const params = new URLSearchParams(location.search);
+    const returnTo = params.get('returnTo');
     if (returnTo) target.searchParams.set('returnTo', returnTo);
+    const invitationCode = readInvitation(params);
+    if (invitationCode) target.searchParams.set('invitationCode', invitationCode);
   }
   target.hash = location.hash;
   location.assign(target.href);

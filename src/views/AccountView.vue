@@ -4,7 +4,7 @@ import { useOrders } from '../composables/useOrders.mjs';
 import SessionGate from '../components/SessionGate.vue';
 import OrderItem from '../components/OrderItem.vue';
 const session = useSession();
-const { t, href, user, verified, busy, balance, money } = session;
+const { t, href, user, verified, busy, balance, money, invitationURL, grantedCredits } = session;
 const {
   plans,
   orders,
@@ -60,6 +60,22 @@ const {
             </dd>
           </div>
         </dl>
+        <section class="account-referral" aria-labelledby="referral-title">
+          <h3 id="referral-title">{{ t('referral.title') }}</h3>
+          <p id="referral-credits">
+            {{
+              grantedCredits === null ? t('referral.pending') : t('referral.total', { count: grantedCredits })
+            }}
+          </p>
+          <p class="fine-print">{{ t('referral.help') }}</p>
+          <a
+            v-if="invitationURL"
+            id="invitation-link"
+            class="text-link invitation-link"
+            :href="invitationURL"
+            >{{ t('referral.link') }}</a
+          >
+        </section>
         <div class="account-links">
           <a class="text-link" href="#purchase">{{ t('account.topUp') }}</a><a
             class="text-link"
