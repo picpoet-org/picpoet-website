@@ -3,6 +3,12 @@ import { ref } from 'vue';
 import { pagePath, useSite } from '../i18n/context.mjs';
 const { t, href, asset, brand, page, locale, compatibility, availableLocales } = useSite();
 const expanded = ref(false);
+const menuButton = ref(null);
+function closeMenu() {
+  if (!expanded.value) return;
+  expanded.value = false;
+  menuButton.value?.focus();
+}
 const items = [
   ['index', 'home', 'M4 10.5 12 4l8 6.5V20H14v-6H10v6H4z'],
   ['create', 'create', 'M12 20h9 M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z'],
@@ -23,14 +29,15 @@ function changeLanguage(event) {
 </script>
 <template>
   <a class="skip-link" href="#main">{{ t('nav.skip') }}</a>
-  <header class="site-header">
+  <header class="site-header" @keydown.esc="closeMenu">
     <a class="brand" :href="href('index.html')" :aria-label="t('nav.brandHome')"
       ><img :src="asset('assets/picpoet-mark.svg')" width="32" height="32" alt="" /><span>{{
         brand
       }}</span></a
     >
     <button
-      class="menu-toggle button secondary"
+      ref="menuButton"
+      class="menu-toggle"
       type="button"
       aria-controls="site-navigation"
       :aria-expanded="expanded"
@@ -44,7 +51,6 @@ function changeLanguage(event) {
           v-for="[target, label, path] in items"
           :key="target"
           :href="href(target + '.html')"
-          :class="{ 'nav-cta': target === 'downloads' }"
           :aria-current="page === target ? 'page' : undefined"
           ><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path :d="path" /></svg
           >{{ t('nav.' + label) }}</a

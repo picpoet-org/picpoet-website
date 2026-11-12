@@ -151,17 +151,46 @@ try {
         locale.id === 'zh-cn' ? '图赋' : 'PicPoet',
       );
     }
-    for (const width of [375, 768, 900, 1280]) {
+    for (const width of [375, 768, 900, 992, 993, 1024, 1280]) {
       await page.setViewportSize({ width, height: 900 });
-      await page.goto(base + pagePath('index', locale.id));
+      let baseline;
+      for (const headerPage of ['index', 'works', 'create', 'downloads']) {
+      await page.goto(base + pagePath(headerPage, locale.id));
       await page.waitForFunction(() => document.documentElement.dataset.hydrated === 'true');
-      if (await page.locator('.menu-toggle').isVisible()) await page.locator('.menu-toggle').click();
+      const header = await page.locator('.site-header').boundingBox();
+      if (!baseline) baseline = header;
+      for (const key of ['x', 'width', 'height']) {
+        assert.ok(Math.abs(header[key] - baseline[key]) < 1, `${headerPage}/${width} 页眉 ${key} 一致`);
+      }
+      const toggle = page.locator('.menu-toggle');
+      if (await toggle.isVisible()) {
+        assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+        await toggle.focus();
+        await toggle.press('Enter');
+        assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
+      }
       assert.equal(await page.locator('header nav a').count(), 5);
+      const current = page.locator('header nav a[aria-current="page"]');
+      assert.equal(await current.getAttribute('href'), pagePath(headerPage, locale.id));
+      for (const link of await page.locator('header nav a').all()) assert.ok(await link.isVisible());
       assert.ok(await page.locator('#site-language').isVisible());
+      if (!(await toggle.isVisible())) {
+        const geometry = await page.locator('.site-header').evaluate((element) => {
+          const boxes = [...element.querySelectorAll('.brand, nav a, select')].map((node) => node.getBoundingClientRect());
+          return boxes.map((box) => box.y + box.height / 2);
+        });
+        assert.ok(Math.max(...geometry) - Math.min(...geometry) < 1, '品牌、导航、语言框垂直居中');
+      } else {
+        await page.locator('header nav a').first().focus();
+        await page.keyboard.press('Escape');
+        assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+        assert.ok(await toggle.evaluate((element) => element === document.activeElement));
+      }
       assert.ok(
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
         `${locale.id}/${width} 无横向溢出`,
       );
+      }
     }
   }
   await page.setViewportSize({ width: 1280, height: 900 });
@@ -232,7 +261,7 @@ try {
   await page.screenshot({ path: new URL('.build/vue-downloads.png', root).pathname, fullPage: true });
   assert.deepEqual(errors, []);
   console.log(
-    `Vue 浏览器正向验收通过：${ids.length} 种语言 × 8 页、四种宽度、注册验证登录、创作 PNG、历史导出删除、购买到账、退出与兼容路径。`,
+    `Vue 浏览器正向验收通过：${ids.length} 种语言 × 8 页、七种宽度及四类页眉一致性、键盘菜单、注册验证登录、创作 PNG、历史导出删除、购买到账、退出与兼容路径。`,
   );
 } finally {
   await browser.close();

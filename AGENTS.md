@@ -23,4 +23,4 @@ npm run test:browser:create
 
 - 浏览器通过同源 `/web-api` 访问 BFF，用户令牌保存在服务端，浏览器持有 HttpOnly 会话 Cookie；服务密钥由相应后端持有。
 - 网页版业务交付同时准备 Node BFF 与同源路由，纯静态交付仅覆盖静态能力。
-- 公开地址以 `deployment.json` 为准；下载与 Android 升级清单共用 `releases/stable.json`，发布流程见 README。公开地址变更同步客户端 `../picpoet/android/packaging/release-config.json`。
+- 公开地址以 `deployment.json` 为准；下载与 Android 升级清单共用 `releases/stable.json`，发布流程见 README。公开地址变更同步客户端 `../picpoet-app/android/packaging/release-config.json`。

@@ -18,11 +18,11 @@ Vue 3 + Vite 网站，维护产品说明、下载、在线创作与独立 Node B
 https://downloads.nullprivate.com/picpoet/release/android/0.1.0/picpoet-0.1.0-arm64-v8a.apk
 ```
 
-首版 Android 正式签名包已上传该路径，完整公开回下载的大小与 SHA-256 均与本地产物一致。`npm run releases:check` 会校验所有已发布安装包均位于指定 CDN 的平台／版本目录，并校验 Android 系统版本码由版本自动推导。网站部署与客户端属于独立仓库，客户端对应配置位于工作区 `../picpoet/android/packaging/release-config.json`；调整公开地址时同步两侧。
+首版 Android 正式签名包已上传该路径，完整公开回下载的大小与 SHA-256 均与本地产物一致。`npm run releases:check` 会校验所有已发布安装包均位于指定 CDN 的平台／版本目录，并校验 Android 系统版本码由版本自动推导。网站部署与客户端属于独立仓库，客户端对应配置位于工作区 `../picpoet-app/android/packaging/release-config.json`；调整公开地址时同步两侧。
 
 ## 本地预览
 
-要求 Node.js 22.13+，命令工作目录为 `website/`：
+要求 Node.js 22.13+，命令工作目录为 `picpoet-website/`：
 
 ```bash
 npm ci
@@ -78,7 +78,7 @@ node test/vue.browser.integration.mjs --all-locales
 
 网页版复用 Dashboard 的 Picpoet 邮箱注册／OTP 验证、账户及额度，通过官方异步任务生成诗词。分享卡在浏览器以文楷绘制，沿用客户端的纸色、1080px 宽度和品牌底纹，不包含原照片。文楷使用 ZSFT 发布的霞鹜文楷 v1.530 Regular 网页分片，缓存在 `assets/fonts/lxgw-wenkai/`；绘制时只启用当次文字覆盖的同源 woff2，不请求外部字体，也不再下载完整 TTF。图片选中后仅在本机解码、缩小及 JPEG 重编码（移除原图 EXIF）；点击生成才上传。历史启用后，新提交的账户官方成功任务保存压缩照片与诗词 90 天，可提前永久删除；不保存原图、不回填旧任务。是否已保存以历史接口记录为准，需要长期保留的作品请下载。
 
-工作目录 `website/`，Node.js 22.13+：
+工作目录 `picpoet-website/`，Node.js 22.13+：
 
 ```bash
 # 两个上游需分别启动；以下是默认本地端口，不会加载任何 .env。
@@ -91,15 +91,15 @@ PICPOET_API_URL=http://127.0.0.1:8081/v1 npm run dev:web
 一键启动前后端联调（推荐）：
 
 ```bash
-# 工作目录 website/
+# 工作目录 picpoet-website/
 npm run dev:stack
 ```
 
-该命令复用 `picpoet/official-dev.sh start --no-gui`，启动 Mailpit、Dashboard API/Web、Picpoet Server、Payments，并纳入 website BFF（`0.0.0.0:18090`）。不启动 Flutter GUI；需要 GUI 时使用独立入口 `npm run dev:stack:gui`。两个入口均无需附加参数。查看状态与停止仍走：
+该命令复用 `picpoet-app/official-dev.sh start --no-gui`，启动 Mailpit、Dashboard API/Web、Picpoet Server、Payments，并纳入 website BFF（`0.0.0.0:18090`）。不启动 Flutter GUI；需要 GUI 时使用独立入口 `npm run dev:stack:gui`。两个入口均无需附加参数。查看状态与停止仍走：
 
 ```bash
-bash ../picpoet/official-dev.sh status
-bash ../picpoet/official-dev.sh stop
+bash ../picpoet-app/official-dev.sh status
+bash ../picpoet-app/official-dev.sh stop
 ```
 
 浏览器可打开 `http://127.0.0.1:18090/create.html` 或 `http://192.168.31.7:18090/create.html`（BFF 同时接受这两个 Origin，不要混用 `localhost`）。注册验证码在联调 Mailpit `http://127.0.0.1:18025` 查看。
@@ -194,7 +194,7 @@ Android 当前已验证产物为 `arm64-v8a` / `apk`，仅在完整引擎及安�
 
 Android 正式构建脚本自动注入 `--dart-define=PICPOET_UPDATE_MANIFEST_URL=https://picpoet.jqknono.com/releases/stable.json`。在客户端目录执行 `python3 android/packaging/init-signing.py` 完成本机交互式证书初始化并加密备份后，执行 `python3 android/packaging/build-release.py`。Flutter 源版本声明为 `version: 0.1.0`，Android 系统必需的整数字段按 `主版本 × 1000000 + 次版本 × 1000 + 修订版本` 自动生成，当前为 `1000`；界面与下载路径仅显示 `0.1.0`。次版本和修订版本各小于 1000，生成值为正整数且不超过 2100000000。每次正式发布递增语义版本即可。
 
-正式构建生成 `build/release/android/0.1.0/stable.candidate.json`，其中只有 Android 条目、发布时间为 `null`，供上传验证后补充实际日期与更新说明。把该条目合入本网站五平台清单，并保留其他平台状态；正式清单仍按完整契约校验。自动检查滚动 24 小时最多一次，手动检查可再次提示已忽略版本。用户确认后由浏览器下载、系统完成安装；同包名、同签名且新版本对应更高的系统版本码才能覆盖升级。首次从调试签名迁移到正式签名需另行处理数据备份。签名细节见客户端仓库的 `README.md`（工作区路径 `../picpoet/README.md`）。
+正式构建生成 `build/release/android/0.1.0/stable.candidate.json`，其中只有 Android 条目、发布时间为 `null`，供上传验证后补充实际日期与更新说明。把该条目合入本网站五平台清单，并保留其他平台状态；正式清单仍按完整契约校验。自动检查滚动 24 小时最多一次，手动检查可再次提示已忽略版本。用户确认后由浏览器下载、系统完成安装；同包名、同签名且新版本对应更高的系统版本码才能覆盖升级。首次从调试签名迁移到正式签名需另行处理数据备份。签名细节见客户端仓库的 `README.md`（工作区路径 `../picpoet-app/README.md`）。
 
 ## 验证
 

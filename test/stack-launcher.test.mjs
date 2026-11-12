@@ -16,7 +16,7 @@ test('两个 npm 命令使用独立入口并固定 GUI 模式', async () => {
     assert.equal(startStack({ gui }, { args: [], spawn(command, args, options) {
       called = true;
       assert.equal(command, 'bash');
-      assert.ok(args[0].endsWith('/picpoet/official-dev.sh'));
+      assert.ok(args[0].endsWith('/picpoet-app/official-dev.sh'));
       assert.deepEqual(args.slice(1), gui ? ['start'] : ['start', '--no-gui']);
       assert.equal(options.stdio, 'inherit');
       return { status: 7 };

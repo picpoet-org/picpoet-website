@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const officialDev = fileURLToPath(new URL('../../picpoet/official-dev.sh', import.meta.url));
+const officialDev = fileURLToPath(new URL('../../picpoet-app/official-dev.sh', import.meta.url));
 
 // 两个入口固定选择模式；共享路径解析与子进程执行，不透传 CLI 参数。
 export function startStack({ gui }, { args = process.argv.slice(2), spawn = spawnSync } = {}) {
