@@ -52,8 +52,10 @@ function changeLanguage(event) {
           :key="target"
           :href="href(target + '.html')"
           :aria-current="page === target ? 'page' : undefined"
-          ><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path :d="path" /></svg
-          >{{ t('nav.' + label) }}</a
+          ><span class="nav-item-content">
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path :d="path" /></svg>
+            <span class="nav-label">{{ t('nav.' + label) }}</span>
+          </span></a
         >
       </nav>
       <label class="language-picker"

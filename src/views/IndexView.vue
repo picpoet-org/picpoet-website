@@ -124,7 +124,8 @@ const { t, href } = useSite();
       <h2 id="closing-title">{{ t('content.index.t033') }}<br />{{ t('content.index.t034') }}</h2>
       <p>{{ t('content.index.t035') }}</p>
       <div class="actions">
-        <a class="button primary" :href="href('downloads.html')">{{ t('content.index.t036') }}</a><a
+        <a class="button primary" :href="href('downloads.html')">{{ t('content.index.t036') }}</a>
+        <a class="button secondary" :href="href('create.html')">{{ t('content.index.t006') }}</a><a
           class="text-link"
           :href="href('docs.html')"
           >{{ t('content.index.t037') }}<span aria-hidden="true">→</span></a

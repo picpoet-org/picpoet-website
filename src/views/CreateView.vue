@@ -80,35 +80,33 @@ const {
                 type="submit"
                 class="button primary"
                 :disabled="!image || !verified || !!task || busy.has('image')"
+                :aria-busy="busy.has('task')"
               >
-                {{
-                  t(
-                    busy.has('image')
-                      ? 'create.processing'
-                      : busy.has('task')
-                        ? 'create.creating'
-                        : 'create.generate',
-                  )
-                }}
+                {{ t(busy.has('image') ? 'create.processing' : 'create.generate') }}
               </button>
             </fieldset>
           </form>
           <p id="image-status" class="fine-print" role="status" aria-live="polite">{{ imageStatus }}</p>
-          <p id="generation-status" class="create-status" role="status" aria-live="polite" aria-atomic="true">
+          <p
+            id="generation-status"
+            class="create-status"
+            :class="{ 'task-progress': busy.has('task') && !task?.terminal }"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
             {{ generationStatus }}
           </p>
           <WaitingPoems :active="polling && ['queued', 'running'].includes(task?.status)" />
           <div class="actions task-actions">
-            <button id="stop-poll" class="button secondary" type="button" :hidden="!polling" @click="pause">
-              {{ t('create.pause') }}</button><button
+            <button
               id="resume-generation"
               class="button secondary"
               type="button"
-              :hidden="!task || busy.has('task')"
+              :hidden="!task || busy.has('task') || !!poem"
               @click="query"
             >
-              {{ t('create.resume') }}</button
-            ><button
+              {{ t('waiting.resume') }}</button><button
               id="retry-generation"
               class="button secondary"
               type="button"
@@ -128,7 +126,10 @@ const {
             </button>
           </div>
           <details id="task-details" :hidden="!task">
-            <summary>{{ t('create.taskDetails') }}</summary>
+            <summary>{{ t('waiting.details') }}</summary>
+            <button id="stop-poll" class="button secondary" type="button" :hidden="!polling" @click="pause">
+              {{ t('waiting.pause') }}
+            </button>
             <p id="generation-id" class="request-id">{{ task ? t('create.taskId', { id: task.id }) : '' }}</p>
             <p class="fine-print">{{ t('create.taskHelp') }}</p>
           </details>
@@ -185,6 +186,14 @@ const {
             <p id="poem-cipai">{{ poem?.cipai ? t('common.cipai', { name: poem.cipai }) : '' }}</p>
             <p id="poem-body">{{ poem?.body }}</p>
           </section>
+          <aside v-if="poem" id="app-metadata-tip" class="notice" aria-labelledby="app-metadata-title">
+            <h3 id="app-metadata-title">{{ t('appMetadata.title') }}</h3>
+            <p>{{ t('appMetadata.description') }}</p>
+            <div class="actions">
+              <a class="button secondary" :href="href('downloads.html')">{{ t('appMetadata.download') }}</a>
+              <a class="text-link" :href="href('docs.html#app-save')">{{ t('appMetadata.learnMore') }}</a>
+            </div>
+          </aside>
         </div>
       </section>
     </div>

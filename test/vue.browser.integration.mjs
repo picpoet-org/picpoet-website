@@ -13,7 +13,7 @@ const USER = { id: ID, email: 'poet@example.com', emailVerified: true };
 const calls = [],
   errors = [];
 let generationId,
-  generationReads = 0,
+  generationComplete = false,
   removed = false,
   order;
 const json = (res, body, status = 200) => {
@@ -70,7 +70,7 @@ const upstream = http.createServer(async (req, res) => {
   if (path === `/v1/generations/${generationId}`)
     return json(res, {
       id: generationId,
-      status: ++generationReads === 1 ? 'running' : 'succeeded',
+      status: generationComplete ? 'succeeded' : 'running',
       resultAvailableUntil: '2030-01-01T00:00:00Z',
     });
   if (path === `/v1/generations/${generationId}/result`) return json(res, { verse, charged: true });
@@ -173,6 +173,35 @@ try {
       const current = page.locator('header nav a[aria-current="page"]');
       assert.equal(await current.getAttribute('href'), pagePath(headerPage, locale.id));
       for (const link of await page.locator('header nav a').all()) assert.ok(await link.isVisible());
+      const navLayout = await page.locator('header nav a').evaluateAll((links) => links.map((link) => {
+        const box = link.getBoundingClientRect();
+        const content = link.querySelector('.nav-item-content').getBoundingClientRect();
+        const icon = link.querySelector('.nav-icon').getBoundingClientRect();
+        const label = link.querySelector('.nav-label').getBoundingClientRect();
+        const style = getComputedStyle(link);
+        return {
+          centeredX: Math.abs(content.x + content.width / 2 - box.x - box.width / 2),
+          centeredY: Math.abs(content.y + content.height / 2 - box.y - box.height / 2),
+          aligned: Math.abs(icon.y + icon.height / 2 - label.y - label.height / 2),
+          height: box.height,
+          underline: style.textDecorationLine,
+          border: style.borderTopColor,
+          current: link.getAttribute('aria-current') === 'page',
+        };
+      }));
+      for (const item of navLayout) {
+        assert.ok(item.centeredX < 1 && item.centeredY < 1, `${headerPage}/${width} 图文整体居中`);
+        assert.ok(item.aligned < 1, `${headerPage}/${width} 图标与文字行框对齐`);
+        assert.ok(item.height >= 44, `${headerPage}/${width} 导航点击区域足够`);
+        assert.equal(item.underline, 'none');
+      }
+      assert.notEqual(navLayout.find((item) => item.current).border, navLayout.find((item) => !item.current).border);
+      const beforeHover = await current.boundingBox();
+      await current.hover();
+      assert.deepEqual(await current.boundingBox(), beforeHover, '选中与悬停状态保持导航尺寸');
+      await page.keyboard.press('Tab');
+      await current.focus();
+      assert.ok(await current.evaluate((link) => getComputedStyle(link).outlineStyle !== 'none'), '键盘焦点轮廓可见');
       assert.ok(await page.locator('#site-language').isVisible());
       if (!(await toggle.isVisible())) {
         const geometry = await page.locator('.site-header').evaluate((element) => {
@@ -206,14 +235,110 @@ try {
   await page.locator('#password').fill('integration-password');
   await page.locator('#auth-submit').click();
   await page.waitForURL('**/create.html');
+  await page.waitForFunction(() => !document.querySelector('#image').matches(':disabled'));
+  assert.equal(await page.locator('#generation-status').textContent(), '');
+  assert.equal(await page.locator('#login-gate').isVisible(), false);
+  assert.equal(await page.locator('#app-metadata-tip').count(), 0);
   await page
     .locator('#image')
     .setInputFiles({ name: 'private-source.jpg', mimeType: 'image/jpeg', buffer: imageBytes });
   await page.locator('#generate:not([disabled])').waitFor();
+  for (const width of [375, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    const alignment = await page.locator('#generate').evaluate((button) => {
+      const box = button.getBoundingClientRect();
+      const style = getComputedStyle(button);
+      const range = document.createRange();
+      range.selectNodeContents(button);
+      const text = range.getBoundingClientRect();
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      const metrics = context.measureText(button.textContent.trim());
+      const inkCenterY = text.top + metrics.fontBoundingBoxAscent -
+        (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) / 2;
+      return {
+        horizontalOffset: Math.abs(text.left + text.width / 2 - box.left - box.width / 2),
+        verticalOffset: Math.abs(inkCenterY - box.top - box.height / 2),
+        fontSize: Number.parseFloat(style.fontSize),
+        height: box.height,
+      };
+    });
+    assert.ok(alignment.horizontalOffset < 1, `${width} 生成按钮水平居中`);
+    assert.ok(alignment.verticalOffset <= alignment.fontSize * 0.1, `${width} 中文字形视觉居中`);
+    assert.ok(alignment.height >= 44, `${width} 保留按钮点击区域`);
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.clock.install();
   await page.locator('#generate').click();
+  const waiting = page.locator('#waiting-poems');
+  const activePoem = waiting.locator('.waiting-poem.is-current');
+  await waiting.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#generate').textContent().then((text) => text.trim()), '生成诗词');
+  assert.equal(await page.locator('#generate').getAttribute('aria-busy'), 'true');
+  assert.equal(await page.locator('#stop-poll').isVisible(), false);
+  assert.equal(await waiting.locator('.waiting-poems-control').isVisible(), false);
+  assert.equal(await activePoem.getAttribute('aria-hidden'), 'false');
+  assert.equal(await activePoem.evaluate((element) => getComputedStyle(element).transitionDuration), '0s');
+  const stillPoem = await activePoem.textContent();
+  await page.clock.fastForward(9000);
+  assert.equal(await activePoem.textContent(), stillPoem, '减少动态效果时保持当前诗句');
+
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.mouse.move(0, 0);
+  await page.waitForFunction(() => getComputedStyle(document.querySelector('.waiting-poem')).transitionDuration.includes('0.45s'));
+  const beforePoem = await activePoem.textContent();
+  const beforeStage = await waiting.boundingBox();
+  await page.clock.fastForward(9000);
+  await page.waitForFunction((previous) => document.querySelector('.waiting-poem.is-current').textContent !== previous, beforePoem);
+  await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.waiting-poem.is-current')).opacity) > 0.99);
+  const afterStage = await waiting.boundingBox();
+  assert.ok(Math.abs(beforeStage.height - afterStage.height) < 1, '诗句轮换时等待卡片高度稳定');
+  assert.ok(Math.abs(beforeStage.y - afterStage.y) < 1, '诗句轮换时等待卡片位置稳定');
+
+  await waiting.hover();
+  const hoverPoem = await activePoem.textContent();
+  await page.clock.fastForward(9000);
+  assert.equal(await activePoem.textContent(), hoverPoem, '悬停阅读时自动轮换暂停');
+  await page.mouse.move(0, 0);
+  const control = waiting.locator('.waiting-poems-control');
+  await page.keyboard.press('Tab');
+  await control.focus();
+  assert.ok(await control.evaluate((button) => button.matches(':focus-visible') && button.getBoundingClientRect().height >= 44));
+  const focusedPoem = await activePoem.textContent();
+  await page.clock.fastForward(9000);
+  assert.equal(await activePoem.textContent(), focusedPoem, '键盘聚焦时停留当前诗句');
+  await control.press('Enter');
+  assert.equal(await control.getAttribute('aria-pressed'), 'true');
+  await page.locator('#task-details summary').focus();
+  await page.clock.fastForward(9000);
+  assert.equal(await activePoem.textContent(), focusedPoem, '手动暂停后移开焦点仍保持诗句');
+  await control.focus();
+  await control.press('Enter');
+  await page.locator('#task-details summary').focus();
+  await page.clock.fastForward(9000);
+  await page.waitForFunction((previous) => document.querySelector('.waiting-poem.is-current').textContent !== previous, focusedPoem);
+  await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.waiting-poem.is-current')).opacity) > 0.99);
+
+  for (const width of [375, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    await mkdir(new URL('.build/', root), { recursive: true });
+    await waiting.screenshot({ path: new URL(`.build/waiting-poems-${width}.png`, root).pathname });
+  }
+  generationComplete = true;
+  await page.clock.fastForward(3500);
   await page.locator('#download-card').waitFor({ state: 'visible', timeout: 20000 });
+  assert.equal(await waiting.isVisible(), false);
+  assert.equal(await page.locator('#resume-generation').isVisible(), false);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   assert.equal(await page.locator('#poem-title').textContent(), verse.title);
   assert.equal(await page.locator('#poem-body').textContent(), verse.lines.join('\n'));
+  const metadataTip = page.locator('#app-metadata-tip');
+  assert.ok(await metadataTip.isVisible());
+  assert.match(await metadataTip.textContent(), /图赋 App，可将诗词和标签（tags）写入图片元数据/);
+  assert.equal(await metadataTip.locator('a').first().getAttribute('href'), '/downloads.html');
+  assert.equal(await metadataTip.locator('a').last().getAttribute('href'), '/docs.html#app-save');
   assert.equal(await page.locator('#poem-card').evaluate((element) => element.naturalWidth), 1080);
   const downloadReady = page.waitForEvent('download');
   await page.locator('#download-card').click();

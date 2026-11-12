@@ -17,7 +17,8 @@ export function useGeneration(session) {
     imageStatus = ref('');
   const task = shallowRef(null),
     polling = ref(false),
-    generationStatus = ref(t('session.verifyFirst'));
+    // 登录与邮箱验证提示由 SessionGate 管理，此处仅维护创作任务状态。
+    generationStatus = ref('');
   const poem = shallowRef(null),
     expiry = ref(''),
     cardURL = ref(''),
@@ -52,7 +53,7 @@ export function useGeneration(session) {
     polling.value = false;
     clearResult();
     imageStatus.value = '';
-    generationStatus.value = t('session.verifyFirst');
+    generationStatus.value = '';
   }
   session.resets.add(reset);
   function setTask(id, attempt = null) {
@@ -113,13 +114,15 @@ export function useGeneration(session) {
         },
         onStatus: (status) => {
           task.value = { ...target, status: status.status };
-          generationStatus.value = t('create.' + status.status);
+          generationStatus.value = t(
+            (['queued', 'running'].includes(status.status) ? 'waiting.' : 'create.') + status.status,
+          );
         },
       });
       scope.assert(ticket);
       pollScope.assert(pollTicket);
       if (result.status === 'paused') {
-        generationStatus.value = t('create.paused');
+        generationStatus.value = t('waiting.paused');
         return;
       }
       task.value = { ...task.value, terminal: true };
@@ -150,7 +153,7 @@ export function useGeneration(session) {
         setTask(attempt.id, attempt);
       }
       if (!task.value.attempt) throw failure('create.recovered');
-      generationStatus.value = t('create.uploading');
+      generationStatus.value = t('waiting.uploading');
       const accepted = await request(ticket, '/generations', generationForm(task.value.attempt));
       if (accepted?.id !== task.value.id) throw failure('create.taskMismatch');
       await monitor(ticket);
@@ -158,7 +161,7 @@ export function useGeneration(session) {
   }
   function pause() {
     pollScope.reset();
-    generationStatus.value = t('create.paused');
+    generationStatus.value = t('waiting.paused');
   }
   function newTask() {
     if (!task.value?.terminal || busy.has('task') || busy.has('card')) return;

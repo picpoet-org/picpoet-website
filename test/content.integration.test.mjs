@@ -37,3 +37,12 @@ test('首页以诗意叙事引导下载，并保留费用、隐私与真实使�
   assert.match(docs, /分享图都不包含原照片/);
   assert.match(pricing, /免费软件不包含云端模型额度/);
 });
+
+test('首页首屏与页尾的下载按钮旁都有在线体验入口', async () => {
+  const home = await readPage('index.html');
+  for (const section of ['hero shell', 'closing shell']) {
+    const content = home.match(new RegExp(`<section class="${section}"[\\s\\S]*?</section>`))[0];
+    assert.match(content, /href="\/downloads.html"/);
+    assert.match(content, /href="\/create.html">在线体验<\/a>/);
+  }
+});
