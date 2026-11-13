@@ -2,7 +2,9 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
 import { createAPI, createScope, errorMessage } from '../../shared/create-core.mjs';
 import { useSite } from '../i18n/context.mjs';
 import { buildInvitationURL } from '../../shared/invitation.mjs';
+import { canUseAccount, hasAccountIdentity, isPhoneAccount, accountLabel } from '../../shared/account-identity.mjs';
 import deployment from '../../deployment.json';
+import { startSessionVisits } from '../session-visits.mjs';
 
 export function useSession() {
   const site = useSite();
@@ -15,7 +17,10 @@ export function useSession() {
     retrySession = ref(false),
     retryLogout = ref(false);
   const busy = reactive(new Set());
-  const verified = computed(() => user.value?.emailVerified === true);
+  // 业务可用资格独立于邮箱/手机号归属验证；旧组件的 verified 表示此资格。
+  const verified = computed(() => canUseAccount(user.value));
+  const phoneAccount = computed(() => isPhoneAccount(user.value));
+  const identityLabel = computed(() => accountLabel(user.value));
   const balance = ref(null);
   const invitationURL = computed(() =>
     buildInvitationURL(user.value?.id, balance.value?.referral?.invitationCode, deployment.websiteUrl),
@@ -26,6 +31,7 @@ export function useSession() {
   });
   const resets = new Set();
   const error = (value) => {
+    if (value?.status === 423) return t('phoneAuth.locked');
     const original = errorMessage(value);
     const entry = Object.entries(site.sourceErrors || messages.errors || {}).find(
       ([, text]) => text === original,
@@ -94,9 +100,10 @@ export function useSession() {
     const success = await action('session', status, async (ticket) => {
       const data = await request(ticket, '/session');
       if (data.authenticated) {
-        if (!data.user?.id || typeof data.user.email !== 'string') throw failure('session.invalid');
+        if (!hasAccountIdentity(data.user)) throw failure('session.invalid');
         if (user.value && user.value.id !== data.user.id) reset();
-        user.value = data.user;
+        // 仅续期时保持引用，避免前台恢复重复装载作品、订单或扰动当前创作。
+        if (JSON.stringify(user.value) !== JSON.stringify(data.user)) user.value = data.user;
       } else if (user.value) reset();
       status.value = user.value && !verified.value ? t('session.unverified') : '';
     });
@@ -122,12 +129,14 @@ export function useSession() {
   const pageShow = (event) => {
     if (event.persisted) location.reload();
   };
+  let stopVisits;
   onMounted(() => {
-    void loadSession();
+    stopVisits = startSessionVisits(loadSession);
     addEventListener('pagehide', pageHide);
     addEventListener('pageshow', pageShow);
   });
   onBeforeUnmount(() => {
+    stopVisits?.();
     reset();
     removeEventListener('pagehide', pageHide);
     removeEventListener('pageshow', pageShow);
@@ -139,6 +148,8 @@ export function useSession() {
     user,
     ready,
     verified,
+    phoneAccount,
+    identityLabel,
     balance,
     invitationURL,
     grantedCredits,

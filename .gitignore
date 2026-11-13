@@ -6,3 +6,4 @@ public/
 test-results/
 playwright-report/
 .project-translator/
+.local/

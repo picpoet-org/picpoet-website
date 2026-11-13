@@ -136,6 +136,17 @@
 .works-page {
   display: block;
 }
+.identity-switch {
+  margin-block: 1rem;
+}
+.phone-notice {
+  margin-block: 1rem;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+}
+.password-actions {
+  margin-block: 0.5rem;
+}
 .create-page .create-status.task-progress {
   display: flex;
   align-items: center;

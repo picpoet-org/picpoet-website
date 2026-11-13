@@ -3,5 +3,9 @@ node_modules
 public
 .env
 .env.*
+.local
+.build
+test-results
+playwright-report
 test
 docs

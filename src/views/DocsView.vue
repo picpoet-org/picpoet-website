@@ -208,8 +208,8 @@ const { t, href } = useSite();
               <dd>{{ t('content.docs.t109') }}</dd>
             </div>
           </dl>
-          <a class="text-link" :href="href('downloads.html#updates')"
-            >{{ t('content.docs.t110') }}<span aria-hidden="true">→</span></a
+          <a class="text-link" :href="href('downloads.html')"
+            >{{ t('content.downloads.t005') }}<span aria-hidden="true">→</span></a
           >
         </section>
       </div>

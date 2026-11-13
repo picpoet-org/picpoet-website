@@ -1,4 +1,4 @@
-// 从 website/ 执行：node test/downloads.browser.integration.mjs
+// 从 picpoet-website/ 执行：node test/downloads.browser.integration.mjs
 // 使用 Node.js 22+ 与本机 Chrome；先启动已有 public 预览服务。
 // 可设置 BASE_URL、CHROME_BIN、BROWSER_REPORT_DIR，报告目录用于保存截图与 JSON。
 // 通过 CDP 管道与鼠标输入验证真实页面，测试清单仅在浏览器请求层注入。
@@ -199,6 +199,7 @@ try {
               id: card.dataset.platform,
               version: card.querySelector('.release-version')?.textContent,
               date: card.querySelector('.release-date')?.textContent,
+              notes: [...card.querySelectorAll('.release-notes li')].map(item => item.textContent),
               unavailable: card.querySelector('.release-unavailable')?.textContent,
               artifacts: [...card.querySelectorAll('.artifact')].map(artifact => {
                 const code = artifact.querySelector('code');
@@ -225,6 +226,7 @@ try {
           for (const platform of manifest.platforms) {
             const card = state.cards.find((item) => item.id === platform.id);
             assert.ok(card, `${label} 平台卡片 ${platform.id}`);
+            assert.deepEqual(card.notes, platform.notes, `${label} ${platform.id} 更新说明与清单一致`);
             assert.equal(card.artifacts.length, platform.artifacts.length);
             if (!platform.artifacts.length) {
               assert.equal(card.unavailable, '暂未发布');

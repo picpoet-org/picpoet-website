@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { detectPlatform, formatSize, loadManifest, validateManifest } from '../shared/releases.mjs';
+import { detectPlatform, formatSize, loadManifest, releaseCopy, validateManifest } from '../shared/releases.mjs';
 import { androidVersionCode, deployment, validatePublishedManifest } from '../scripts/deployment-config.mjs';
 
 const base = JSON.parse(await readFile(new URL('../releases/stable.json', import.meta.url), 'utf8'));
@@ -46,6 +46,41 @@ test('空发布清单支持如实呈现六个平台的待发布状态', () => {
   }
   assert.equal(validateManifest(unpublished), unpublished);
   assert.ok(unpublished.platforms.every((platform) => platform.artifacts.length === 0));
+});
+
+test('官网稳定清单经 HTTP 交付已发布产物与其余平台状态', async (t) => {
+  assert.equal(validatePublishedManifest(base), base);
+  const server = createServer((_request, response) => {
+    response.writeHead(200, { 'Content-Type': 'application/json' });
+    response.end(JSON.stringify(base));
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  const result = await loadManifest(`http://127.0.0.1:${server.address().port}/releases/stable.json`);
+  assert.deepEqual(result, base);
+  const released = result.platforms.filter((platform) => platform.artifacts.length);
+  assert.ok(released.length > 0);
+  for (const platform of released) {
+    assert.equal(platform.versionCode, androidVersionCode(platform.versionName));
+    assert.ok(platform.notes.length > 0);
+    const source = { system: platform.minimumSystem, notes: platform.notes };
+    const translation = { system: 'Translated system requirement', notes: platform.notes.map((_, index) => `Release note ${index + 1}`) };
+    assert.deepEqual(releaseCopy(platform, source, translation), translation);
+    const nextRelease = { ...platform, notes: [...platform.notes, '新增发布能力说明'] };
+    assert.deepEqual(releaseCopy(nextRelease, source, translation), {
+      system: nextRelease.minimumSystem, notes: nextRelease.notes,
+    });
+    const nextSystem = { ...platform, minimumSystem: `${platform.minimumSystem}；新增系统说明` };
+    assert.deepEqual(releaseCopy(nextSystem, source, translation), {
+      system: nextSystem.minimumSystem, notes: nextSystem.notes,
+    });
+  }
+  for (const platform of result.platforms.filter((entry) => !entry.artifacts.length)) {
+    assert.equal(platform.versionName, null);
+    assert.equal(platform.versionCode, null);
+    assert.equal(platform.publishedAt, null);
+    assert.deepEqual(platform.notes, []);
+  }
 });
 
 test('设备识别为下载页推荐对应平台，同时保留完整平台列表', () => {

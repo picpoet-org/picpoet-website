@@ -17,7 +17,10 @@ ENV NODE_ENV=production \
     WEB_PORT=18090
 COPY --from=build /src/package.json ./
 COPY --from=build /src/scripts/web-server.mjs /src/scripts/web-session.mjs scripts/
+COPY --from=build /src/shared/account-identity.mjs /src/shared/invitation.mjs /src/shared/user-navigation.mjs shared/
 COPY --from=build /src/public public
+RUN mkdir -p .local/web && chown -R node:node .local && chmod 700 .local .local/web
+VOLUME ["/app/.local/web"]
 USER node
 EXPOSE 18090
 CMD ["node", "scripts/web-server.mjs"]

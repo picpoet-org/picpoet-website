@@ -93,46 +93,18 @@ const { busy, status, refresh, recommended } = useDownloads();
         </article>
       </div>
     </section>
-    <div class="content-grid download-guide">
-      <aside class="side-nav">
-        <nav :aria-label="t('content.downloads.t040')">
-          <a :href="href('#updates')">{{ t('content.downloads.t023') }}</a><a :href="href('#install')">{{
-            t('content.downloads.t024')
-          }}</a
-          ><a :href="href('#first-use')">{{ t('content.downloads.t025') }}</a>
-        </nav>
-      </aside>
-      <div class="content">
-        <section id="updates">
-          <h2>{{ t('content.downloads.t026') }}</h2>
-          <p>{{ t('content.downloads.t027') }}</p>
-          <p>{{ t('content.downloads.t028') }}</p>
-        </section>
-        <section id="install">
-          <h2>{{ t('content.downloads.t029') }}</h2>
-          <ol class="steps">
-            <li>{{ t('content.downloads.t030') }}</li>
-            <li>{{ t('content.downloads.t031') }}</li>
-            <li>{{ t('content.downloads.t032') }}</li>
-          </ol>
-          <div class="notice">
-            <h3>{{ t('content.downloads.t033') }}</h3>
-            <p>{{ t('content.downloads.t034') }}</p>
-          </div>
-          <p>{{ t('content.downloads.t035') }}</p>
-        </section>
-        <section id="first-use">
-          <h2>{{ t('content.downloads.t036') }}</h2>
-          <p>{{ t('content.downloads.t037') }}</p>
-          <div class="actions">
-            <a class="button secondary" :href="href('docs.html#app')">{{ t('content.downloads.t038') }}</a><a
-              class="text-link"
-              :href="href('docs.html#website')"
-              >{{ t('content.downloads.t039') }}<span aria-hidden="true">→</span></a
-            >
-          </div>
-        </section>
-      </div>
+    <div class="content download-guide">
+      <section id="first-use">
+        <h2>{{ t('content.downloads.t036') }}</h2>
+        <p>{{ t('content.downloads.t037') }}</p>
+        <div class="actions">
+          <a class="button secondary" :href="href('docs.html#app')">{{ t('content.downloads.t038') }}</a><a
+            class="text-link"
+            :href="href('docs.html#website')"
+            >{{ t('content.downloads.t039') }}<span aria-hidden="true">→</span></a
+          >
+        </div>
+      </section>
     </div>
   </main>
 </template>

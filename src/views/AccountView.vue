@@ -47,9 +47,9 @@ const {
       </div>
       <div id="account-summary" :hidden="!user">
         <div class="account-identity">
-          <p id="account-name">{{ user?.email }}</p>
+          <p id="account-name">{{ session.identityLabel.value }}</p>
           <span id="account-verification" class="account-badge">{{
-            t(verified ? 'session.verified' : 'session.pending')
+            t(session.phoneAccount.value ? 'phoneAuth.accountBadge' : verified ? 'session.verified' : 'session.pending')
           }}</span>
         </div>
         <dl id="balance" class="account-balance" :aria-label="t('account.remaining')">

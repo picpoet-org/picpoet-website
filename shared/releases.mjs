@@ -81,3 +81,14 @@ export function detectPlatform(userAgent) {
 export function formatSize(bytes) {
   return `${(bytes / 1024 / 1024).toLocaleString('zh-CN', { maximumFractionDigits: 1 })} MiB`;
 }
+
+// 发布事实以实时清单为准；翻译仅对应内容仍一致的文案源。
+export function releaseCopy(platform, source, translation) {
+  const matchesSource = platform && platform.minimumSystem === source?.system &&
+    JSON.stringify(platform.notes) === JSON.stringify(source?.notes);
+  if (matchesSource && text(translation?.system) && Array.isArray(translation?.notes) &&
+      translation.notes.length === platform.notes.length && translation.notes.every(text)) {
+    return { system: translation.system, notes: translation.notes };
+  }
+  return { system: platform?.minimumSystem ?? '', notes: platform?.notes ?? [] };
+}

@@ -4,12 +4,16 @@ import { readFile, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { invitationRedirect } from '../shared/invitation.mjs';
+import { normalizePhone, hasAccountIdentity } from '../shared/account-identity.mjs';
 import { createRateLimiter, createSessionStore } from './web-session.mjs';
 
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const COOKIE = 'picpoet_web_session';
 const MiB = 1024 * 1024;
+const DAY_MS = 24 * 60 * 60_000;
+const SESSION_TTL_MS = 7 * DAY_MS;
+const defaultSessionFile = fileURLToPath(new URL('../.local/web/sessions.sqlite', import.meta.url));
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
 
 function number(value, fallback, max) {
@@ -61,7 +65,8 @@ export function readConfig(env = process.env) {
     publicHosts: Object.freeze(publicOriginList.map(origin => new URL(origin).host)),
     secureCookie: origins.every(origin => origin.protocol === 'https:'),
     dashboardApiUrl: dashboard.href.replace(/\/$/, ''), picpoetApiUrl: picpoet.href.replace(/\/$/, ''),
-    sessionTtlMs: number(env.WEB_SESSION_TTL_MS, 30 * 60_000, 24 * 60 * 60_000),
+    sessionTtlMs: Math.max(SESSION_TTL_MS, number(env.WEB_SESSION_TTL_MS, SESSION_TTL_MS, 30 * DAY_MS)),
+    sessionFile: path.resolve(env.WEB_SESSION_FILE || defaultSessionFile),
     maxSessions: number(env.WEB_MAX_SESSIONS, 1000, 100_000),
     jsonBytes: number(env.WEB_MAX_JSON_BYTES, 64 * 1024, MiB),
     imageBytes: number(env.WEB_MAX_IMAGE_BYTES, 10 * MiB, 25 * MiB),
@@ -81,14 +86,14 @@ const fail = (status, code, message) => { throw new WebError(status, code, messa
 const bad = () => fail(400, 'BAD_REQUEST', '请求参数无效');
 const unauthorized = () => fail(401, 'UNAUTHENTICATED', '请重新登录');
 function userView(user) {
-  if (!user || typeof user.id !== 'string' || typeof user.email !== 'string') fail(502, 'UPSTREAM_ERROR', '账户服务响应无效');
-  return Object.fromEntries(['id', 'email', 'username', 'avatarUrl', 'status', 'emailVerified', 'role', 'createdAt', 'updatedAt']
+  if (!hasAccountIdentity(user)) fail(502, 'UPSTREAM_ERROR', '账户服务响应无效');
+  return Object.fromEntries(['id', 'email', 'phone', 'authMethod', 'username', 'avatarUrl', 'status', 'emailVerified', 'role', 'createdAt', 'updatedAt']
     .filter(key => ['string', 'boolean'].includes(typeof user[key]) || user[key] === null).map(key => [key, user[key]]));
 }
 function safeJSON(value, secrets = []) {
   // 成功载荷保持业务结构；认证字段和已知秘密在任意嵌套层均不交付浏览器。
   return JSON.stringify(value, (key, item) => {
-    if (/^(access_?token|refresh_?token|credential|credentials|authorization|password|passwordHash|claimToken|claimHash)$/i.test(key)) return undefined;
+    if (/^(access_?token|refresh_?token|credential|credentials|authorization|password|confirmPassword|passwordHash|claimToken|claimHash)$/i.test(key)) return undefined;
     if (typeof item === 'string') for (const secret of secrets) {
       if (secret && item.includes(secret)) item = item.split(secret).join('[redacted]');
     }
@@ -208,7 +213,7 @@ function historyQuery(method, pathname, raw) {
 
 /** 返回未监听的 http.Server。测试可注入 fetch、now、配置和静态目录；无 .env、无共享服务 token。 */
 export function createWebServer({ config: cfg = config, fetch: fetchImpl = globalThis.fetch, now = Date.now, publicDirectory = publicDir } = {}) {
-  const sessions = createSessionStore({ now, ttlMs: cfg.sessionTtlMs, maxSessions: cfg.maxSessions });
+  const sessions = createSessionStore({ now, ttlMs: cfg.sessionTtlMs, maxSessions: cfg.maxSessions, filename: cfg.sessionFile });
   const limiter = createRateLimiter({ now, windowMs: cfg.rateWindowMs, maxKeys: cfg.maxRateKeys });
   const cleanup = setInterval(() => { sessions.sweep(); limiter.sweep(); }, Math.min(cfg.sessionTtlMs, 60_000));
   cleanup.unref();
@@ -249,6 +254,7 @@ export function createWebServer({ config: cfg = config, fetch: fetchImpl = globa
   function accepted(result) {
     if (result.status >= 400) {
       const status = result.status;
+      if (status === 423) fail(423, 'ACCOUNT_LOCKED', '密码连续错误超过 50 次，账号已锁定。请在本次锁定的一小时结束后重试。');
       fail(status, 'UPSTREAM_REJECTED', status === 401 ? '登录信息无效' : status === 403 ? '操作未获授权，请检查邮箱验证或账户状态' : status === 429 ? '操作频繁，请稍后重试' : '上游未完成请求，请检查输入或稍后重试');
     }
     return result;
@@ -290,6 +296,8 @@ export function createWebServer({ config: cfg = config, fetch: fetchImpl = globa
     session.accessToken = data.accessToken;
     session.refreshToken = data.refreshToken;
     session.accessExpiresAt = now() + data.expiresIn * 1000;
+    // 旧后端未提供 refresh 时长时，每次页面访问都轮换，避免只延长浏览器端。
+    session.refreshExpiresAt = Number.isFinite(data.refreshExpiresIn) && data.refreshExpiresIn > 0 ? now() + data.refreshExpiresIn * 1000 : null;
     session.tokenVersion = (session.tokenVersion || 0) + 1;
   }
   async function refresh(session) {
@@ -300,13 +308,27 @@ export function createWebServer({ config: cfg = config, fetch: fetchImpl = globa
           const result = accepted(await upstream(cfg.dashboardApiUrl, '/picpoet/auth/refresh', 'POST', { refreshToken: session.refreshToken }));
           tokens(session, result.data);
           live(session);
-        } catch {
-          sessions.remove(session.id);
-          unauthorized();
+          if (session.id && !sessions.save(session)) unauthorized();
+        } catch (error) {
+          // 网络或上游短暂故障保留登录，只有认证失效才移除持久会话。
+          if (error.status === 401 || error.status === 403) {
+            sessions.remove(session.id);
+            unauthorized();
+          }
+          throw error;
         }
       })().finally(() => { session.refreshPromise = null; });
     }
     await session.refreshPromise;
+  }
+  async function visit(session, res) {
+    live(session);
+    if (session.refreshPromise || session.accessExpiresAt <= now() + 5000 || !session.refreshExpiresAt || session.refreshExpiresAt <= now() + cfg.sessionTtlMs + 5000) {
+      await refresh(session);
+    }
+    live(session);
+    if (!sessions.save(session, true)) unauthorized();
+    setCookie(res, cfg, session.id);
   }
   async function jwt(session, suffix, method, body) {
     live(session);
@@ -336,7 +358,11 @@ export function createWebServer({ config: cfg = config, fetch: fetchImpl = globa
     let session = sessions.get(id);
     if (id && !session) setCookie(res, cfg);
     const { kind } = route;
-    if (kind === 'session') { send(res, 200, session ? { authenticated: true, user: session.user } : { authenticated: false }); return; }
+    if (kind === 'session') {
+      if (session) await visit(session, res);
+      send(res, 200, session ? { authenticated: true, user: session.user } : { authenticated: false });
+      return;
+    }
     const anonymous = ['login', 'register', 'verify-email', 'resend-otp', 'plans', 'logout'].includes(kind);
     if (!anonymous && !session) unauthorized();
     let result;
@@ -346,12 +372,25 @@ export function createWebServer({ config: cfg = config, fetch: fetchImpl = globa
       // 不信任 X-Forwarded-For；反向代理部署另行配置边缘限速。
       if (!limiter.take(`${group}:ip`, req.socket.remoteAddress || 'unknown', limit)) fail(429, 'RATE_LIMITED', '操作频繁，请稍后重试');
       const body = await jsonBody(req, cfg);
-      fields(body, ['email', kind === 'verify-email' ? 'otp' : kind === 'resend-otp' ? 'purpose' : 'password'], kind === 'register' ? ['invitationCode'] : []);
-      body.email = body.email.trim().toLowerCase();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email) || body.email.length > 254) bad();
-      if (kind === 'register' && body.password.length < 8) bad();
+      const phoneAuth = ['login', 'register'].includes(kind) && Object.hasOwn(body, 'phone');
+      const identity = phoneAuth ? 'phone' : 'email';
+      const required = [identity, kind === 'verify-email' ? 'otp' : kind === 'resend-otp' ? 'purpose' : 'password'];
+      if (phoneAuth && kind === 'register') required.push('confirmPassword');
+      fields(body, required, kind === 'register' ? ['invitationCode'] : []);
+      if (phoneAuth) {
+        body.phone = normalizePhone(body.phone);
+        if (!body.phone) bad();
+      } else {
+        body.email = body.email.trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email) || body.email.length > 254) bad();
+      }
+      if (kind === 'register') {
+        if ([...body.password].length < (phoneAuth ? 6 : 8) || Buffer.byteLength(body.password, 'utf8') > 72) bad();
+        if (phoneAuth && body.password !== body.confirmPassword) bad();
+        if (body.invitationCode?.length > 40) bad();
+      }
       if (kind === 'resend-otp' && !['register', 'verify_email', 'reset_password'].includes(body.purpose)) bad();
-      if (!limiter.take(`${group}:email`, body.email, limit)) fail(429, 'RATE_LIMITED', '操作频繁，请稍后重试');
+      if (!limiter.take(`${group}:${identity}`, body[identity], limit)) fail(429, 'RATE_LIMITED', '操作频繁，请稍后重试');
       result = accepted(await upstream(cfg.dashboardApiUrl, `/picpoet/auth/${kind}`, 'POST', body));
       if (kind === 'login') {
         const pending = { active: true, expiresAt: now() + cfg.sessionTtlMs };
@@ -480,7 +519,7 @@ export function createWebServer({ config: cfg = config, fetch: fetchImpl = globa
   server.headersTimeout = Math.min(cfg.bodyTimeoutMs, 10_000);
   server.keepAliveTimeout = 5000;
   server.maxHeadersCount = 60;
-  server.on('close', () => { clearInterval(cleanup); sessions.clear(); limiter.clear(); });
+  server.on('close', () => { clearInterval(cleanup); sessions.close(); limiter.clear(); });
   return server;
 }
 

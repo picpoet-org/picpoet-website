@@ -24,8 +24,9 @@ export function useGeneration(session) {
     cardURL = ref(''),
     cardStatus = ref(''),
     canShare = ref(false);
-  const copyStatus = ref(''), copyFallback = ref(false);
-  const poemText = computed(() => poem.value ? poemPlainText(poem.value) : '');
+  const copyStatus = ref(''),
+    copyFallback = ref(false);
+  const poemText = computed(() => (poem.value ? poemPlainText(poem.value) : ''));
   const pollScope = createScope();
   let cardBlob = null,
     imageVersion = 0;
@@ -119,7 +120,9 @@ export function useGeneration(session) {
         },
         onStatus: (status) => {
           task.value = { ...target, status: status.status };
-          generationStatus.value = t((['queued', 'running'].includes(status.status) ? 'waiting.' : 'create.') + status.status);
+          generationStatus.value = t(
+            (['queued', 'running'].includes(status.status) ? 'waiting.' : 'create.') + status.status,
+          );
         },
       });
       scope.assert(ticket);

@@ -12,13 +12,13 @@ Vue 3 + Vite 网站，维护产品说明、下载、在线创作与独立 Node B
 | Android 更新清单 | `https://picpoet.jqknono.com/releases/stable.json` |
 | 安装包 CDN 根路径 | `https://downloads.nullprivate.com/picpoet/release` |
 
-安装包路径约定为 `<CDN 根路径>/<平台>/<版本>/<文件名>`。本次 Android 首版为 **0.1.0**，版本仅在客户端 `pubspec.yaml` 维护，目标地址为：
+共享 R2 下载桶按项目划分顶层前缀，PicPoet 独占 `picpoet/`，公开项目根为 `https://downloads.nullprivate.com/picpoet/`；安装包路径约定为 `<CDN 根路径>/<平台>/<版本>/<文件名>`。当前稳定版为 **0.1.4**，提供 Android ARM64、Linux x64 与 Windows x64，版本源仍在客户端 `pubspec.yaml`。例如：
 
 ```text
-https://downloads.nullprivate.com/picpoet/release/android/0.1.0/picpoet-0.1.0-arm64-v8a.apk
+https://downloads.nullprivate.com/picpoet/release/android/0.1.4/picpoet-0.1.4-arm64-v8a.apk
 ```
 
-首版 Android 正式签名包已上传该路径，完整公开回下载的大小与 SHA-256 均与本地产物一致。`npm run releases:check` 会校验所有已发布安装包均位于指定 CDN 的平台／版本目录，并校验 Android 系统版本码由版本自动推导。网站部署与客户端属于独立仓库，客户端对应配置位于工作区 `../picpoet-app/android/packaging/release-config.json`；调整公开地址时同步两侧。
+三平台产物与校验文件已由 [0.1.4 标签流水线](https://github.com/picpoet-org/picpoet-app/actions/runs/43188931253) 上传 R2，公开回下载的大小与 SHA-256 均与发布清单一致。`npm run releases:check` 会校验所有已发布安装包均位于指定 CDN 的平台／版本目录，并校验 Android 系统版本码由版本自动推导。网站部署与客户端属于独立仓库，客户端对应配置位于工作区 `../picpoet-app/android/packaging/release-config.json`；调整公开地址时同步两侧。
 
 ## 本地预览
 
@@ -68,15 +68,27 @@ node test/vue.browser.integration.mjs --all-locales
 - `/create.html`：选图、在线创作、纯诗词分享 PNG，仅展示轻量次数提示
 - `/works.html`：我的作品，历史缩略图、详情、下载和删除
 - `/account.html`：个人中心，账户信息、剩余次数、套餐购买与订单
-- `/login.html`：独立登录、注册和邮箱验证；成功后回到原目标页
+- `/login.html`：手机号或邮箱登录、注册；邮箱方式保留验证流程，成功后回到原目标页
 
-主导航统一为「首页 / 在线创作 / 我的作品 / 下载客户端 / 个人中心」。公共介绍页面不依赖账号 API；使用说明、定价和下载继续保留。用户页面共享 HttpOnly 会话，各页仅加载自身需要的业务数据。登录 `returnTo` 只允许已知站内页面及指定锚点，不接受外站 URL；跨页不会保存密码或业务凭证到浏览器存储。
+主导航统一为「首页 / 在线创作 / 我的作品 / 下载客户端 / 个人中心」。公共介绍页面可独立浏览，并在后台尝试续期已有会话；账号服务暂不可用不影响公开内容。用户页面共享 HttpOnly 会话，各页仅加载自身需要的业务数据。登录 `returnTo` 只允许已知站内页面及指定锚点，不接受外站 URL；跨页不会保存密码或业务凭证到浏览器存储。
 
 创作中的图片与尚未下载的分享图仍只在当前页面内存；离开或切换语言前请保存作品，进行中的服务端任务可返回创作页恢复。历史作品在独立作品页查看。浏览器正向测试直接验证预渲染的真实 Vue 页面及登录回跳，不维护另一套测试专用业务页面。
 
 创作等待区展示一条带轻呼吸圆点的进度提示与公版诗句，每 3 秒用约 450ms 的淡入/轻移过渡切换，按最长诗句保留高度。悬停、键盘聚焦、页面进入后台时停留当前诗句；启用“减少动态效果”时，诗句和进度圆点保持静态。键盘/读屏用户可访问暂停控制，普通界面保持简洁。暂停自动更新与任务编号收纳在“查看创作详情”，暂停只影响本页查询，不取消服务端创作。原有查询次数上限保持不变。
 
 创作完成后仅显示分享图，不重复展示一份正文；下载 PNG 旁可“拷贝诗词”（标题、词牌、正文），并保留读屏文本。剪贴板不可用时提供可选中的文字；绘图失败时正文仍可阅读与复制。“重绘分享图”入口已移除，历史作品可重新导出。
+
+### 手机号账号与登录锁定
+
+登录页可切换“大陆手机号 / 邮箱”。手机号按 `1[3-9][0-9]{9}` 校验，接受 `+86` / `0086` / `86` 前缀并统一保存为 11 位；只校验格式，不核验号码归属。注册时两次输入相同密码，至少 6 个字符，无大小写或符号组合要求；密码支持粘贴、密码管理器和显示/隐藏，继承 bcrypt 最多 72 字节边界。邮箱密码继续至少 8 位并验证邮箱。
+
+手机号注册直接创建账户，不发送短信或邮件；成功后用刚设置的密码登录。**手机号账号忘记密码无法找回**，页面注册前明确告知。手机号不会写成虚构邮箱，也不会冒充 `emailVerified=true`；服务端以 `authMethod=phone` 签发认证信息，网站显示“手机号账户 · 未核验归属”，业务资格与联系方式验证分开。
+
+所有账号的密码登录共用服务端连续失败计数：前 50 次未触发账号锁，第 51 次锁定 1 小时。锁中包括正确密码在内的新密码登录均返回 `423 ACCOUNT_LOCKED`，重复请求不延长锁定；成功登录或锁定到期后重新计数。状态持久化在 Dashboard 数据库，两个认证入口共享，刷新网页或重启服务不能清除。已登录会话的 refresh 不属于新密码登录，继续工作且不清计数。BFF 原有按 IP/账号的请求限流独立保留，可能先返回 429，不能等同账号锁定。
+
+网站 BFF 白名单接受 `{phone,password,confirmPassword,invitationCode?}` 注册及 `{phone,password}` 登录；邮箱请求保持兼容。确认密码与认证凭证不会进入浏览器响应或持久存储，锁定错误使用固定文案，不透传上游错误正文。手机注册继续支持邀请奖励。
+
+上线需升级 Dashboard 并应用 `000014`（保留已有 `000013`），再重启网站 BFF。SQLite 空库与既有 12/13 版本自动升级到 14，测试使用临时数据库；PostgreSQL 的行锁、实际迁移与线上验收需另行执行。规则详见 [Dashboard 手机号认证契约](../../user-dashboard/docs/phone-auth.md)。本次未迁移真实数据库、未重启联调栈、未修改 Flutter 客户端。
 
 ### 分享邀请与获赠次数
 
@@ -106,7 +118,7 @@ DASHBOARD_API_URL=http://127.0.0.1:8080/api/v1 \
 PICPOET_API_URL=http://127.0.0.1:8081/v1 npm run dev:web
 ```
 
-打开 <http://127.0.0.1:18090/create.html>。此地址的 Host/Origin 必须与 `WEB_PUBLIC_ORIGIN` 一致（默认 `http://127.0.0.1:18090`），不能混用 localhost。需要前端热更新时另运行 `npm run dev`，使用 <http://127.0.0.1:8080/create.html>；开发代理将同源请求转给 BFF，令牌继续留在 BFF 内存。
+打开 <http://127.0.0.1:18090/create.html>。此地址的 Host/Origin 必须与 `WEB_PUBLIC_ORIGIN` 一致（默认 `http://127.0.0.1:18090`），不能混用 localhost。需要前端热更新时另运行 `npm run dev`，使用 <http://127.0.0.1:8080/create.html>；开发代理将同源请求转给 BFF，令牌仅在 BFF 服务端保管。
 
 一键启动前后端联调（推荐）：
 
@@ -136,8 +148,10 @@ npm run dev:web:official
 排查连接时，Dashboard `/health` 应为 200、`/api/v1/picpoet/plans` 应返回套餐数组，Picpoet `/healthz` 应为 204；再检查网页 `/web-api/plans`。仅 `/web-api/session` 返回 200 并不能证明上游连通。真实图片生成会调用模型并消耗相应次数，健康检查与登录验收不代表模型生成已通过。
 
 - `scripts/web-server.mjs` 同时托管 `public/` 和固定 `/web-api` 同源代理；只用用户自己的 JWT / 业务凭证，不需要模型、Dashboard 内部或 payments 服务密钥。
-- 账户令牌只在服务端内存中保管，浏览器仅持有 HttpOnly、SameSite=Strict Cookie。HTTPS 时启用 Secure；生产环境要求设置 `NODE_ENV=production` 和 HTTPS `WEB_PUBLIC_ORIGIN`。
-- 会话默认 30 分钟固定有效期，进程重启后失效，最多 1000 个；通过 `WEB_SESSION_TTL_MS`、`WEB_MAX_SESSIONS` 调整。首次登录按需新增业务凭证，不撤销其他设备凭证。上游尚无单凭证撤销接口，退出只撤销登录刷新凭证并清除本地会话。
+- 账户令牌仅在服务端保管，浏览器持有 HttpOnly、SameSite=Strict 的持久 Cookie，不向 JavaScript/localStorage 交付 JWT、refresh 或业务凭证。HTTPS 时启用 Secure；生产环境要求设置 `NODE_ENV=production` 和 HTTPS `WEB_PUBLIC_ORIGIN`。
+- 会话默认 **7 天滑动有效期**：访问任意页面或页面重新回到前台时，`/web-api/session` 同步将 Cookie 与服务端截止时间延长到此次访问后 7 天。每天访问可持续保持登录；连续 7 天未访问则正常到期。相邻 focus/visibility 事件一分钟内合并，业务轮询不单独续期。`WEB_SESSION_TTL_MS` 可延长到最多 30 天，低于 7 天的旧配置自动提升为 7 天；容量 `WEB_MAX_SESSIONS` 默认 1000 个。
+- 会话保存在 `WEB_SESSION_FILE`（默认本仓库 `.local/web/sessions.sqlite`），**BFF 重启后仍可恢复**。SQLite 只保存会话 ID 的 SHA-256 与 AES-256-GCM 加密载荷，密钥首次启动自动生成于同名 `.key`；两个文件权限均为 `0600`，默认目录为 `0700`，目录已加入 Git/镜像上下文忽略。临时测试使用独立目录并自动清理。
+- 首次登录按需新增业务凭证，不撤销其他设备凭证。退出会立即删除持久会话并撤销本设备最新刷新令牌；短暂网络故障保留会话供重试，确认认证失效才注销。上游尚无单业务凭证撤销接口。
 - 浏览器可选择最大 25 MiB 的原图，限制 4000 万像素；本地重编码缩至长边 2048px，压缩后上传仍最多 10 MiB，后端再次校验边界。`WEB_MAX_IMAGE_BYTES` 可降低服务端上传限制；增大不会改变前端限制。
 - `WEB_HOST` / `WEB_PORT` 默认为 `127.0.0.1` / `18090`；官方联调栈将 `WEB_HOST` 设为 `0.0.0.0`。`WEB_PUBLIC_ORIGIN` 仍可用；多 Origin 用逗号分隔的 `WEB_PUBLIC_ORIGINS`（例如 `http://127.0.0.1:18090,http://192.168.31.7:18090`）。上游超时 `WEB_UPSTREAM_TIMEOUT_MS` 默认 30000，读取请求超时 `WEB_BODY_TIMEOUT_MS` 默认 15000。
 - Dashboard 需开启 Picpoet、邮箱认证与购买功能，配置邮件、独立数据库、支付及可信结算信息；Picpoet Server 需具备官方生成、额度结算和模型服务能力。参考各仓库说明，不向前端配置服务密钥。
@@ -166,6 +180,16 @@ npm run dev:web:official
 
 停用时保留历史表与新版清理 worker，按服务端 README 处理归档/清理；普通停用不执行破坏性 down 迁移。永久删除清除服务端可读历史与任务结果副本，但数据库备份/WAL 的销毁受运维保留策略约束。本网站实现与自动测试不启动真实后端、不运行数据库迁移、不调用模型或支付。
 
+### 登录态持久化与续期配置
+
+Dashboard Picpoet 登录与 refresh 响应新增 `refreshExpiresIn`（秒）。访问 JWT 保持原短期配置（默认 15 分钟），refresh 每次轮换后重新计算有效期，Picpoet 至少保留 30 天，为网站七天滑动会话留出余量；通用 Dashboard 认证配置不变。BFF 在 JWT 将到期或 refresh 剩余时间不足完整会话窗口时串行轮换，并立即保存新令牌；旧后端未返回时长时，每次页面访问都刷新。要完整保证七天体验，应同步更新 Dashboard 与 BFF；旧后端若将 refresh 配置为短于七天，单独延长 Cookie 无法弥补。
+
+持久化文件路径相对进程工作目录解析；默认路径按脚本位置解析，不受启动目录影响。生产将数据库与 `.key` 同目录一起保留、备份和恢复，并保证仅运行服务的账户可读写。镜像的可写目录为 `/app/.local/web`，部署时将它挂载到持久卷；仅靠容器可写层不能保留重新创建容器后的登录态。密钥丢失时，从对应备份恢复文件对，或在明确接受全员重新登录后移走整组会话文件重新初始化。
+
+当前实现按**单 BFF 进程**运行，刷新串行锁在进程内；部署副本扩展时需迁移到带跨进程刷新锁的共享会话存储，不让多个进程并用同一本地会话库。首次从旧内存版更新时原内存会话无法迁移，需重新登录一次；之后常规重启可恢复。上游已轮换、BFF 尚未落盘的极短崩溃窗口仍可能要求该会话重新登录。
+
+本次代码和隔离测试不更新真实数据库或重启联调服务；此会话变更本身无需新增 Dashboard 数据库迁移。前一轮手机号能力仍需按其 `000014` 迁移要求处理。
+
 ### 验证与发布边界
 
 ```bash
@@ -175,9 +199,9 @@ npm run test:browser:create  # 需要 google-chrome；独立 HTTP 替身，不�
 npm run format:check
 ```
 
-Node 测试覆盖账户会话、原样 multipart、配额查询、任务重试、订单幂等、刷新并发、安全边界和预渲染交付。Vue Chrome 正向验收覆盖八页 hydration、375/768/900/1280px 导航布局、注册与 OTP、登录回跳、上传、生成、PNG 实际下载、历史详情与分享图、取消和确认删除、购买到账及退出；测试照片由 Canvas 合成，实际页面经独立 BFF 访问 HTTP 替身并启用正式 CSP。真实邮件、模型、沙箱付款和移动系统分享需另行验收；替身通过不等于真实上游联通。
+Node 测试覆盖账户会话、原样 multipart、配额查询、任务重试、订单幂等、刷新并发、安全边界和预渲染交付；会话通过推进时钟验证每日访问超过 35 天、七天闲置、进程重建、令牌加密落盘与退出清理。Vue Chrome 正向验收覆盖八页 hydration、375/768/900/1280px 导航布局、注册与 OTP、登录回跳、上传、生成、PNG 实际下载、历史详情与分享图、取消和确认删除、购买到账及退出，并检查持久 Cookie、公开页续期与前台恢复；测试照片由 Canvas 合成，实际页面经独立 BFF 访问 HTTP 替身并启用正式 CSP。真实邮件、模型、沙箱付款和移动系统分享需另行验收；替身通过不等于真实上游联通。
 
-**现有 ESA 纯静态发布不具备 BFF 能力。** 上线前须为同一官网 origin 的 `/web-api/*` 部署 Node 服务并配置同源路由，或由 Node 服务统一托管官网；反向代理保留公开 Host，API 不缓存。本文不执行线上变更。当前会话为单进程内存，扩容前应建设共享会话存储、可信代理限流和业务凭证生命周期管理；不要仅上传 `public/` 就宣称网页版可用。
+**现有 ESA 纯静态发布不具备 BFF 能力。** 上线前须为同一官网 origin 的 `/web-api/*` 部署 Node 服务并配置同源路由，或由 Node 服务统一托管官网；反向代理保留公开 Host，API 不缓存。本文不执行线上变更。当前会话为单进程加密持久化，扩容前应建设共享会话存储、可信代理限流和业务凭证生命周期管理；完整网页版交付同时包含 `public/`、BFF 与持久存储。
 
 字体位于 `assets/fonts/`，附 `OFL.txt`；使用本地 WOFF2 分片，按当次作品所需字形加载。生成分享图的底纹按界面语言使用“图赋”或“PicPoet”。
 
@@ -185,7 +209,7 @@ Node 测试覆盖账户会话、原样 multipart、配额查询、任务重试�
 
 ## 统一发布清单
 
-`releases/stable.json` 是网站下载页和 Android 升级检查的共同数据源。Android 已提供首版 `0.1.0` ARM64 安装包，其余平台保持“暂未发布”。`artifacts: []` 表示“暂未发布”；接入真实产物后自动展示版本、更新说明、架构、大小与 SHA-256。下载页会推荐可能匹配的系统，用户仍需核对架构。
+`releases/stable.json` 是网站下载页和 Android 升级检查的共同数据源。当前登记 **0.1.4** 的 Android ARM64、Linux x64 和 Windows x64 安装包；iOS、HarmonyOS 和 macOS 保持“暂未发布”。发布时间采用 GitHub Release 的 `2026-11-12T09:28:49Z`，产物信息来自已完成 R2/CDN 校验的 `stable.candidate.json`。`artifacts: []` 表示“暂未发布”；接入真实产物后自动展示版本、更新说明、架构、大小与 SHA-256。下载页会推荐可能匹配的系统，用户仍需核对架构。仓库及 `public/` 更新与生产部署分别验收。
 
 清单包含 `schemaVersion: 1` 和六项 `platforms`。每个平台包含：
 
@@ -193,12 +217,12 @@ Node 测试覆盖账户会话、原样 multipart、配额查询、任务重试�
 | --- | --- |
 | `id` / `name` | 平台标识与显示名称 |
 | `minimumSystem` | 已验收系统版本、发行版与架构要求 |
-| `versionName` / `versionCode` | 展示版本与机器读取的版本字段，Android 整数由版本自动生成，未发布时为 `null` |
+| `versionName` / `versionCode` | 展示版本与清单机器版本字段；Android 与实际包版本码一致，桌面采用同一语义版本映射作为清单排序值，未发布时为 `null` |
 | `publishedAt` | ISO 8601 发布日期，未发布时为 `null` |
 | `notes` | 更新说明字符串数组 |
 | `artifacts` | 安装包数组，未发布时为空 |
 
-Android 额外提供固定的 `applicationId: org.picpoet.app.android` 与 `minSdk`。每个安装包包含 `arch`、`format`、`url`、`sha256`、`sizeBytes`。`url` 使用不含凭据、可公开访问的 HTTPS CDN 绝对地址；安装包上传完成后再加入清单。`sha256` 是最终签名安装包的 64 位十六进制校验值，`sizeBytes` 为实际字节数。更新说明按纯文本展示。
+Android 额外提供固定的 `applicationId: org.picpoet.app.android` 与 `minSdk`。每个安装包包含 `arch`、`format`、`url`、`sha256`、`sizeBytes`。`url` 使用不含凭据、可公开访问的 HTTPS CDN 绝对地址；安装包上传完成后再加入清单。`sha256` 是最终签名安装包的 64 位十六进制校验值，`sizeBytes` 为实际字节数。更新说明按纯文本展示。系统要求与说明以实时清单为准，内容与翻译源一致时才使用对应译文，清单更新可直接展示最新事实。
 
 Android 当前已验证产物为 `arm64-v8a` / `apk`，仅在完整引擎及安装验收通过后声明其他 ABI。其余平台按最终构建填写实际架构；iOS 支持 `ipa`，HarmonyOS 支持 `hap` / `app`，Linux 支持 `tar.gz` / `AppImage` / `deb` / `rpm` / `zip`，macOS 支持 `dmg` / `pkg` / `zip`，Windows 支持 `exe` / `msi` / `zip`。包格式受支持表示页面可分发该格式，不代表当前已经生成该产物。
 
@@ -212,9 +236,9 @@ Android 当前已验证产物为 `arm64-v8a` / `apk`，仅在完整引擎及安�
 
 根路径和 `/pages/` 均同步相同清单；Vue 按兼容上下文读取站内 `/releases/stable.json` 或 `/pages/releases/stable.json`，无需硬编码官网域名。清单建议响应 `Content-Type: application/json`、`Cache-Control: no-cache` 或较短 TTL；安装包使用包含版本的稳定地址和正确 MIME 类型，可配置 `Content-Disposition: attachment`。清单请求不跟随重定向，使用最终可直接返回 JSON 的地址。
 
-Android 正式构建脚本自动注入 `--dart-define=PICPOET_UPDATE_MANIFEST_URL=https://picpoet.jqknono.com/releases/stable.json`。在客户端目录执行 `python3 android/packaging/init-signing.py` 完成本机交互式证书初始化并加密备份后，执行 `python3 android/packaging/build-release.py`。Flutter 源版本声明为 `version: 0.1.0`，Android 系统必需的整数字段按 `主版本 × 1000000 + 次版本 × 1000 + 修订版本` 自动生成，当前为 `1000`；界面与下载路径仅显示 `0.1.0`。次版本和修订版本各小于 1000，生成值为正整数且不超过 2100000000。每次正式发布递增语义版本即可。
+Android 正式构建脚本自动注入 `--dart-define=PICPOET_UPDATE_MANIFEST_URL=https://picpoet.jqknono.com/releases/stable.json`。在客户端目录执行 `python3 android/packaging/init-signing.py` 完成本机交互式证书初始化并加密备份后，执行 `python3 android/packaging/build-release.py`；已有签名配置时复用原签名。Flutter 源版本声明为 `version: 0.1.4` 时，Android 系统必需的整数字段按 `主版本 × 1000000 + 次版本 × 1000 + 修订版本` 自动生成，结果为 `1004`；界面与下载路径显示 `0.1.4`。次版本和修订版本各小于 1000，生成值为正整数且不超过 2100000000。桌面清单的 `1004` 是发布排序值，区别于可执行文件自身的平台版本资源。
 
-正式构建生成 `build/release/android/0.1.0/stable.candidate.json`，其中只有 Android 条目、发布时间为 `null`，供上传验证后补充实际日期与更新说明。把该条目合入本网站五平台清单，并保留其他平台状态；正式清单仍按完整契约校验。自动检查滚动 24 小时最多一次，手动检查可再次提示已忽略版本。用户确认后由浏览器下载、系统完成安装；同包名、同签名且新版本对应更高的系统版本码才能覆盖升级。首次从调试签名迁移到正式签名需另行处理数据备份。签名细节见客户端仓库的 `README.md`（工作区路径 `../picpoet-app/README.md`）。
+客户端本地正式构建生成 Android 单平台候选，标签发布流程在 GitHub Release 附加三平台聚合的 `stable.candidate.json`。候选的发布时间为 `null`；完整验证上传后补齐真实日期、更新说明及网站清单需要的版本字段，按平台 ID 合入本网站六平台清单，并保留其他平台状态。自动检查滚动 24 小时最多一次，手动检查可再次提示已忽略版本。用户确认后由浏览器下载、系统完成安装；同包名、同签名且新版本对应更高的系统版本码才能覆盖升级。首次从调试签名迁移到正式签名需另行处理数据备份。签名细节见客户端仓库的 `README.md`（工作区路径 `../picpoet-app/README.md`）。
 
 ## 验证
 
@@ -232,7 +256,7 @@ npm run public:sync
 node test/downloads.browser.integration.mjs
 ```
 
-该脚本通过 Chrome CDP 测试 375px／1280px、根路径／`/pages/`、模拟已发布／真实未发布状态，以及鼠标刷新、安装包直链和展开校验值；测试清单仅在浏览器请求中注入，不写入正式发布清单，也不访问示例 CDN。
+该脚本通过 Chrome CDP 测试 375px／1280px、根路径／`/pages/`、模拟全部已发布／全部未发布／真实清单混合状态，以及鼠标刷新、安装包直链和展开校验值；测试清单仅在浏览器请求中注入，不写入正式发布清单，也不访问示例 CDN。
 
 ## 品牌资产
 

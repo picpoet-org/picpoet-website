@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { once } from 'node:events';
-import { mkdtemp, mkdir, writeFile, symlink, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, symlink, rm, readFile, stat } from 'node:fs/promises';
+import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createWebServer, readConfig } from '../scripts/web-server.mjs';
@@ -13,7 +14,8 @@ const USER = { id: ID, email: 'poet@example.com', emailVerified: true };
 const ACCESS = 'access-secret-never-in-browser';
 const REFRESH = 'refresh-secret-never-in-browser';
 const CREDENTIAL = `picpoet-account-${'ab'.repeat(24)}`;
-const loginPayload = (extra = {}) => ({ user: USER, accessToken: ACCESS, refreshToken: REFRESH, expiresIn: 3600, credential: { value: CREDENTIAL }, ...extra });
+const DAY_MS = 24 * 60 * 60_000;
+const loginPayload = (extra = {}) => ({ user: USER, accessToken: ACCESS, refreshToken: REFRESH, expiresIn: 3600, refreshExpiresIn: 30 * 24 * 3600, credential: { value: CREDENTIAL }, ...extra });
 const json = (res, status, body) => { res.writeHead(status, { 'Content-Type': 'application/json', 'Set-Cookie': 'upstream_secret=do-not-forward' }); res.end(JSON.stringify(body)); };
 async function listen(server) { server.listen(0, '127.0.0.1'); await once(server, 'listening'); return `http://127.0.0.1:${server.address().port}`; }
 async function close(server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
@@ -32,7 +34,7 @@ async function fixture(t, options = {}) {
     if (call.url === '/api/v1/picpoet/auth/register') return json(res, 201, { user: USER, otpSent: true });
     if (call.url === '/api/v1/picpoet/auth/verify-email') return json(res, 200, { message: 'email verified' });
     if (call.url === '/api/v1/picpoet/auth/resend-otp') return json(res, 202, { message: 'if eligible, an email will be sent' });
-    if (call.url === '/api/v1/picpoet/auth/refresh') return json(res, 200, { accessToken: 'access-new', refreshToken: 'refresh-new', expiresIn: 3600 });
+    if (call.url === '/api/v1/picpoet/auth/refresh') return json(res, 200, { accessToken: 'access-new', refreshToken: 'refresh-new', expiresIn: 3600, refreshExpiresIn: 30 * 24 * 3600 });
     if (call.url === '/api/v1/picpoet/auth/logout') return json(res, 200, { message: 'logged out' });
     if (call.url === '/api/v1/picpoet/credentials/rotate') return json(res, 200, { value: CREDENTIAL });
     if (call.url === '/api/v1/picpoet/balance') return json(res, 200, { free: { remaining: 3 }, paid: { remaining: 20 } });
@@ -53,8 +55,9 @@ async function fixture(t, options = {}) {
   await writeFile(path.join(dir, 'public', 'app.js'), 'console.log("public");');
   await writeFile(path.join(dir, 'public', '.secret.txt'), 'private-data');
   let clock = 1_800_000_000_000;
-  const cfg = { ...readConfig({ DASHBOARD_API_URL: `${upstreamURL}/api/v1`, PICPOET_API_URL: upstreamURL }), ...options.config };
-  const server = createWebServer({ config: cfg, now: () => clock, publicDirectory: path.join(dir, 'public'), ...(options.fetch ? { fetch: options.fetch } : {}) });
+  const cfg = { ...readConfig({ DASHBOARD_API_URL: `${upstreamURL}/api/v1`, PICPOET_API_URL: upstreamURL }), sessionFile: path.join(dir, 'sessions.sqlite'), ...options.config };
+  const makeServer = () => createWebServer({ config: cfg, now: () => clock, publicDirectory: path.join(dir, 'public'), ...(options.fetch ? { fetch: options.fetch } : {}) });
+  let server = makeServer();
   const base = await listen(server);
   cfg.publicOrigin = base;
   cfg.publicOrigins = [base];
@@ -63,7 +66,7 @@ async function fixture(t, options = {}) {
   let cookie = '';
   async function request(url, { method = 'GET', body, headers = {}, authenticated = true, origin = base, raw = false, updateCookie = true } = {}) {
     const response = await fetch(base + url, {
-      method, headers: { ...(method !== 'GET' && origin !== null ? { Origin: origin } : {}), ...(authenticated && cookie ? { Cookie: cookie } : {}), ...(body !== undefined && !raw ? { 'Content-Type': 'application/json' } : {}), ...headers },
+      method, headers: { Connection: 'close', ...(method !== 'GET' && origin !== null ? { Origin: origin } : {}), ...(authenticated && cookie ? { Cookie: cookie } : {}), ...(body !== undefined && !raw ? { 'Content-Type': 'application/json' } : {}), ...headers },
       body: body === undefined ? undefined : raw ? body : JSON.stringify(body), redirect: 'manual',
     });
     const setCookie = response.headers.get('set-cookie');
@@ -71,7 +74,14 @@ async function fixture(t, options = {}) {
     const text = await response.text();
     return { status: response.status, headers: response.headers, text, data: text && response.headers.get('content-type')?.includes('application/json') ? JSON.parse(text) : null };
   }
-  return { request, calls, cfg, base, server, setHandler: value => { handler = value; }, advance: ms => { clock += ms; }, cookie: () => cookie,
+  async function restart() {
+    const port = server.address().port;
+    await close(server);
+    server = makeServer();
+    server.listen(port, '127.0.0.1');
+    await once(server, 'listening');
+  }
+  return { request, calls, cfg, base, server, restart, now: () => clock, setHandler: value => { handler = value; }, advance: ms => { clock += ms; }, cookie: () => cookie,
     login: () => request('/web-api/login', { method: 'POST', body: { email: USER.email, password: 'password123' } }) };
 }
 function upload(imageBytes = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) {
@@ -85,6 +95,136 @@ function upload(imageBytes = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) {
 function noSecrets(response) {
   for (const value of [ACCESS, REFRESH, CREDENTIAL, 'upstream_secret']) assert.ok(!`${response.text}\n${JSON.stringify([...response.headers])}`.includes(value));
 }
+
+test('七天登录态每日访问续期，跨越原到期日与上游三十天期限，重启和退出保持一致', async t => {
+  // 用户每天回来浏览，持久 Cookie、会话截止时间和上游轮换均跟随此次访问。
+  const refreshTokens = new Map();
+  let sequence = 0;
+  const f = await fixture(t, { handler(call, res) {
+    if (!/\/auth\/(login|refresh)$/.test(call.url)) return;
+    if (call.url.endsWith('/refresh')) {
+      assert.ok(refreshTokens.get(call.body.refreshToken) > f.now(), '使用尚未过期且未消费的刷新令牌');
+      refreshTokens.delete(call.body.refreshToken);
+    }
+    const refreshToken = `rotating-refresh-${++sequence}`;
+    refreshTokens.set(refreshToken, f.now() + 30 * DAY_MS);
+    json(res, 200, loginPayload({ refreshToken }));
+    return true;
+  } });
+  assert.equal(f.cfg.sessionTtlMs, 7 * DAY_MS);
+  assert.equal(readConfig({ WEB_SESSION_TTL_MS: '1800000' }).sessionTtlMs, 7 * DAY_MS, '旧配置保持至少七天');
+  assert.equal((await f.login()).status, 200);
+  const originalCookie = f.cookie();
+  for (let day = 1; day <= 35; day++) {
+    f.advance(DAY_MS);
+    if (day === 6 || day === 20) await f.restart();
+    const replies = await Promise.all(Array.from({ length: 4 }, () => f.request('/web-api/session')));
+    for (const reply of replies) {
+      assert.deepEqual(reply.data, { authenticated: true, user: USER });
+      assert.match(reply.headers.get('set-cookie'), /Max-Age=604800/);
+      noSecrets(reply);
+    }
+    assert.equal(sequence, day + 1, '多个标签页仅轮换一次短期 JWT');
+    assert.equal(f.cookie(), originalCookie);
+    const db = new DatabaseSync(f.cfg.sessionFile, { readOnly: true });
+    try { assert.equal(db.prepare('SELECT expires_at FROM web_sessions').get().expires_at, f.now() + 7 * DAY_MS); }
+    finally { db.close(); }
+  }
+  f.advance(6 * DAY_MS + 23 * 3600_000);
+  await f.restart();
+  assert.equal((await f.request('/web-api/session')).data.authenticated, true, '最后一次访问后接近七天仍可恢复');
+  assert.equal((await f.request('/web-api/balance')).status, 200);
+  assert.equal((await f.request('/web-api/logout', { method: 'POST' })).status, 200);
+  await f.restart();
+  assert.deepEqual((await f.request('/web-api/session', { headers: { Cookie: originalCookie } })).data, { authenticated: false });
+});
+
+test('加密持久会话保存刷新结果和订单幂等密钥，业务轮询保持闲置截止时间', async t => {
+  const f = await fixture(t);
+  await f.login();
+  const cookie = f.cookie();
+  const startedAt = f.now();
+  const orderBody = { planId: ID, requestId: OTHER, payMethod: 'alipay_page' };
+  await f.request('/web-api/orders', { method: 'POST', body: orderBody });
+  const claimToken = f.calls.at(-1).body.claimToken;
+  f.advance(6 * DAY_MS);
+  assert.equal((await f.request('/web-api/balance')).status, 200);
+  assert.equal((await f.request(`/web-api/generations/${ID}`)).status, 200);
+  await f.restart();
+  assert.equal((await f.request('/web-api/orders', { method: 'POST', body: orderBody })).status, 200);
+  assert.equal(f.calls.at(-1).body.claimToken, claimToken, '跨重启重复订单保留同一声明密钥');
+  assert.equal(f.calls.at(-1).headers.authorization, 'Bearer access-new', '重启加载已轮换的新令牌');
+  const stored = await readFile(f.cfg.sessionFile);
+  for (const value of [ACCESS, REFRESH, CREDENTIAL, 'refresh-new', 'access-new', claimToken, USER.email, cookie.split('=')[1]]) {
+    assert.equal(stored.includes(Buffer.from(value)), false, '磁盘无明文凭据或会话 ID');
+  }
+  for (const filename of [f.cfg.sessionFile, `${f.cfg.sessionFile}.key`]) assert.equal((await stat(filename)).mode & 0o777, 0o600);
+  const db = new DatabaseSync(f.cfg.sessionFile, { readOnly: true });
+  try { assert.equal(db.prepare('SELECT expires_at FROM web_sessions').get().expires_at, startedAt + 7 * DAY_MS); }
+  finally { db.close(); }
+  f.advance(DAY_MS + 1);
+  await f.restart();
+  assert.deepEqual((await f.request('/web-api/session')).data, { authenticated: false }, '闲置七天正常到期');
+  assert.equal((await f.login()).status, 200, '到期后重新登录进入新会话');
+});
+
+test('返回页面时续期后端刷新令牌，短暂离线重试恢复同一会话', async t => {
+  let online = false;
+  const f = await fixture(t, { handler(call, res) {
+    if (call.url.endsWith('/auth/login')) {
+      json(res, 200, loginPayload({ expiresIn: 60 * 24 * 3600, refreshExpiresIn: 8 * 24 * 3600 }));
+      return true;
+    }
+    if (call.url.endsWith('/auth/refresh') && !online) { json(res, 503, {}); return true; }
+  } });
+  await f.login();
+  const cookie = f.cookie();
+  f.advance(2 * DAY_MS);
+  assert.equal((await f.request('/web-api/session')).status, 503);
+  assert.equal(f.cookie(), cookie);
+  online = true;
+  assert.deepEqual((await f.request('/web-api/session')).data, { authenticated: true, user: USER });
+  assert.equal(f.calls.filter(call => call.url.endsWith('/auth/refresh')).length, 2, '长 JWT 也根据 refresh 余量主动续期');
+  f.advance(6 * DAY_MS);
+  await f.restart();
+  assert.equal((await f.request('/web-api/session')).data.authenticated, true);
+});
+
+test('手机号六位双密码注册、锁定提示后恢复登录与额度使用，保留真实身份字段', async t => {
+  const phoneUser = { id: OTHER, phone: '13812345678', email: '', emailVerified: false, authMethod: 'phone', status: 'active' };
+  let locked = true;
+  const f = await fixture(t, { handler(call, res) {
+    if (call.url.endsWith('/auth/register')) {
+      assert.deepEqual(call.body, { phone: phoneUser.phone, password: '123456', confirmPassword: '123456', invitationCode: 'inv_' + 'ab'.repeat(16) });
+      json(res, 201, { user: phoneUser, otpSent: false }); return true;
+    }
+    if (call.url.endsWith('/auth/login')) {
+      assert.equal(call.body.phone, phoneUser.phone);
+      json(res, locked ? 423 : 200, locked ? { code: 'ACCOUNT_LOCKED', message: ACCESS } : loginPayload({ user: phoneUser }));
+      return true;
+    }
+  } });
+  const registered = await f.request('/web-api/register', { method: 'POST', body: {
+    phone: '+8613812345678', password: '123456', confirmPassword: '123456', invitationCode: 'inv_' + 'ab'.repeat(16),
+  } });
+  assert.equal(registered.status, 201);
+  assert.deepEqual(registered.data, { user: phoneUser, otpSent: false });
+  const login = () => f.request('/web-api/login', { method: 'POST', body: { phone: '008613812345678', password: '123456' } });
+  const blocked = await login();
+  assert.equal(blocked.status, 423);
+  assert.equal(blocked.data.code, 'ACCOUNT_LOCKED');
+  assert.match(blocked.data.message, /50 次/);
+  noSecrets(blocked);
+  locked = false;
+  const signedIn = await login();
+  assert.equal(signedIn.status, 200);
+  assert.deepEqual((await f.request('/web-api/session')).data.user, phoneUser);
+  assert.equal((await f.request('/web-api/balance')).status, 200);
+  assert.equal((await f.request('/web-api/generations', upload())).status, 202);
+  assert.ok(f.calls.every(call => !/verify-email|resend-otp/.test(call.url)));
+  noSecrets(signedIn);
+  assert.equal((await f.request('/web-api/logout', { method: 'POST' })).status, 200);
+});
 
 test('历史分页、详情、删除仅用登录业务凭证，保留 JSON 脱敏与精确白名单', async t => {
   const f = await fixture(t, { handler(call, res) {
@@ -181,7 +321,7 @@ test('配置默认 loopback、URL 无凭据、生产 HTTPS，导入不启动监�
     { WEB_PUBLIC_ORIGIN: 'http://user:password@localhost' }, { WEB_PORT: '0' }, { WEB_MAX_IMAGE_BYTES: '-1' },
   ]) assert.throws(() => readConfig(env));
   assert.equal(readConfig({ NODE_ENV: 'production', WEB_PUBLIC_ORIGIN: 'https://site.example' }).secureCookie, true);
-  const server = createWebServer({ config: cfg });
+  const server = createWebServer({ config: { ...cfg, sessionFile: ':memory:' } });
   assert.equal(server.listening, false);
   server.emit('close');
 });
@@ -198,7 +338,7 @@ test('注册/OTP → 登录 → 余额 → 原样 multipart 生成 → 购买 �
   assert.equal((await f.request('/web-api/resend-otp', { method: 'POST', body: { email: USER.email, purpose: 'register' } })).status, 202);
   const login = await f.login();
   assert.deepEqual(login.data, { user: USER });
-  assert.match(login.headers.get('set-cookie'), /^picpoet_web_session=[a-f0-9]{64}; HttpOnly; SameSite=Strict; Path=\/; Max-Age=1800$/);
+  assert.match(login.headers.get('set-cookie'), /^picpoet_web_session=[a-f0-9]{64}; HttpOnly; SameSite=Strict; Path=\/; Max-Age=604800$/);
   assert.equal(login.headers.get('cache-control'), 'no-store');
   noSecrets(login);
   assert.deepEqual((await f.request('/web-api/session')).data, { authenticated: true, user: USER });
@@ -447,7 +587,7 @@ test('body 与图片独立大小限制、multipart boundary 和字段校验', as
   assert.equal(f.calls.length, count);
 });
 
-test('固定 TTL、Map 容量和 IP/账户限速均有界', async t => {
+test('闲置 TTL、会话容量和 IP/账户限速均有界', async t => {
   const f = await fixture(t, { config: { sessionTtlMs: 1000, maxSessions: 1, loginLimit: 2, accountLimit: 1, rateWindowMs: 2000 } });
   await f.login();
   const old = f.cookie();

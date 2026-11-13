@@ -2,7 +2,9 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { once } from 'node:events';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { chromium } from '@playwright/test';
 import jsQR from 'jsqr';
 import { createWebServer, readConfig } from '../scripts/web-server.mjs';
@@ -11,11 +13,13 @@ import { availableLocales } from '../scripts/check-locales.mjs';
 const root = new URL('../', import.meta.url);
 const ID = '12345678-1234-4234-8234-123456789abc';
 const USER = { id: ID, email: 'poet@example.com', emailVerified: true };
+const PHONE_USER = { id: ID, email: '', phone: '13812345678', emailVerified: false, authMethod: 'phone', status: 'active' };
 const INVITATION_CODE = 'inv_' + 'a1'.repeat(16);
 const INVITATION_URL = `https://picpoet.jqknono.com/${ID}/invite_code=${INVITATION_CODE}`;
 const calls = [],
   errors = [];
 let generationId,
+  phoneLocked = false,
   generationComplete = false,
   removed = false,
   order;
@@ -33,15 +37,18 @@ const upstream = http.createServer(async (req, res) => {
     ? JSON.parse(bytes.toString() || '{}')
     : null;
   calls.push({ method: req.method, path, body, bytes });
+  if (path.endsWith('/auth/login') && body?.phone && phoneLocked) return json(res, { code: 'ACCOUNT_LOCKED' }, 423);
   if (path.endsWith('/auth/login'))
     return json(res, {
-      user: USER,
+      user: body?.phone ? PHONE_USER : USER,
       accessToken: 'private-access',
       refreshToken: 'private-refresh',
       expiresIn: 3600,
+      refreshExpiresIn: 30 * 24 * 3600,
       credential: { value: `picpoet-account-${'ab'.repeat(24)}` },
     });
-  if (path.endsWith('/auth/register')) return json(res, { user: USER, otpSent: true }, 201);
+  if (path.endsWith('/auth/register')) return json(res, { user: body?.phone ? PHONE_USER : USER, otpSent: !body?.phone }, 201);
+  if (path.endsWith('/auth/refresh')) return json(res, { accessToken: 'private-access-new', refreshToken: 'private-refresh-new', expiresIn: 3600, refreshExpiresIn: 30 * 24 * 3600 });
   if (path.includes('/auth/')) return json(res, { message: 'ok' });
   if (path.endsWith('/balance'))
     return json(res, { free: { remaining: 3 }, paid: { remaining: (order?.delivery ? 10 : 0) + 6 }, referral: { invitationCode: INVITATION_CODE, totalGrantedCredits: 6, registrationRewardPerInvite: 3 } });
@@ -103,11 +110,14 @@ async function listen(server) {
   return `http://127.0.0.1:${server.address().port}`;
 }
 const upstreamURL = await listen(upstream);
+const sessionDir = await mkdtemp(path.join(tmpdir(), 'picpoet-browser-session-'));
+let serverNow = Date.now();
 const cfg = {
   ...readConfig({ DASHBOARD_API_URL: upstreamURL + '/api/v1', PICPOET_API_URL: upstreamURL + '/v1' }),
   loginLimit: 100,
+  sessionFile: path.join(sessionDir, 'sessions.sqlite'),
 };
-const server = createWebServer({ config: cfg });
+let server = createWebServer({ config: cfg, now: () => serverNow });
 const base = await listen(server);
 cfg.publicOrigin = base;
 cfg.publicOrigins = [base];
@@ -468,9 +478,89 @@ try {
   await page.waitForFunction(() => document.documentElement.dataset.hydrated === 'true');
   await mkdir(new URL('.build/', root), { recursive: true });
   await page.screenshot({ path: new URL('.build/vue-downloads.png', root).pathname, fullPage: true });
+
+  // 手机号注册保留邀请、六位纯数字密码、确认输入与无短信告知，邮箱主路径继续单独回归。
+  await page.goto(base + new URL(INVITATION_URL).pathname);
+  await page.locator('#mode-register[aria-pressed=true]').waitFor();
+  await page.locator('#identity-phone').click();
+  assert.match(await page.locator('#phone-notice').textContent(), /忘记密码无法找回/);
+  assert.equal(await page.locator('#verify-panel').isVisible(), false);
+  await page.locator('#phone').fill('+8613812345678');
+  await page.locator('#password').fill('123456');
+  await page.locator('#confirm-password').fill('123456');
+  await page.locator('#toggle-password').click();
+  assert.equal(await page.locator('#password').getAttribute('type'), 'text');
+  assert.equal(await page.locator('#confirm-password').getAttribute('type'), 'text');
+  await page.locator('#toggle-password').click();
+  for (const width of [375, 1280]) {
+    await page.setViewportSize({ width, height: 1000 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    await page.locator('.login-layout').screenshot({ path: new URL(`.build/phone-register-${width}.png`, root).pathname });
+  }
+  const otpCalls = () => calls.filter(call => /verify-email|resend-otp/.test(call.path)).length;
+  const beforePhoneOTP = otpCalls();
+  await page.locator('#auth-submit').click();
+  await page.locator('#auth-status').filter({ hasText: '注册成功，无需短信验证' }).waitFor();
+  const phoneRegister = calls.filter(call => call.path.endsWith('/auth/register')).at(-1);
+  assert.deepEqual(phoneRegister.body, { phone: PHONE_USER.phone, password: '123456', confirmPassword: '123456', invitationCode: INVITATION_CODE });
+  assert.equal(await page.locator('#password').inputValue(), '');
+  assert.equal(await page.locator('#confirm-password').count(), 0);
+  assert.equal(otpCalls(), beforePhoneOTP);
+  phoneLocked = true;
+  // 浏览器 HTTP 错误属于预期锁定反馈，不计入页面运行错误；恢复后继续真实页面流程。
+  const lockConsoleStart = errors.length;
+  await page.locator('#password').fill('123456');
+  await page.locator('#auth-submit').click();
+  await page.locator('#auth-status').filter({ hasText: '账号已锁定' }).waitFor();
+  assert.ok(errors.slice(lockConsoleStart).every(message => /423/.test(message)));
+  errors.splice(lockConsoleStart);
+  phoneLocked = false;
+  await page.locator('#auth-submit').click();
+  await page.waitForURL('**/create.html');
+  await page.waitForFunction(() => !document.querySelector('#image').matches(':disabled'));
+  assert.equal(await page.locator('#login-gate').isVisible(), false);
+  await page.goto(base + '/account.html');
+  await page.locator('#account-name').filter({ hasText: PHONE_USER.phone }).waitFor();
+  assert.match(await page.locator('#account-verification').textContent(), /未核验归属/);
+  await page.locator('#referral-credits').filter({ hasText: '累计获赠 6 次' }).waitFor();
+  // 登录 Cookie 为持久七天，公开页回访也续期；跨越首次到期并重启 BFF 后仍可进入账户。
+  const sessionCookie = (await context.cookies(base)).find(item => item.name === 'picpoet_web_session');
+  assert.ok(sessionCookie.httpOnly);
+  assert.equal(sessionCookie.sameSite, 'Strict');
+  assert.ok(sessionCookie.expires > Date.now() / 1000 + 7 * 24 * 3600 - 60);
+  for (const publicPage of ['index', 'docs', 'pricing', 'downloads']) {
+    serverNow += 6 * 24 * 3600_000;
+    const renewed = page.waitForResponse(response => response.url() === base + '/web-api/session');
+    await page.goto(`${base}/${publicPage}.html`);
+    const response = await renewed;
+    assert.equal(response.status(), 200);
+    assert.equal((await response.json()).authenticated, true);
+    assert.match(await response.headerValue('set-cookie'), /Max-Age=604800/);
+  }
+  const port = server.address().port;
+  server.closeAllConnections();
+  await new Promise(resolve => server.close(resolve));
+  server = createWebServer({ config: cfg, now: () => serverNow });
+  server.listen(port, '127.0.0.1');
+  await once(server, 'listening');
+  serverNow += 6 * 24 * 3600_000;
+  await page.goto(base + '/account.html');
+  await page.locator('#account-name').filter({ hasText: PHONE_USER.phone }).waitFor();
+  await page.locator('#referral-credits').filter({ hasText: '累计获赠 6 次' }).waitFor();
+  const visitsBeforeFocus = calls.filter(call => call.path.endsWith('/auth/refresh')).length;
+  serverNow += 24 * 3600_000;
+  await page.clock.fastForward(61_000);
+  const focused = page.waitForResponse(response => response.url() === base + '/web-api/session');
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  assert.equal((await (await focused).json()).authenticated, true);
+  assert.equal(calls.filter(call => call.path.endsWith('/auth/refresh')).length, visitsBeforeFocus + 1);
+  assert.equal((await context.cookies(base)).find(item => item.name === 'picpoet_web_session').value, sessionCookie.value);
+  assert.equal(await page.evaluate(() => localStorage.length + sessionStorage.length), 0);
+  await page.locator('#logout').click();
+  await page.locator('#login-gate').waitFor({ state: 'visible' });
   assert.deepEqual(errors, []);
   console.log(
-    `Vue 浏览器正向验收通过：${ids.length} 种语言 × 8 页、七种宽度及四类页眉一致性、三秒轮播与持续进度动画/减少动态效果、暂停继续、邀请链接注册、拷贝诗词、创作与历史 PNG 二维码解码、累计获赠展示、购买到账、退出与兼容路径。`,
+    `Vue 浏览器正向验收通过：${ids.length} 种语言 × 8 页、七种宽度及四类页眉一致性、三秒轮播与持续进度动画/减少动态效果、暂停继续、邀请链接注册、拷贝诗词、创作与历史 PNG 二维码解码、累计获赠展示、购买到账、手机号注册登录、七天访问续期/公开页/前台恢复/BFF重启、退出与兼容路径。`,
   );
 } finally {
   await browser.close();
@@ -478,4 +568,5 @@ try {
     item.closeAllConnections();
     await new Promise((resolve) => item.close(resolve));
   }
+  await rm(sessionDir, { recursive: true, force: true });
 }
