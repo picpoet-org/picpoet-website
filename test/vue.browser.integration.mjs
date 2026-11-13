@@ -13,7 +13,14 @@ import { availableLocales } from '../scripts/check-locales.mjs';
 const root = new URL('../', import.meta.url);
 const ID = '12345678-1234-4234-8234-123456789abc';
 const USER = { id: ID, email: 'poet@example.com', emailVerified: true };
-const PHONE_USER = { id: ID, email: '', phone: '13812345678', emailVerified: false, authMethod: 'phone', status: 'active' };
+const PHONE_USER = {
+  id: ID,
+  email: '',
+  phone: '13812345678',
+  emailVerified: false,
+  authMethod: 'phone',
+  status: 'active',
+};
 const INVITATION_CODE = 'inv_' + 'a1'.repeat(16);
 const INVITATION_URL = `https://picpoet.jqknono.com/${ID}/invite_code=${INVITATION_CODE}`;
 const calls = [],
@@ -37,7 +44,8 @@ const upstream = http.createServer(async (req, res) => {
     ? JSON.parse(bytes.toString() || '{}')
     : null;
   calls.push({ method: req.method, path, body, bytes });
-  if (path.endsWith('/auth/login') && body?.phone && phoneLocked) return json(res, { code: 'ACCOUNT_LOCKED' }, 423);
+  if (path.endsWith('/auth/login') && body?.phone && phoneLocked)
+    return json(res, { code: 'ACCOUNT_LOCKED' }, 423);
   if (path.endsWith('/auth/login'))
     return json(res, {
       user: body?.phone ? PHONE_USER : USER,
@@ -47,11 +55,22 @@ const upstream = http.createServer(async (req, res) => {
       refreshExpiresIn: 30 * 24 * 3600,
       credential: { value: `picpoet-account-${'ab'.repeat(24)}` },
     });
-  if (path.endsWith('/auth/register')) return json(res, { user: body?.phone ? PHONE_USER : USER, otpSent: !body?.phone }, 201);
-  if (path.endsWith('/auth/refresh')) return json(res, { accessToken: 'private-access-new', refreshToken: 'private-refresh-new', expiresIn: 3600, refreshExpiresIn: 30 * 24 * 3600 });
+  if (path.endsWith('/auth/register'))
+    return json(res, { user: body?.phone ? PHONE_USER : USER, otpSent: !body?.phone }, 201);
+  if (path.endsWith('/auth/refresh'))
+    return json(res, {
+      accessToken: 'private-access-new',
+      refreshToken: 'private-refresh-new',
+      expiresIn: 3600,
+      refreshExpiresIn: 30 * 24 * 3600,
+    });
   if (path.includes('/auth/')) return json(res, { message: 'ok' });
   if (path.endsWith('/balance'))
-    return json(res, { free: { remaining: 3 }, paid: { remaining: (order?.delivery ? 10 : 0) + 6 }, referral: { invitationCode: INVITATION_CODE, totalGrantedCredits: 6, registrationRewardPerInvite: 3 } });
+    return json(res, {
+      free: { remaining: 3 },
+      paid: { remaining: (order?.delivery ? 10 : 0) + 6 },
+      referral: { invitationCode: INVITATION_CODE, totalGrantedCredits: 6, registrationRewardPerInvite: 3 },
+    });
   if (path.endsWith('/plans'))
     return json(res, [{ id: ID, title: '10次创作', credits: 10, priceMinor: 100, currency: 'CNY' }]);
   if (path.endsWith('/orders') && req.method === 'GET') return json(res, order ? [order] : []);
@@ -138,7 +157,11 @@ async function decodeImageQR(selector) {
     canvas.height = image.naturalHeight;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(image, 0, 0);
-    return { width: canvas.width, height: canvas.height, bytes: Array.from(ctx.getImageData(0, 0, canvas.width, canvas.height).data) };
+    return {
+      width: canvas.width,
+      height: canvas.height,
+      bytes: Array.from(ctx.getImageData(0, 0, canvas.width, canvas.height).data),
+    };
   });
   return jsQR(new Uint8ClampedArray(pixels.bytes), pixels.width, pixels.height)?.data;
 }
@@ -262,11 +285,14 @@ try {
   await page.goto(base + new URL(INVITATION_URL).pathname);
   await page.locator('#mode-register[aria-pressed=true]').waitFor();
   assert.equal(await page.locator('#invitation').inputValue(), INVITATION_CODE);
-  await page.locator('#email').fill(USER.email);
+  await page.locator('#identity').fill(USER.email);
   await page.locator('#password').fill('integration-password');
   await page.locator('#auth-submit').click();
   await page.locator('#otp').waitFor({ state: 'visible' });
-  assert.equal(calls.find((call) => call.path.endsWith('/auth/register')).body.invitationCode, INVITATION_CODE);
+  assert.equal(
+    calls.find((call) => call.path.endsWith('/auth/register')).body.invitationCode,
+    INVITATION_CODE,
+  );
   await page.locator('#otp').fill('123456');
   await page.locator('#verify-form button[type=submit]').click();
   await page.locator('#mode-login[aria-pressed=true]').waitFor();
@@ -325,7 +351,12 @@ try {
   assert.equal(await page.locator('#stop-poll').isVisible(), false);
   assert.equal(await waiting.locator('.waiting-poems-control').isVisible(), false);
   assert.equal(await activePoem.getAttribute('aria-hidden'), 'false');
-  assert.equal(await page.locator('#generation-status').evaluate((element) => getComputedStyle(element, '::before').animationName), 'none');
+  assert.equal(
+    await page
+      .locator('#generation-status')
+      .evaluate((element) => getComputedStyle(element, '::before').animationName),
+    'none',
+  );
   assert.equal(await activePoem.evaluate((element) => getComputedStyle(element).transitionDuration), '0s');
   const stillPoem = await activePoem.textContent();
   await page.clock.fastForward(9000);
@@ -338,7 +369,12 @@ try {
   );
   const beforePoem = await activePoem.textContent();
   const beforeStage = await waiting.boundingBox();
-  assert.equal(await page.locator('#generation-status').evaluate((element) => getComputedStyle(element, '::before').animationName), 'writing-breath');
+  assert.equal(
+    await page
+      .locator('#generation-status')
+      .evaluate((element) => getComputedStyle(element, '::before').animationName),
+    'writing-breath',
+  );
   await page.clock.fastForward(3100);
   await page.waitForFunction(
     (previous) => document.querySelector('.waiting-poem.is-current').textContent !== previous,
@@ -416,16 +452,24 @@ try {
   assert.ok(await page.locator('#poem-accessible').evaluate((node) => node.classList.contains('sr-only')));
   await page.locator('#copy-poem').click();
   await page.locator('#copy-status').filter({ hasText: '诗词已拷贝' }).waitFor();
-  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), [verse.title, ...verse.lines].join('\n'));
+  assert.equal(
+    await page.evaluate(() => navigator.clipboard.readText()),
+    [verse.title, ...verse.lines].join('\n'),
+  );
   assert.equal(await decodeImageQR('#poem-card'), INVITATION_URL);
   for (const width of [375, 1280]) {
     await page.setViewportSize({ width, height: 1100 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
-    await page.locator('.result-panel').screenshot({ path: new URL(`.build/invitation-result-${width}.png`, root).pathname });
+    await page
+      .locator('.result-panel')
+      .screenshot({ path: new URL(`.build/invitation-result-${width}.png`, root).pathname });
   }
   await page.setViewportSize({ width: 1280, height: 900 });
   const metadataTip = page.locator('#app-metadata-tip');
-  assert.equal(await page.locator('#app-metadata-title').evaluate((node) => getComputedStyle(node).fontWeight), '400');
+  assert.equal(
+    await page.locator('#app-metadata-title').evaluate((node) => getComputedStyle(node).fontWeight),
+    '400',
+  );
   assert.ok(await metadataTip.isVisible());
   assert.match(await metadataTip.textContent(), /图赋 App，可将诗词和标签（tags）写入图片元数据/);
   assert.equal(await metadataTip.locator('a').first().getAttribute('href'), '/downloads.html');
@@ -482,10 +526,17 @@ try {
   // 手机号注册保留邀请、六位纯数字密码、确认输入与无短信告知，邮箱主路径继续单独回归。
   await page.goto(base + new URL(INVITATION_URL).pathname);
   await page.locator('#mode-register[aria-pressed=true]').waitFor();
-  await page.locator('#identity-phone').click();
+  await page.locator('#identity').fill('+8613812345678');
+  assert.equal(await page.locator('#phone-notice').count(), 0);
+  await page.locator('#password').focus();
   assert.match(await page.locator('#phone-notice').textContent(), /忘记密码无法找回/);
+  await page.locator('#identity').focus();
+  assert.equal(await page.locator('#phone-notice').count(), 0);
+  await page.locator('#identity').fill(USER.email);
+  await page.locator('#password').focus();
+  assert.equal(await page.locator('#phone-notice').count(), 0);
+  await page.locator('#identity').fill('+8613812345678');
   assert.equal(await page.locator('#verify-panel').isVisible(), false);
-  await page.locator('#phone').fill('+8613812345678');
   await page.locator('#password').fill('123456');
   await page.locator('#confirm-password').fill('123456');
   await page.locator('#toggle-password').click();
@@ -495,14 +546,21 @@ try {
   for (const width of [375, 1280]) {
     await page.setViewportSize({ width, height: 1000 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
-    await page.locator('.login-layout').screenshot({ path: new URL(`.build/phone-register-${width}.png`, root).pathname });
+    await page
+      .locator('.login-layout')
+      .screenshot({ path: new URL(`.build/phone-register-${width}.png`, root).pathname });
   }
-  const otpCalls = () => calls.filter(call => /verify-email|resend-otp/.test(call.path)).length;
+  const otpCalls = () => calls.filter((call) => /verify-email|resend-otp/.test(call.path)).length;
   const beforePhoneOTP = otpCalls();
   await page.locator('#auth-submit').click();
   await page.locator('#auth-status').filter({ hasText: '注册成功，无需短信验证' }).waitFor();
-  const phoneRegister = calls.filter(call => call.path.endsWith('/auth/register')).at(-1);
-  assert.deepEqual(phoneRegister.body, { phone: PHONE_USER.phone, password: '123456', confirmPassword: '123456', invitationCode: INVITATION_CODE });
+  const phoneRegister = calls.filter((call) => call.path.endsWith('/auth/register')).at(-1);
+  assert.deepEqual(phoneRegister.body, {
+    phone: PHONE_USER.phone,
+    password: '123456',
+    confirmPassword: '123456',
+    invitationCode: INVITATION_CODE,
+  });
   assert.equal(await page.locator('#password').inputValue(), '');
   assert.equal(await page.locator('#confirm-password').count(), 0);
   assert.equal(otpCalls(), beforePhoneOTP);
@@ -512,7 +570,7 @@ try {
   await page.locator('#password').fill('123456');
   await page.locator('#auth-submit').click();
   await page.locator('#auth-status').filter({ hasText: '账号已锁定' }).waitFor();
-  assert.ok(errors.slice(lockConsoleStart).every(message => /423/.test(message)));
+  assert.ok(errors.slice(lockConsoleStart).every((message) => /423/.test(message)));
   errors.splice(lockConsoleStart);
   phoneLocked = false;
   await page.locator('#auth-submit').click();
@@ -524,13 +582,13 @@ try {
   assert.match(await page.locator('#account-verification').textContent(), /未核验归属/);
   await page.locator('#referral-credits').filter({ hasText: '累计获赠 6 次' }).waitFor();
   // 登录 Cookie 为持久七天，公开页回访也续期；跨越首次到期并重启 BFF 后仍可进入账户。
-  const sessionCookie = (await context.cookies(base)).find(item => item.name === 'picpoet_web_session');
+  const sessionCookie = (await context.cookies(base)).find((item) => item.name === 'picpoet_web_session');
   assert.ok(sessionCookie.httpOnly);
   assert.equal(sessionCookie.sameSite, 'Strict');
   assert.ok(sessionCookie.expires > Date.now() / 1000 + 7 * 24 * 3600 - 60);
   for (const publicPage of ['index', 'docs', 'pricing', 'downloads']) {
     serverNow += 6 * 24 * 3600_000;
-    const renewed = page.waitForResponse(response => response.url() === base + '/web-api/session');
+    const renewed = page.waitForResponse((response) => response.url() === base + '/web-api/session');
     await page.goto(`${base}/${publicPage}.html`);
     const response = await renewed;
     assert.equal(response.status(), 200);
@@ -539,7 +597,7 @@ try {
   }
   const port = server.address().port;
   server.closeAllConnections();
-  await new Promise(resolve => server.close(resolve));
+  await new Promise((resolve) => server.close(resolve));
   server = createWebServer({ config: cfg, now: () => serverNow });
   server.listen(port, '127.0.0.1');
   await once(server, 'listening');
@@ -547,14 +605,17 @@ try {
   await page.goto(base + '/account.html');
   await page.locator('#account-name').filter({ hasText: PHONE_USER.phone }).waitFor();
   await page.locator('#referral-credits').filter({ hasText: '累计获赠 6 次' }).waitFor();
-  const visitsBeforeFocus = calls.filter(call => call.path.endsWith('/auth/refresh')).length;
+  const visitsBeforeFocus = calls.filter((call) => call.path.endsWith('/auth/refresh')).length;
   serverNow += 24 * 3600_000;
   await page.clock.fastForward(61_000);
-  const focused = page.waitForResponse(response => response.url() === base + '/web-api/session');
+  const focused = page.waitForResponse((response) => response.url() === base + '/web-api/session');
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   assert.equal((await (await focused).json()).authenticated, true);
-  assert.equal(calls.filter(call => call.path.endsWith('/auth/refresh')).length, visitsBeforeFocus + 1);
-  assert.equal((await context.cookies(base)).find(item => item.name === 'picpoet_web_session').value, sessionCookie.value);
+  assert.equal(calls.filter((call) => call.path.endsWith('/auth/refresh')).length, visitsBeforeFocus + 1);
+  assert.equal(
+    (await context.cookies(base)).find((item) => item.name === 'picpoet_web_session').value,
+    sessionCookie.value,
+  );
   assert.equal(await page.evaluate(() => localStorage.length + sessionStorage.length), 0);
   await page.locator('#logout').click();
   await page.locator('#login-gate').waitFor({ state: 'visible' });

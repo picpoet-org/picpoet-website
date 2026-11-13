@@ -255,7 +255,7 @@ test('页面链接、label、noscript；用户数据使用纯文本，无持久�
   assert.match(html, /<noscript>/); assert.match(html, /aria-live="polite"/);
   assert.match(html, /<script type="module" src="\/app\/entry-client-[\w-]+\.js"/);
   const forms = html + await readFile(new URL('../public/login.html', import.meta.url), 'utf8') + await readFile(new URL('../public/account.html', import.meta.url), 'utf8');
-  for (const id of ['image', 'email', 'password', 'otp', 'verify-email']) assert.ok(forms.includes(`for="${id}"`));
+  for (const id of ['image', 'identity', 'password', 'otp', 'verify-email']) assert.ok(forms.includes(`for="${id}"`));
   for (const removed of ['poem-language', '体裁、格律等使用官方服务默认设置。', '与下载、系统分享使用同一张 PNG', '这里是预览区域，并非示例作品。']) assert.ok(!forms.includes(removed));
   assert.doesNotMatch(forms, /id="pay-method"/);
   assert.doesNotMatch(script, /\.innerHTML\s*=|localStorage\.|sessionStorage\./);

@@ -1,3 +1,93 @@
+.create-page .auth-page .create-intro {
+  max-width: 30rem;
+  margin-inline: auto;
+  text-align: center;
+  padding-block: 2.5rem 1.5rem;
+}
+.create-page .auth-page .login-layout {
+  max-width: 30rem;
+  margin-block-end: 3rem;
+}
+.create-page .auth-page .account-panel {
+  padding: clamp(1.25rem, 4vw, 2rem);
+}
+.create-page .auth-page .section-top {
+  margin-block-end: 1.25rem;
+}
+.create-page .auth-page .auth-switch {
+  flex-wrap: nowrap;
+  margin-block-end: 1.5rem;
+  padding: 0.25rem;
+  gap: 0.25rem;
+}
+.create-page .auth-page .auth-switch button {
+  min-height: 2.75rem;
+  font-size: 0.9375rem;
+}
+.create-page .auth-page .auth-switch button[aria-pressed='true'] {
+  border-color: var(--pp-color-line);
+  text-decoration: none;
+  box-shadow: 0 0.125rem 0.25rem rgb(32 32 30 / 5%);
+}
+.create-page .auth-page .form-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+  margin-block-end: 1.5rem;
+}
+.create-page .auth-page label {
+  margin-block: 0 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 550;
+}
+.create-page .auth-page input {
+  min-height: 3rem;
+  padding: 0.625rem 0.875rem;
+}
+.create-page .auth-page .password-label-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  margin-block: -0.5rem 0.25rem;
+}
+.create-page .auth-page .password-label-row label {
+  margin: 0;
+}
+.create-page .auth-page .password-visibility {
+  min-height: 2.75rem;
+  padding: 0.5rem 0;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: var(--create-muted);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.create-page .auth-page .password-visibility:hover {
+  color: var(--pp-color-ink);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.create-page .auth-page #auth-submit {
+  width: 100%;
+  min-height: 3rem;
+}
+.create-page .auth-page #verify-panel {
+  margin-block-start: 1.5rem;
+  padding-block-start: 0.25rem;
+}
+.create-page .auth-page #verify-panel summary {
+  min-height: 2.75rem;
+  font-weight: 450;
+  font-size: 0.875rem;
+  color: var(--create-muted);
+}
+.create-page .auth-page .phone-notice {
+  font-size: 0.875rem;
+  margin-block: 0 1.5rem;
+}
 /* 页面布局复用品牌 token，新组件使用相对尺寸以适配六种界面语言。 */
 [hidden] {
   display: none !important;

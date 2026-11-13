@@ -8,9 +8,10 @@ import SessionGate from '../components/SessionGate.vue';
 const session = useSession();
 const { t, href, user, ready, verified, busy, action, request, failure } = session;
 const mode = ref('login'),
-  identityMode = ref('email'),
-  phone = ref(''),
-  email = ref(''),
+  identity = ref(''),
+  identityBlurred = ref(false),
+  identityError = ref(''),
+  passwordError = ref(''),
   password = ref(''),
   confirmPassword = ref(''),
   showPassword = ref(false),
@@ -20,14 +21,13 @@ const mode = ref('login'),
 const authStatus = ref(''),
   verifyStatus = ref(''),
   verifyOpen = ref(false),
-  emailInput = ref(),
-  phoneInput = ref(),
+  identityInput = ref(),
   passwordInput = ref(),
   confirmInput = ref(),
   otpInput = ref();
 const registering = computed(() => mode.value === 'register');
-const usingPhone = computed(() => identityMode.value === 'phone');
-const focusIdentity = () => (usingPhone.value ? phoneInput.value : emailInput.value)?.focus();
+const usingPhone = computed(() => identity.value.trim() !== '' && !identity.value.includes('@'));
+const focusIdentity = () => identityInput.value?.focus();
 const passwordsMatch = computed(() => !confirmPassword.value || password.value === confirmPassword.value);
 const returnTo =
   typeof location === 'undefined'
@@ -43,21 +43,37 @@ onMounted(() => {
 const setMode = (value) => {
   mode.value = value;
   authStatus.value = '';
+  identityError.value = '';
+  passwordError.value = '';
   showPassword.value = false;
   confirmPassword.value = '';
   nextTick(focusIdentity);
 };
-function setIdentity(value) {
-  identityMode.value = value;
-  password.value = '';
-  confirmPassword.value = '';
-  showPassword.value = false;
-  authStatus.value = '';
-  nextTick(focusIdentity);
-}
 async function authenticate() {
   const wasRegistering = registering.value;
   const phoneMode = usingPhone.value;
+  identityError.value = '';
+  passwordError.value = '';
+  authStatus.value = '';
+  const account = identity.value.trim();
+  if (!account || (phoneMode ? !normalizePhone(account) : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account))) {
+    identityError.value = t(phoneMode ? 'phoneAuth.phoneHelp' : 'phoneAuth.identityInvalid');
+    await nextTick();
+    focusIdentity();
+    return;
+  }
+  if (!password.value || (wasRegistering && [...password.value].length < (phoneMode ? 6 : 8))) {
+    passwordError.value = t(
+      wasRegistering
+        ? phoneMode
+          ? 'phoneAuth.passwordHelp'
+          : 'auth.passwordHelp'
+        : 'phoneAuth.passwordRequired',
+    );
+    await nextTick();
+    passwordInput.value?.focus();
+    return;
+  }
   if (wasRegistering && phoneMode && password.value !== confirmPassword.value) {
     authStatus.value = t('phoneAuth.mismatch');
     await nextTick();
@@ -65,17 +81,21 @@ async function authenticate() {
     return;
   }
   const success = await action('auth', authStatus, async (ticket) => {
-    authStatus.value = t(wasRegistering ? phoneMode ? 'phoneAuth.registering' : 'auth.registering' : 'auth.loggingIn');
+    authStatus.value = t(
+      wasRegistering ? (phoneMode ? 'phoneAuth.registering' : 'auth.registering') : 'auth.loggingIn',
+    );
     const body = phoneMode
-      ? { phone: normalizePhone(phone.value), password: password.value }
-      : { email: email.value.trim(), password: password.value };
-    if (wasRegistering && new TextEncoder().encode(password.value).length > 72) throw failure('phoneAuth.passwordLong');
+      ? { phone: normalizePhone(identity.value), password: password.value }
+      : { email: identity.value.trim(), password: password.value };
+    if (wasRegistering && new TextEncoder().encode(password.value).length > 72)
+      throw failure('phoneAuth.passwordLong');
     if (phoneMode && !body.phone) throw failure('phoneAuth.invalid');
     if (wasRegistering && phoneMode) body.confirmPassword = confirmPassword.value;
     if (wasRegistering && invitation.value.trim()) body.invitationCode = invitation.value.trim();
     let data;
-    try { data = await request(ticket, '/' + mode.value, body); }
-    catch (cause) {
+    try {
+      data = await request(ticket, '/' + mode.value, body);
+    } catch (cause) {
       if (cause.status === 401 && !wasRegistering) throw failure('phoneAuth.loginFailed');
       if (cause.status === 409 && wasRegistering) throw failure('phoneAuth.alreadyRegistered');
       throw cause;
@@ -84,7 +104,7 @@ async function authenticate() {
     confirmPassword.value = '';
     showPassword.value = false;
     if (wasRegistering && phoneMode) {
-      phone.value = body.phone;
+      identity.value = body.phone;
       mode.value = 'login';
       verifyOpen.value = false;
       authStatus.value = t('phoneAuth.registered');
@@ -108,7 +128,7 @@ async function verify() {
     await request(ticket, '/verify-email', { email: verifyEmail.value.trim(), otp: otp.value.trim() });
     otp.value = '';
     mode.value = 'login';
-    email.value = verifyEmail.value.trim();
+    identity.value = verifyEmail.value.trim();
     verifyStatus.value = t('auth.verified');
     authStatus.value = t('auth.verified');
   });
@@ -131,7 +151,7 @@ session.resets.add(() => {
 });
 </script>
 <template>
-  <main id="main" class="shell" tabindex="-1">
+  <main id="main" class="shell auth-page" tabindex="-1">
     <section class="create-intro">
       <p class="eyebrow">{{ t('common.eyebrow') }}</p>
       <h1>{{ t('auth.title') }}</h1>
@@ -167,56 +187,86 @@ session.resets.add(() => {
           <p id="auth-status" class="create-status" role="status" aria-live="polite" tabindex="-1">
             {{ authStatus }}
           </p>
-          <div class="auth-switch identity-switch" role="group" :aria-label="t('phoneAuth.method')">
-            <button v-for="value in ['email', 'phone']" :id="'identity-' + value" :key="value" type="button"
-              :aria-pressed="identityMode === value" :disabled="busy.has('auth') || busy.has('verify')"
-              @click="setIdentity(value)">{{ t('phoneAuth.' + value) }}</button>
-          </div>
-          <p v-if="usingPhone" id="phone-notice" class="notice phone-notice">{{ t('phoneAuth.notice') }}</p>
-          <form id="auth-form" :aria-busy="busy.has('auth')" @submit.prevent="authenticate">
+          <p v-if="usingPhone && identityBlurred" id="phone-notice" class="notice phone-notice">
+            {{ t('phoneAuth.notice') }}
+          </p>
+          <form id="auth-form" novalidate :aria-busy="busy.has('auth')" @submit.prevent="authenticate">
             <fieldset id="auth-fields" :disabled="!ready || busy.has('auth') || busy.has('verify')">
               <div class="form-grid">
-                <div v-if="!usingPhone">
-                  <label for="email">{{ t('auth.email') }}</label><input
-                    id="email"
-                    ref="emailInput"
-                    v-model="email"
-                    name="email"
-                    type="email"
-                    autocomplete="email"
+                <div>
+                  <label for="identity">{{ t('phoneAuth.identity') }}</label>
+                  <input
+                    id="identity"
+                    ref="identityInput"
+                    v-model="identity"
+                    name="username"
+                    type="text"
+                    autocomplete="username"
+                    autocapitalize="none"
+                    :spellcheck="false"
                     maxlength="254"
                     required
+                    :aria-invalid="!!identityError"
+                    :aria-describedby="identityError ? 'identity-error' : undefined"
+                    @focus="identityBlurred = false"
+                    @blur="identityBlurred = true"
+                    @input="
+                      identityBlurred = false;
+                      identityError = '';
+                      authStatus = '';
+                    "
                   />
-                </div>
-                <div v-else>
-                  <label for="phone">{{ t('phoneAuth.phone') }}</label>
-                  <input id="phone" ref="phoneInput" v-model="phone" name="phone" type="tel" inputmode="tel"
-                    autocomplete="username" pattern="(?:\+86|0086|86)?1[3-9][0-9]{9}" maxlength="15" required
-                    aria-describedby="phone-help phone-notice" />
-                  <small id="phone-help">{{ t('phoneAuth.phoneHelp') }}</small>
+                  <small v-if="identityError" id="identity-error" role="alert">{{ identityError }}</small>
                 </div>
                 <div>
-                  <label for="password">{{ t('auth.password') }}</label><input
+                  <div class="password-label-row">
+                    <label for="password">{{ t('auth.password') }}</label>
+                    <button
+                      id="toggle-password"
+                      class="password-visibility"
+                      type="button"
+                      :aria-pressed="showPassword"
+                      @click="showPassword = !showPassword"
+                    >
+                      {{ t(showPassword ? 'phoneAuth.hidePassword' : 'phoneAuth.showPassword') }}
+                    </button>
+                  </div>
+                  <input
                     id="password"
                     ref="passwordInput"
                     v-model="password"
                     name="password"
                     :type="showPassword ? 'text' : 'password'"
                     :autocomplete="registering ? 'new-password' : 'current-password'"
-                    :minlength="registering ? usingPhone ? 6 : 8 : 1"
+                    :minlength="registering ? (usingPhone ? 6 : 8) : 1"
                     maxlength="1024"
                     required
-                    aria-describedby="password-help"
-                  /><small id="password-help">{{
-                    t(usingPhone ? 'phoneAuth.passwordHelp' : registering ? 'auth.passwordHelp' : 'auth.loginHelp')
-                  }}</small>
+                    :aria-invalid="!!passwordError"
+                    :aria-describedby="passwordError ? 'password-help' : undefined"
+                    @input="
+                      passwordError = '';
+                      authStatus = '';
+                    "
+                  /><small v-if="passwordError" id="password-help" role="alert">{{ passwordError }}</small>
                 </div>
                 <div v-if="registering && usingPhone">
                   <label for="confirm-password">{{ t('phoneAuth.confirm') }}</label>
-                  <input id="confirm-password" ref="confirmInput" v-model="confirmPassword" name="confirmPassword"
-                    :type="showPassword ? 'text' : 'password'" autocomplete="new-password" minlength="6" maxlength="1024" required
-                    :aria-invalid="!passwordsMatch" aria-describedby="confirm-help" />
-                  <small id="confirm-help">{{ t(passwordsMatch ? 'phoneAuth.confirmHelp' : 'phoneAuth.mismatch') }}</small>
+                  <input
+                    id="confirm-password"
+                    ref="confirmInput"
+                    v-model="confirmPassword"
+                    name="confirmPassword"
+                    :type="showPassword ? 'text' : 'password'"
+                    autocomplete="new-password"
+                    minlength="6"
+                    maxlength="1024"
+                    required
+                    :aria-invalid="!passwordsMatch"
+                    aria-describedby="confirm-help"
+                  />
+                  <small id="confirm-help">{{
+                    t(passwordsMatch ? 'phoneAuth.confirmHelp' : 'phoneAuth.mismatch')
+                  }}</small>
                 </div>
                 <div id="invitation-field" :hidden="!registering">
                   <label for="invitation">{{ t('auth.invitation') }}</label><input
@@ -228,20 +278,19 @@ session.resets.add(() => {
                   />
                 </div>
               </div>
-              <div class="actions password-actions">
-                <button id="toggle-password" class="button quiet-button" type="button" :aria-pressed="showPassword"
-                  @click="showPassword = !showPassword">{{ t(showPassword ? 'phoneAuth.hidePassword' : 'phoneAuth.showPassword') }}</button>
-              </div>
-              <p class="fine-print">{{ t('phoneAuth.lockHelp') }}</p>
               <button id="auth-submit" class="button primary" type="submit">
                 {{
                   t(
                     busy.has('auth')
                       ? registering
-                        ? usingPhone ? 'phoneAuth.registering' : 'auth.registering'
+                        ? usingPhone
+                          ? 'phoneAuth.registering'
+                          : 'auth.registering'
                         : 'auth.loggingIn'
                       : registering
-                        ? usingPhone ? 'phoneAuth.submitRegister' : 'auth.submitRegister'
+                        ? usingPhone
+                          ? 'phoneAuth.submitRegister'
+                          : 'auth.submitRegister'
                         : 'auth.submitLogin',
                   )
                 }}
