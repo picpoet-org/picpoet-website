@@ -11,6 +11,7 @@ import { poemData, poemPlainText, renderPoemCard } from '../../shared/poem-card.
 
 export function useGeneration(session) {
   const { t, scope, action, request, api, user, verified, busy, balance, failure, brand } = session;
+  const includeInvitation = ref(true);
   const image = shallowRef(null),
     photoURL = ref(''),
     caption = ref(''),
@@ -40,6 +41,7 @@ export function useGeneration(session) {
     canShare.value = false;
   }
   function clearResult() {
+    includeInvitation.value = true;
     clearCard();
     poem.value = null;
     expiry.value = '';
@@ -93,7 +95,7 @@ export function useGeneration(session) {
     await action('card', cardStatus, async () => {
       clearCard();
       cardStatus.value = t('common.rendering');
-      const invitationURL = await session.ensureInvitationURL(ticket);
+      const invitationURL = includeInvitation.value ? await session.ensureInvitationURL(ticket) : '';
       const blob = await renderPoemCard(source, { brand, invitationURL, invitationLabel: t('sharing.scan') });
       scope.assert(ticket);
       if (poem.value !== source || task.value !== target) return;
@@ -101,7 +103,7 @@ export function useGeneration(session) {
       cardURL.value = URL.createObjectURL(blob);
       const file = new File([blob], 'picpoet-poem.png', { type: 'image/png' });
       canShare.value = typeof navigator.share === 'function' && !!navigator.canShare?.({ files: [file] });
-      cardStatus.value = invitationURL ? '' : t('sharing.noInvitation');
+      cardStatus.value = !includeInvitation.value || invitationURL ? '' : t('sharing.noInvitation');
     });
   }
   async function monitor(ticket) {
@@ -226,7 +228,14 @@ export function useGeneration(session) {
     session.resets.delete(reset);
     reset();
   });
+  async function setIncludeInvitation(value) {
+    includeInvitation.value = value;
+    clearCard();
+    await draw();
+  }
   return {
+    includeInvitation,
+    setIncludeInvitation,
     image,
     photoURL,
     caption,

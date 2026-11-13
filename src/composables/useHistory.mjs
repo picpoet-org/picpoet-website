@@ -4,6 +4,7 @@ import { poemData, renderPoemCard } from '../../shared/poem-card.mjs';
 
 export function useHistory(session) {
   const { t, api, scope, user, failure, error, brand } = session;
+  const includeInvitation = ref(true);
   const rows = ref([]),
     cursor = ref(null),
     listBusy = ref(false),
@@ -27,6 +28,7 @@ export function useHistory(session) {
     if (value) URL.revokeObjectURL(value);
   };
   function clearDetail() {
+    includeInvitation.value = true;
     detailVersion++;
     dialog.value?.close();
     deleteDialog.value?.close();
@@ -221,7 +223,7 @@ export function useHistory(session) {
     drawing.value = true;
     exportStatus.value = t('common.rendering');
     try {
-      const invitationURL = await session.ensureInvitationURL(ticket);
+      const invitationURL = includeInvitation.value ? await session.ensureInvitationURL(ticket) : '';
       const blob = await renderPoemCard(source.poem, {
         brand,
         invitationURL,
@@ -231,7 +233,7 @@ export function useHistory(session) {
       if (version !== detailVersion || selected.value !== source) return;
       release(cardURL.value);
       cardURL.value = URL.createObjectURL(blob);
-      exportStatus.value = invitationURL ? '' : t('sharing.noInvitation');
+      exportStatus.value = !includeInvitation.value || invitationURL ? '' : t('sharing.noInvitation');
     } catch (cause) {
       if (scope.current(ticket) && version === detailVersion && cause.name !== 'AbortError')
         exportStatus.value = report(cause);
@@ -270,7 +272,16 @@ export function useHistory(session) {
     session.resets.delete(reset);
     reset();
   });
+  async function setIncludeInvitation(value) {
+    includeInvitation.value = value;
+    const hadCard = !!cardURL.value;
+    release(cardURL.value);
+    cardURL.value = '';
+    if (hadCard) await draw();
+  }
   return {
+    includeInvitation,
+    setIncludeInvitation,
     rows,
     cursor,
     listBusy,

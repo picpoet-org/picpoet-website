@@ -49,13 +49,14 @@ npm run dev
 凭据由本机 `~/.project-translator/config.json` 或该工具支持的环境变量提供；项目 `project.translation.json` 仅保存映射、提示词和非秘密 vendor 元数据。更新本机认证后，在本仓库运行：
 
 ```bash
-npm run translate       # 先校验项目与有效配置，再调用 project-translator-cli
+npm run translate:check # 校验配置、客户端认证和模型列表
+npm run translate       # 通过预检后调用 project-translator-cli
 npm run locales:check  # 六种语言的文件、键、占位符和品牌检查
 npm run build:all      # 严格六语言预渲染
 node test/vue.browser.integration.mjs --all-locales
 ```
 
-翻译包装脚本核对 `failedFiles`、取消及致命错误，CLI 退出码 0 也不代替翻译成功。目标译文统一通过 CLI 更新；源文、提示词或 vendor 调整后重新生成，保持所有 `{brand}`、`{count}` 等占位符。当前 `npm run build` 仅交付完整字典的语言并提示待办；正式六语言交付以 `build:all` 和六语言浏览器验收成功为准。
+翻译包装脚本先通过 `/models` 验证有效配置中的客户端凭据和模型；401/403 立即提示修复全局客户端密钥，保持密钥与响应正文私密。项目配置复用全局密钥，真实凭据继续只保存在本机。翻译期间每 30 秒输出运行提示，完成后核对 `failedFiles`、取消及致命错误，CLI 退出码 0 也不代替翻译成功。目标译文统一通过 CLI 更新；源文、提示词或 vendor 调整后重新生成，保持所有 `{brand}`、`{count}` 等占位符。当前 `npm run build` 仅交付完整字典的语言并提示待办；正式六语言交付以 `build:all` 和六语言浏览器验收成功为准。
 
 ## 页面
 
@@ -278,3 +279,7 @@ esa-cli deploy --assets ./public --name picpoet-website --environment production
 ### Website 联调端口冲突处理
 
 网站默认端口为 `18090`。一键联调启动时若该端口被占用，仅向当前用户的 TCP 监听进程发送 TERM，等待 5 秒后仍未退出则发送 KILL；不会终止整个进程组。其他用户的进程、无法识别或回收后仍占用的端口会报错，保留现场。此操作可能中断同一用户的其他项目；仅 website 端口启用此策略，其他后端端口继续保留占用进程。需要 Linux pidfd 支持及 `lsof`。已受管理且健康的 website 进程正常复用。旧 `8090` 进程不受影响。
+
+### 分享图二维码选项
+
+创作结果与历史作品导出提供默认勾选的“附加邀请二维码”。取消勾选时弹窗说明其他人扫码注册后，邀请人可获赠免费作词次数；确认后重绘无二维码图片，也可保留二维码。每份新作品恢复默认选择；预览和下载始终使用同一版本图片。

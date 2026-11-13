@@ -1,10 +1,13 @@
 <script setup>
+import ShareInvitationOption from '../components/ShareInvitationOption.vue';
 import { useSession } from '../composables/useSession.mjs';
 import { useHistory } from '../composables/useHistory.mjs';
 import SessionGate from '../components/SessionGate.vue';
 const session = useSession();
 const { t, href, user, time } = session;
 const {
+  includeInvitation,
+  setIncludeInvitation,
   rows,
   cursor,
   listBusy,
@@ -142,6 +145,11 @@ function backdrop(event) {
           </p>
           <p id="history-body">{{ selected?.poem?.body }}</p>
         </div>
+        <ShareInvitationOption
+          :model-value="includeInvitation"
+          :disabled="drawing || deleting || !selected?.poem"
+          @update:model-value="setIncludeInvitation"
+        />
         <div class="actions">
           <button
             id="history-render"

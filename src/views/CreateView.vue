@@ -1,4 +1,5 @@
 <script setup>
+import ShareInvitationOption from '../components/ShareInvitationOption.vue';
 import { useSession } from '../composables/useSession.mjs';
 import { useGeneration } from '../composables/useGeneration.mjs';
 import SessionGate from '../components/SessionGate.vue';
@@ -6,6 +7,8 @@ import WaitingPoems from '../components/WaitingPoems.vue';
 const session = useSession();
 const { t, href, asset, verified, busy, balance } = session;
 const {
+  includeInvitation,
+  setIncludeInvitation,
   image,
   photoURL,
   caption,
@@ -153,6 +156,11 @@ const {
           <p>{{ t('create.emptyHelp') }}</p>
         </div>
         <div id="result-content" :hidden="!poem">
+          <ShareInvitationOption
+            :model-value="includeInvitation"
+            :disabled="busy.has('card') || busy.has('share')"
+            @update:model-value="setIncludeInvitation"
+          />
           <p id="result-expiry" class="fine-print">{{ expiry }}</p>
           <figure id="card-preview" :hidden="!cardURL">
             <img

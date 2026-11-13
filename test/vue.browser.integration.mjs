@@ -457,6 +457,37 @@ try {
     [verse.title, ...verse.lines].join('\n'),
   );
   assert.equal(await decodeImageQR('#poem-card'), INVITATION_URL);
+  async function checkInvitationOption(imageSelector) {
+    const option = page.locator('.share-invitation-option input:visible');
+    assert.equal(await option.isChecked(), true);
+    await option.click();
+    await page.getByRole('button', { name: '保留二维码', exact: true }).click();
+    assert.equal(await option.isChecked(), true);
+    const previous = await page.locator(imageSelector).getAttribute('src');
+    await option.click();
+    await page.getByRole('button', { name: '不附加二维码', exact: true }).click();
+    await page.waitForFunction(
+      ({ selector, previous }) => {
+        const image = document.querySelector(selector);
+        return image?.getAttribute('src') && image.getAttribute('src') !== previous;
+      },
+      { selector: imageSelector, previous },
+    );
+    assert.equal(await option.isChecked(), false);
+    assert.equal(await decodeImageQR(imageSelector), undefined);
+    const plain = await page.locator(imageSelector).getAttribute('src');
+    await option.click();
+    await page.waitForFunction(
+      ({ selector, plain }) => {
+        const image = document.querySelector(selector);
+        return image?.getAttribute('src') && image.getAttribute('src') !== plain;
+      },
+      { selector: imageSelector, plain },
+    );
+    assert.equal(await decodeImageQR(imageSelector), INVITATION_URL);
+  }
+  await checkInvitationOption('#poem-card');
+
   for (const width of [375, 1280]) {
     await page.setViewportSize({ width, height: 1100 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
@@ -488,6 +519,7 @@ try {
   await page.locator('#history-render').click();
   await page.locator('#history-download').waitFor({ state: 'visible' });
   assert.equal(await decodeImageQR('#history-card'), INVITATION_URL);
+  await checkInvitationOption('#history-card');
   await page.locator('#history-delete').click();
   await page.locator('#history-delete-cancel').click();
   assert.ok(await page.locator('#history-detail').isVisible());
