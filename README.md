@@ -12,13 +12,13 @@ Vue 3 + Vite 网站，维护产品说明、下载、在线创作与独立 Node B
 | Android 更新清单 | `https://picpoet.jqknono.com/releases/stable.json` |
 | 安装包 CDN 根路径 | `https://downloads.nullprivate.com/picpoet/release` |
 
-共享 R2 下载桶按项目划分顶层前缀，PicPoet 独占 `picpoet/`，公开项目根为 `https://downloads.nullprivate.com/picpoet/`；安装包路径约定为 `<CDN 根路径>/<平台>/<版本>/<文件名>`。当前稳定版为 **0.1.4**，提供 Android ARM64、Linux x64 与 Windows x64，版本源仍在客户端 `pubspec.yaml`。例如：
+共享 R2 下载桶按项目划分顶层前缀，PicPoet 独占 `picpoet/`，公开项目根为 `https://downloads.nullprivate.com/picpoet/`；安装包路径约定为 `<CDN 根路径>/<平台>/<版本>/<文件名>`。当前稳定版为 **0.1.6**，提供 Android ARM64、Linux x64 与 Windows x64，版本源仍在客户端 `pubspec.yaml`。例如：
 
 ```text
-https://downloads.nullprivate.com/picpoet/release/android/0.1.4/picpoet-0.1.4-arm64-v8a.apk
+https://downloads.nullprivate.com/picpoet/release/android/0.1.6/picpoet-0.1.6-arm64-v8a.apk
 ```
 
-三平台产物与校验文件已由 [0.1.4 标签流水线](https://github.com/picpoet-org/picpoet-app/actions/runs/43188931253) 上传 R2，公开回下载的大小与 SHA-256 均与发布清单一致。`npm run releases:check` 会校验所有已发布安装包均位于指定 CDN 的平台／版本目录，并校验 Android 系统版本码由版本自动推导。网站部署与客户端属于独立仓库，客户端对应配置位于工作区 `../picpoet-app/android/packaging/release-config.json`；调整公开地址时同步两侧。
+三平台产物与校验文件已由 [0.1.6 标签流水线](https://github.com/picpoet-org/picpoet-app/actions/runs/43558726034) 上传 R2，公开回下载的大小与 SHA-256 均与发布清单一致。`npm run releases:check` 会校验所有已发布安装包均位于指定 CDN 的平台／版本目录，并校验 Android 系统版本码由版本自动推导。网站部署与客户端属于独立仓库，客户端对应配置位于工作区 `../picpoet-app/android/packaging/release-config.json`；调整公开地址时同步两侧。
 
 ## 本地预览
 
@@ -42,21 +42,25 @@ npm run dev
 
 保留根目录 `.html` 地址和 `/pages/` 兼容入口。非简体中文使用 `/zh-hk/`、`/zh-tw/`、`/en-us/`、`/ko-kr/`、`/ja-jp/` 路径；共享页头按语言生成站内地址，保留当前页面与登录目标。每个已交付语言均有对应 `lang`、canonical 和 hreflang。语言选择不写 Cookie 或浏览器存储；界面语言与请求的 `poemLanguage` 分开，目前作诗继续使用后端支持的 `zh`。
 
-### 首期语言与翻译待办
+### 六语言翻译与验证
 
-规划语言为简体中文、香港繁体中文、台湾繁体中文、英文、韩文、日文。**当前仅简体中文已经生成并验收。** 首次 `project-translator-cli` 执行的 30 个目标文件均被配置上游以 `401 Invalid API key` 拒绝；用户选择先保留翻译待办。其余五种语言未放入占位译文，导航只展示完整字典的语言。
+目标语言为简体中文、香港繁体中文、台湾繁体中文、英文、韩文、日文。导航只展示完整字典的语言，不使用占位译文。
 
-凭据由本机 `~/.project-translator/config.json` 或该工具支持的环境变量提供；项目 `project.translation.json` 仅保存映射、提示词和非秘密 vendor 元数据。更新本机认证后，在本仓库运行：
+凭据由本机 `~/.project-translator/config.json` 或该工具支持的环境变量提供；项目 `project.translation.json` 保存翻译映射与提示词，真实凭据不提交到仓库。在本仓库根目录直接运行翻译 CLI：
 
 ```bash
-npm run translate:check # 校验配置、客户端认证和模型列表
-npm run translate       # 通过预检后调用 project-translator-cli
+project-translator-cli translate project
+```
+
+`npm run translate` 是上述命令的别名，不增加预检或包装逻辑。翻译完成后独立验证网站产物：
+
+```bash
 npm run locales:check  # 六种语言的文件、键、占位符和品牌检查
 npm run build:all      # 严格六语言预渲染
 node test/vue.browser.integration.mjs --all-locales
 ```
 
-翻译包装脚本先通过 `/models` 验证有效配置中的客户端凭据和模型；401/403 立即提示修复全局客户端密钥，保持密钥与响应正文私密。项目配置复用全局密钥，真实凭据继续只保存在本机。翻译期间每 30 秒输出运行提示，完成后核对 `failedFiles`、取消及致命错误，CLI 退出码 0 也不代替翻译成功。目标译文统一通过 CLI 更新；源文、提示词或 vendor 调整后重新生成，保持所有 `{brand}`、`{count}` 等占位符。当前 `npm run build` 仅交付完整字典的语言并提示待办；正式六语言交付以 `build:all` 和六语言浏览器验收成功为准。
+目标译文统一通过 CLI 更新；源文、提示词或 vendor 调整后重新生成，保持所有 `{brand}`、`{count}` 等占位符。CLI 退出码不代替网站产物验收。`npm run build` 仅交付完整字典的语言并提示待办；正式六语言交付以完整性检查、`build:all` 和六语言浏览器验收成功为准。
 
 ## 页面
 
@@ -92,6 +96,8 @@ node test/vue.browser.integration.mjs --all-locales
 上线需升级 Dashboard 并应用 `000014`（保留已有 `000013`），再重启网站 BFF。SQLite 空库与既有 12/13 版本自动升级到 14，测试使用临时数据库；PostgreSQL 的行锁、实际迁移与线上验收需另行执行。规则详见 [Dashboard 手机号认证契约](../../user-dashboard/docs/phone-auth.md)。本次未迁移真实数据库、未重启联调栈、未修改 Flutter 客户端。
 
 ### 分享邀请与获赠次数
+
+创作页与历史作品详情的“附加邀请二维码”统一放在生成／下载操作区，使用次级字号与常规字重；宽屏随按钮并排，窄屏自然分行，保留完整点击区域、默认勾选与取消确认行为。
 
 创作和历史作品的 PNG 在下方独立留白区附个人邀请二维码，二维码本地绘制、保留静区，不上传作品到第三方。链接由 `deployment.json.websiteUrl`、服务端自动生成的 `user.id` 与 `balance.referral.invitationCode` 组成：
 
@@ -210,7 +216,7 @@ Node 测试覆盖账户会话、原样 multipart、配额查询、任务重试�
 
 ## 统一发布清单
 
-`releases/stable.json` 是网站下载页和 Android 升级检查的共同数据源。当前登记 **0.1.4** 的 Android ARM64、Linux x64 和 Windows x64 安装包；iOS、HarmonyOS 和 macOS 保持“暂未发布”。发布时间采用 GitHub Release 的 `2026-11-12T09:28:49Z`，产物信息来自已完成 R2/CDN 校验的 `stable.candidate.json`。`artifacts: []` 表示“暂未发布”；接入真实产物后自动展示版本、更新说明、架构、大小与 SHA-256。下载页会推荐可能匹配的系统，用户仍需核对架构。仓库及 `public/` 更新与生产部署分别验收。
+`releases/stable.json` 是网站下载页和 Android 升级检查的共同数据源。当前登记 **0.1.6** 的 Android ARM64、Linux x64 和 Windows x64 安装包；iOS、HarmonyOS 和 macOS 保持“暂未发布”。发布时间采用 GitHub Release 的 `2026-11-14T05:14:30Z`，产物信息来自已完成 R2/CDN 校验的 `stable.candidate.json`。`artifacts: []` 表示“暂未发布”；接入真实产物后自动展示版本、更新说明、架构、大小与 SHA-256。下载页会推荐可能匹配的系统，用户仍需核对架构。生产 Node BFF、标准清单路径与 `/pages/releases/stable.json` 兼容路径均已核验为 0.1.6。
 
 清单包含 `schemaVersion: 1` 和六项 `platforms`。每个平台包含：
 

@@ -15,16 +15,15 @@
     "dev:stack:gui": "node scripts/dev-stack-gui.mjs",
     "test:browser:create": "node test/vue.browser.integration.mjs",
     "dev": "vite",
-    "format:check": "prettier --check 'src/**/*.{vue,mjs,css}' vite.config.mjs scripts/check-locales.mjs scripts/sync-public.mjs scripts/translate.mjs test/vue.browser.integration.mjs test/i18n.integration.test.mjs",
+    "format:check": "prettier --check 'src/**/*.{vue,mjs,css}' vite.config.mjs scripts/check-locales.mjs scripts/sync-public.mjs test/vue.browser.integration.mjs test/i18n.integration.test.mjs",
     "start": "python3 -m http.server 8080 --bind 127.0.0.1 --directory public",
     "test": "npm run build && node --test test/*.test.mjs",
     "build": "npm run releases:check && node scripts/sync-public.mjs",
     "build:all": "npm run releases:check && node scripts/sync-public.mjs --all-locales",
-    "translate": "node scripts/translate.mjs",
+    "translate": "project-translator-cli translate project",
     "locales:check": "node scripts/check-locales.mjs",
     "releases:check": "node scripts/check-releases.mjs",
-    "public:sync": "npm run build",
-    "translate:check": "node scripts/translate.mjs --check"
+    "public:sync": "npm run build"
   },
   "dependencies": {
     "qrcode-generator": "^2.0.4",

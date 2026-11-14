@@ -88,6 +88,10 @@
   font-size: 0.875rem;
   margin-block: 0 1.5rem;
 }
+.create-page .actions.share-actions {
+  column-gap: 1rem;
+  row-gap: 0.5rem;
+}
 /* 页面布局复用品牌 token，新组件使用相对尺寸以适配六种界面语言。 */
 [hidden] {
   display: none !important;

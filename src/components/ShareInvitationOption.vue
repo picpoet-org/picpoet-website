@@ -19,7 +19,7 @@ function omit() {
 <template>
   <label class="share-invitation-option">
     <input type="checkbox" :checked="modelValue" :disabled="disabled" @change="change" />
-    {{ t('sharing.includeQR') }}
+    <span>{{ t('sharing.includeQR') }}</span>
   </label>
   <dialog ref="dialog" class="share-invitation-dialog" :aria-label="t('sharing.rewardTitle')">
     <h3>{{ t('sharing.rewardTitle') }}</h3>
@@ -33,17 +33,32 @@ function omit() {
   </dialog>
 </template>
 <style scoped>
-.share-invitation-option {
-  display: flex;
+label.share-invitation-option {
+  display: inline-flex;
   align-items: center;
-  gap: 0.6em;
-  margin-block: 1rem;
+  gap: 0.5em;
+  min-block-size: 3rem;
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text-secondary);
   cursor: pointer;
 }
 .share-invitation-option input {
-  width: 1.2em;
-  height: 1.2em;
+  flex: 0 0 auto;
+  inline-size: 1.125em;
+  block-size: 1.125em;
+  min-block-size: 0;
   margin: 0;
+  padding: 0;
+  accent-color: var(--pp-color-ink);
+}
+.share-invitation-option:hover {
+  color: var(--pp-color-ink);
+}
+.share-invitation-option:has(:disabled) {
+  cursor: not-allowed;
 }
 .share-invitation-dialog {
   max-width: min(28rem, 90vw);

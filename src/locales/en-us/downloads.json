@@ -1,0 +1,32 @@
+{
+  "content": {
+    "downloads": {
+      "t001": "Downloads and release status",
+      "t002": "On your device,",
+      "t003": "keep a touch of poetry.",
+      "t004": "Choose the version that suits you, starting with a photo from your gallery. Before downloading, please check your device's system requirements.",
+      "t005": "Choose your platform",
+      "t006": "View available versions and release notes here. Platforms that have not yet been released will be clearly marked.",
+      "t007": "Loading release information…",
+      "t008": "Refresh release information",
+      "t009": "Please enable JavaScript and refresh the page to load release information. You can still read the platform notes below and",
+      "t010": "usage instructions",
+      "t011": "Android 8.0 and later. Saving a copy to the system gallery requires Android 10 or later; overwriting the original image also requires Android 10 or later and is subject to source and system authorization restrictions.",
+      "t012": "Please enable JavaScript and load release information to view available installation packages.",
+      "t013": "The minimum iOS version and device requirements are subject to the actual iOS release package notes.",
+      "t014": "Please enable JavaScript and load release information to view available installation packages.",
+      "t015": "For Huawei HarmonyOS phones and tablets. The minimum system version, device architecture, and installation method are subject to the actual HarmonyOS release package notes.",
+      "t016": "Please enable JavaScript and load release information to view available installation packages.",
+      "t017": "The minimum distribution version, runtime dependencies, and CPU architecture are subject to the actual Linux release package notes.",
+      "t018": "Please enable JavaScript and load release information to view available installation packages.",
+      "t019": "The minimum macOS version and support for Apple silicon or Intel architecture are subject to the actual release package notes.",
+      "t020": "Please enable JavaScript and load release information to view available installation packages.",
+      "t021": "The minimum Windows version, runtime dependencies, and CPU architecture are subject to the actual Windows release package notes.",
+      "t022": "Please enable JavaScript and load release information to view available installation packages.",
+      "t036": "Get ready to reconnect with a photo",
+      "t037": "When using it for the first time, please refer to the usage instructions to learn about online creation on the website and generation in the client, then choose a photo you like to get started.",
+      "t038": "Read the client instructions",
+      "t039": "Read the website instructions"
+    }
+  }
+}

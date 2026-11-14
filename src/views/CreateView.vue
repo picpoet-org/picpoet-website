@@ -156,11 +156,6 @@ const {
           <p>{{ t('create.emptyHelp') }}</p>
         </div>
         <div id="result-content" :hidden="!poem">
-          <ShareInvitationOption
-            :model-value="includeInvitation"
-            :disabled="busy.has('card') || busy.has('share')"
-            @update:model-value="setIncludeInvitation"
-          />
           <p id="result-expiry" class="fine-print">{{ expiry }}</p>
           <figure id="card-preview" :hidden="!cardURL">
             <img
@@ -171,7 +166,12 @@ const {
             />
           </figure>
           <p id="card-status" class="create-status" role="status" aria-live="polite">{{ cardStatus }}</p>
-          <div class="actions">
+          <div class="actions share-actions">
+            <ShareInvitationOption
+              :model-value="includeInvitation"
+              :disabled="busy.has('card') || busy.has('share')"
+              @update:model-value="setIncludeInvitation"
+            />
             <a
               id="download-card"
               class="button primary"

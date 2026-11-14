@@ -16,7 +16,7 @@ npm run test:browser:create
 - `public:sync` / `build` 用 Vite 编译并从相同组件预渲染到 `public/`；同时校验发布清单，交付完整字典的语言。`build:all` 严格验证六种语言齐全。
 - `npm run dev` 使用 Vite 热更新，`/web-api` 转发本机 `18090` BFF；BFF 仍通过 `dev:web` 或 `dev:web:official` 启动，全栈联调使用 `dev:stack`。
 - 浏览器正向流程验证使用 `npm run test:browser:create`，需要 Google Chrome，使用独立 HTTP 替身；真实上游联通与生成另行验收。
-- `src/locales/zh-cn/` 为文案源；五种目标字典通过 `npm run translate` 调用 `project-translator-cli` 生成，凭据复用本机全局配置。源文更新后运行翻译、`locales:check`、`build:all` 和六语言浏览器验收。
+- `src/locales/zh-cn/` 为文案源；五种目标字典在仓库根目录直接运行 `project-translator-cli translate project` 生成，`npm run translate` 仅为同一命令的别名，不添加翻译包装脚本，凭据复用本机全局配置。源文更新后运行翻译、`locales:check`、`build:all` 和六语言浏览器验收。
 - 简体中文品牌为“图赋”，其余语言为“PicPoet”；文案使用 `{brand}`，界面语言与创作请求的诗词语言分别维护。
 
 ## 业务与发布边界

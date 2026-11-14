@@ -145,12 +145,12 @@ function backdrop(event) {
           </p>
           <p id="history-body">{{ selected?.poem?.body }}</p>
         </div>
-        <ShareInvitationOption
-          :model-value="includeInvitation"
-          :disabled="drawing || deleting || !selected?.poem"
-          @update:model-value="setIncludeInvitation"
-        />
-        <div class="actions">
+        <div class="actions share-actions">
+          <ShareInvitationOption
+            :model-value="includeInvitation"
+            :disabled="drawing || deleting || !selected?.poem"
+            @update:model-value="setIncludeInvitation"
+          />
           <button
             id="history-render"
             class="button secondary"
