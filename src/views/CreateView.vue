@@ -167,11 +167,6 @@ const {
           </figure>
           <p id="card-status" class="create-status" role="status" aria-live="polite">{{ cardStatus }}</p>
           <div class="actions share-actions">
-            <ShareInvitationOption
-              :model-value="includeInvitation"
-              :disabled="busy.has('card') || busy.has('share')"
-              @update:model-value="setIncludeInvitation"
-            />
             <a
               id="download-card"
               class="button primary"
@@ -196,6 +191,13 @@ const {
             >
               {{ t('create.share') }}
             </button>
+          </div>
+          <div class="share-options">
+            <ShareInvitationOption
+              :model-value="includeInvitation"
+              :disabled="busy.has('card') || busy.has('share')"
+              @update:model-value="setIncludeInvitation"
+            />
           </div>
           <p id="copy-status" class="fine-print" role="status">{{ copyStatus }}</p>
           <textarea

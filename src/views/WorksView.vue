@@ -160,11 +160,6 @@ function backdrop(event) {
           <p id="history-body">{{ selected?.poem?.body }}</p>
         </div>
         <div class="actions share-actions">
-          <ShareInvitationOption
-            :model-value="includeInvitation"
-            :disabled="drawing || deleting || !selected?.poem"
-            @update:model-value="setIncludeInvitation"
-          />
           <button
             id="history-render"
             class="button secondary"
@@ -188,6 +183,13 @@ function backdrop(event) {
           >
             {{ t('history.delete') }}
           </button>
+        </div>
+        <div class="share-options">
+          <ShareInvitationOption
+            :model-value="includeInvitation"
+            :disabled="drawing || deleting || !selected?.poem"
+            @update:model-value="setIncludeInvitation"
+          />
         </div>
         <p id="history-export-status" class="create-status" role="status" aria-live="polite">
           {{ exportStatus }}

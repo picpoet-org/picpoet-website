@@ -41,7 +41,7 @@ export async function checkLocales(ids = locales.map((item) => item.id)) {
         document = JSON.parse(await readFile(new URL(`${locale}/${file}`, root), 'utf8'));
       } catch (cause) {
         throw new Error(
-          `${locale}/${file} 尚未由 project-translator-cli 完整生成；请更新本机翻译认证后执行 npm run translate。`,
+          `${locale}/${file} 缺失或 JSON 无效；请由 agent 参照 src/locales/zh-cn/${file} 补齐并修正译文后运行 npm run locales:check。`,
           { cause },
         );
       }

@@ -131,7 +131,10 @@ export async function renderPoemCard(data, { brand = '图赋', invitationURL = '
     if (layout.footer) {
       const { y } = layout.footer;
       const x = CARD.width - CARD.padding - qrSize;
-      drawQRCode(ctx, matrix, x, y, qrScale);
+      drawQRCode(ctx, matrix, x, y, qrScale, {
+        background: color('paper', '#f5f3ee'),
+        foreground: color('accent-dark', '#c94427'),
+      });
       ctx.fillStyle = color('muted', '#6b6962');
       const center = (CARD.padding + x - 32) / 2;
       drawLine(brand, 34, 2, center, y + qrSize / 2 - 24);

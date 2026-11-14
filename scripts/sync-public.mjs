@@ -18,7 +18,7 @@ await checkLocales(languageIds);
 const pending = locales.filter((item) => !languageIds.includes(item.id));
 if (pending.length)
   console.warn(
-    `待 CLI 翻译：${pending.map((item) => item.id).join('、')}。本次仅交付已完成字典的语言；正式六语言验收使用 npm run build:all。`,
+    `待 agent 补齐译文：${pending.map((item) => item.id).join('、')}。本次仅交付已完成字典的语言；正式六语言验收使用 npm run build:all。`,
   );
 validatePublishedManifest(JSON.parse(await readFile(path.join(root, 'releases/stable.json'), 'utf8')));
 // 客户端与预渲染使用同一份组件；认证和业务数据只在浏览器挂载后请求。

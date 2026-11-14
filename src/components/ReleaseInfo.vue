@@ -21,15 +21,8 @@ const size = (value) =>
     <p v-else-if="!platform.artifacts.length" class="release-unavailable">{{ t('downloads.unpublished') }}</p>
     <template v-else
       ><p class="release-version">{{ t('downloads.version', { version: platform.versionName }) }}</p>
-      <p class="release-date">
-        {{
-          t('downloads.published', { date: new Date(platform.publishedAt).toLocaleDateString(language.tag) })
-        }}
-        · {{ copy.system }}
-      </p>
-      <ul v-if="copy.notes.length" class="release-notes">
-        <li v-for="note in copy.notes" :key="note">{{ note }}</li>
-      </ul>
+      <p class="platform-requirement">{{ copy.system }}</p>
+      <p v-if="platformId === 'android'" class="platform-caveat">{{ t('downloads.androidStorage') }}</p>
       <div class="artifact-list">
         <div v-for="artifact in platform.artifacts" :key="artifact.url" class="artifact">
           <a
@@ -43,17 +36,28 @@ const size = (value) =>
                 format: artifact.format,
               })
             "
-            >{{ t('downloads.download', { platform: platform.name, arch: artifact.arch }) }}</a
+            >{{ t('downloads.downloadCompact', { arch: artifact.arch }) }}</a
           >
-          <p class="artifact-meta">
-            {{ artifact.format }} · {{ size(artifact.sizeBytes) }} · {{ t('downloads.cdn') }}
-          </p>
+          <p class="artifact-meta">{{ artifact.format }} · {{ size(artifact.sizeBytes) }}</p>
           <details>
             <summary>{{ t('downloads.checksum') }}</summary>
             <code class="checksum">{{ artifact.sha256 }}</code>
           </details>
         </div>
-      </div></template
-    >
+      </div>
+      <details class="release-details">
+        <summary>{{ t('downloads.releaseDetails') }}</summary>
+        <p class="release-date">
+          {{
+            t('downloads.published', {
+              date: new Date(platform.publishedAt).toLocaleDateString(language.tag),
+            })
+          }}
+        </p>
+        <ul v-if="copy.notes.length" class="release-notes">
+          <li v-for="note in copy.notes" :key="note">{{ note }}</li>
+        </ul>
+      </details>
+    </template>
   </div>
 </template>

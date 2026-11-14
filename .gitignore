@@ -5,5 +5,7 @@ public/
 .build/
 test-results/
 playwright-report/
+# 旧翻译工具的本地遗留数据不再参与维护。
 .project-translator/
+.translation-cache/
 .local/

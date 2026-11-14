@@ -1,9 +1,12 @@
 <script setup>
+import { computed } from 'vue';
 import { useSite } from '../i18n/context.mjs';
 const { t, href } = useSite();
 import ReleaseInfo from '../components/ReleaseInfo.vue';
 import { useDownloads } from '../composables/useDownloads.mjs';
-const { busy, status, refresh, recommended } = useDownloads();
+const { busy, status, platforms, failed, recommended } = useDownloads();
+const published = computed(() => platforms.value.filter((platform) => platform.artifacts.length));
+const upcoming = computed(() => platforms.value.filter((platform) => !platform.artifacts.length));
 </script>
 <template>
   <main id="main" class="shell" tabindex="-1">
@@ -17,81 +20,37 @@ const { busy, status, refresh, recommended } = useDownloads();
         <h2 id="platforms-title">{{ t('content.downloads.t005') }}</h2>
         <p>{{ t('content.downloads.t006') }}</p>
       </div>
-      <div class="release-toolbar">
-        <p id="download-status" role="status" aria-live="polite">{{ status }}</p>
-        <button
-          id="refresh-downloads"
-          @click="refresh"
-          :disabled="busy"
-          type="button"
-          class="button secondary"
-        >
-          {{ t('content.downloads.t008') }}
-        </button>
-      </div>
-
-      <div class="download-grid">
+      <p id="download-status" class="download-status" role="status" aria-live="polite">{{ status }}</p>
+      <div class="download-grid" :aria-busy="busy">
         <article
-          id="platform-android"
-          data-platform="android"
+          v-for="platform in published"
+          :id="`platform-${platform.id}`"
+          :key="platform.id"
+          :data-platform="platform.id"
           class="download-card"
-          :class="{ recommended: recommended === 'android' }"
+          :class="{ recommended: recommended === platform.id }"
         >
-          <h2>Android</h2>
-          <p class="platform-requirement">{{ t('content.downloads.t011') }}</p>
-          <ReleaseInfo :platform-id="'android'" />
-        </article>
-        <article
-          id="platform-ios"
-          data-platform="ios"
-          class="download-card"
-          :class="{ recommended: recommended === 'ios' }"
-        >
-          <h2>iOS</h2>
-          <p class="platform-requirement">{{ t('content.downloads.t013') }}</p>
-          <ReleaseInfo :platform-id="'ios'" />
-        </article>
-        <article
-          id="platform-ohos"
-          data-platform="ohos"
-          class="download-card"
-          :class="{ recommended: recommended === 'ohos' }"
-        >
-          <h2>HarmonyOS</h2>
-          <p class="platform-requirement">{{ t('content.downloads.t015') }}</p>
-          <ReleaseInfo :platform-id="'ohos'" />
-        </article>
-        <article
-          id="platform-linux"
-          data-platform="linux"
-          class="download-card"
-          :class="{ recommended: recommended === 'linux' }"
-        >
-          <h2>Linux</h2>
-          <p class="platform-requirement">{{ t('content.downloads.t017') }}</p>
-          <ReleaseInfo :platform-id="'linux'" />
-        </article>
-        <article
-          id="platform-macos"
-          data-platform="macos"
-          class="download-card"
-          :class="{ recommended: recommended === 'macos' }"
-        >
-          <h2>macOS</h2>
-          <p class="platform-requirement">{{ t('content.downloads.t019') }}</p>
-          <ReleaseInfo :platform-id="'macos'" />
-        </article>
-        <article
-          id="platform-windows"
-          data-platform="windows"
-          class="download-card"
-          :class="{ recommended: recommended === 'windows' }"
-        >
-          <h2>Windows</h2>
-          <p class="platform-requirement">{{ t('content.downloads.t021') }}</p>
-          <ReleaseInfo :platform-id="'windows'" />
+          <h2>{{ platform.name }}</h2>
+          <ReleaseInfo :platform-id="platform.id" />
         </article>
       </div>
+      <section
+        v-if="!busy && !failed && upcoming.length"
+        class="upcoming-platforms"
+        aria-labelledby="upcoming-title"
+      >
+        <h3 id="upcoming-title">{{ t('downloads.unpublished') }}</h3>
+        <ul>
+          <li
+            v-for="platform in upcoming"
+            :key="platform.id"
+            :id="`platform-${platform.id}`"
+            :data-platform="platform.id"
+          >
+            {{ platform.name }}
+          </li>
+        </ul>
+      </section>
     </section>
     <div class="content download-guide">
       <section id="first-use">

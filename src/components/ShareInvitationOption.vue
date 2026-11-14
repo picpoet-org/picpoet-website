@@ -23,7 +23,11 @@ function omit() {
   </label>
   <dialog ref="dialog" class="share-invitation-dialog" :aria-label="t('sharing.rewardTitle')">
     <h3>{{ t('sharing.rewardTitle') }}</h3>
-    <p>{{ t('sharing.rewardNotice') }}</p>
+    <div class="invitation-reward">
+      <p class="invitation-reward-amount">{{ t('sharing.rewardAmount') }}</p>
+      <p>{{ t('sharing.rewardNotice') }}</p>
+    </div>
+    <p class="invitation-choice">{{ t('sharing.rewardChoice') }}</p>
     <div class="actions">
       <button type="button" class="button secondary" @click="omit">{{ t('sharing.omitQR') }}</button>
       <button type="button" class="button primary" autofocus @click="dialog.close()">
@@ -62,6 +66,27 @@ label.share-invitation-option {
 }
 .share-invitation-dialog {
   max-width: min(28rem, 90vw);
-  padding: 1.5rem;
+  padding: clamp(1.25rem, 4vw, 2rem);
+}
+.invitation-reward {
+  margin-block: 1.25rem;
+  padding: 1rem 1.25rem;
+  border-inline-start: 0.25rem solid var(--pp-color-accent-dark);
+  border-radius: 0.5rem;
+  background: var(--pp-color-panel);
+}
+.invitation-reward p {
+  margin: 0;
+}
+.invitation-reward .invitation-reward-amount {
+  margin-block-end: 0.5rem;
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  font-weight: 650;
+  line-height: 1.4;
+  color: var(--pp-color-accent-dark);
+}
+.invitation-choice {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
 }
 </style>

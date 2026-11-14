@@ -16,7 +16,8 @@ npm run test:browser:create
 - `public:sync` / `build` 用 Vite 编译并从相同组件预渲染到 `public/`；同时校验发布清单，交付完整字典的语言。`build:all` 严格验证六种语言齐全。
 - `npm run dev` 使用 Vite 热更新，`/web-api` 转发本机 `18090` BFF；BFF 仍通过 `dev:web` 或 `dev:web:official` 启动，全栈联调使用 `dev:stack`。
 - 浏览器正向流程验证使用 `npm run test:browser:create`，需要 Google Chrome，使用独立 HTTP 替身；真实上游联通与生成另行验收。
-- `src/locales/zh-cn/` 为文案源；五种目标字典在仓库根目录直接运行 `project-translator-cli translate project` 生成，`npm run translate` 仅为同一命令的别名，不添加翻译包装脚本，凭据复用本机全局配置。源文更新后运行翻译、`locales:check`、`build:all` 和六语言浏览器验收。
+- 多语言由 agent 直接维护，不使用 project-translator-cli 或其他自动翻译生成流程。`src/locales/zh-cn/` 为文案源；新增或修改文案时，在同一变更中直接同步 `zh-hk`、`zh-tw`、`en-us`、`ko-kr`、`ja-jp` 字典，仅修改相关键，不整文件重译。保持键、结构、数组长度和 `{brand}`、`{count}` 等占位符一致，不以源文占位或删除目标字典绕过校验。
+- 翻译需结合界面与业务语境，区分香港／台湾用语，保留产品事实、协议值和链接。完成后执行 `npm run locales:check`、`npm run build:all` 和 `node test/vue.browser.integration.mjs --all-locales`；结构检查不能代替语义审校。
 - 简体中文品牌为“图赋”，其余语言为“PicPoet”；文案使用 `{brand}`，界面语言与创作请求的诗词语言分别维护。
 
 ## 业务与发布边界

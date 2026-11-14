@@ -91,6 +91,55 @@
 .create-page .actions.share-actions {
   column-gap: 1rem;
   row-gap: 0.5rem;
+  margin-block-end: 0;
+}
+.create-page .share-options {
+  margin-block-start: 0.25rem;
+}
+.download-status:empty {
+  margin: 0;
+}
+.download-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 1.5rem;
+}
+.download-card {
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+}
+.download-card .platform-caveat {
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+.release-details {
+  margin-block-start: 1rem;
+  border-block-start: 1px solid var(--pp-color-line);
+  padding-block-start: 0.5rem;
+}
+.release-details .release-date {
+  margin-block-start: 0.5rem;
+}
+.upcoming-platforms {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.75rem 2rem;
+  margin-block-start: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: 0.75rem;
+  background: var(--pp-color-panel);
+}
+.upcoming-platforms h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.upcoming-platforms ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  color: var(--text-secondary);
 }
 /* 页面布局复用品牌 token，新组件使用相对尺寸以适配六种界面语言。 */
 [hidden] {

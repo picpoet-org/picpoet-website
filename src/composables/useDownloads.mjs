@@ -1,10 +1,11 @@
 import { ref, provide, onMounted, onBeforeUnmount } from 'vue';
 import { loadManifest, detectPlatform } from '../../shared/releases.mjs';
 import { useSite } from '../i18n/context.mjs';
+import bundledManifest from '../../releases/stable.json';
 export const downloadsKey = Symbol('downloads');
 export function useDownloads() {
   const { t, asset } = useSite();
-  const platforms = ref([]),
+  const platforms = ref(bundledManifest.platforms),
     busy = ref(false),
     status = ref(t('downloads.loading')),
     failed = ref(false),
@@ -43,5 +44,5 @@ export function useDownloads() {
     controller?.abort();
     controller = null;
   });
-  return { busy, status, refresh, recommended };
+  return { busy, status, platforms, failed, recommended };
 }

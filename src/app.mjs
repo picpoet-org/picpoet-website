@@ -15,7 +15,7 @@ export async function createSite(options) {
   const files = Object.entries(dictionaries).filter(([file]) =>
     file.startsWith(`./locales/${options.locale}/`),
   );
-  if (!files.length) throw new Error(`尚未通过翻译工具生成语言：${options.locale}`);
+  if (!files.length) throw new Error(`缺少语言字典：${options.locale}，请由 agent 补齐对应译文。`);
   const messages = (await Promise.all(files.map(([, load]) => load()))).reduce(merge, {});
   const context = createSiteContext({ ...options, messages });
   context.sourceErrors = sourceMetadata.errors;

@@ -20,7 +20,6 @@
     "test": "npm run build && node --test test/*.test.mjs",
     "build": "npm run releases:check && node scripts/sync-public.mjs",
     "build:all": "npm run releases:check && node scripts/sync-public.mjs --all-locales",
-    "translate": "project-translator-cli translate project",
     "locales:check": "node scripts/check-locales.mjs",
     "releases:check": "node scripts/check-releases.mjs",
     "public:sync": "npm run build"
