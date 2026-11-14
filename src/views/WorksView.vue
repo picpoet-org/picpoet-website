@@ -1,4 +1,6 @@
 <script setup>
+import { watch } from 'vue';
+import { loadCardFont } from '../../shared/poem-card.mjs';
 import ShareInvitationOption from '../components/ShareInvitationOption.vue';
 import { useSession } from '../composables/useSession.mjs';
 import { useHistory } from '../composables/useHistory.mjs';
@@ -30,6 +32,18 @@ const {
   draw,
   remove,
 } = useHistory(session);
+watch(
+  () => {
+    const poem = selected.value?.poem;
+    return poem
+      ? [poem.title, poem.cipai ? t('common.cipai', { name: poem.cipai }) : '', poem.body].join('\n')
+      : '';
+  },
+  (text) => {
+    // 字体失败时保留可读的系统字体，不阻塞详情与照片加载。
+    if (text) void loadCardFont(text).catch(() => {});
+  },
+);
 function backdrop(event) {
   if (event.target === dialog.value) {
     const r = dialog.value.getBoundingClientRect();
