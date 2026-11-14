@@ -1,10 +1,41 @@
 <script setup>
+import { ref, watch, nextTick } from 'vue';
 import { useSession } from '../composables/useSession.mjs';
 import { useOrders } from '../composables/useOrders.mjs';
 import SessionGate from '../components/SessionGate.vue';
 import OrderItem from '../components/OrderItem.vue';
 const session = useSession();
 const { t, href, user, verified, busy, balance, money, invitationURL, grantedCredits } = session;
+const copyStatus = ref('');
+const copyFallback = ref(false);
+const invitationInput = ref();
+watch(invitationURL, () => {
+  copyStatus.value = '';
+  copyFallback.value = false;
+});
+async function copyInvitation() {
+  const source = invitationURL.value;
+  if (!source) return;
+  await session.action('copy-invitation', copyStatus, async (ticket) => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
+      await navigator.clipboard.writeText(source);
+      session.scope.assert(ticket);
+      if (invitationURL.value !== source) return;
+      copyFallback.value = false;
+      copyStatus.value = t('referral.copied');
+    } catch {
+      session.scope.assert(ticket);
+      if (invitationURL.value !== source) return;
+      copyFallback.value = true;
+      copyStatus.value = t('referral.copyManually');
+      await nextTick();
+      if (!session.scope.current(ticket) || invitationURL.value !== source) return;
+      invitationInput.value?.focus();
+      invitationInput.value?.select();
+    }
+  });
+}
 const {
   plans,
   orders,
@@ -31,68 +62,97 @@ const {
       <a class="button primary" :href="href('create.html')">{{ t('account.create') }}</a>
     </section>
     <SessionGate :session="session" />
-    <section class="create-panel account-panel" aria-labelledby="account-title">
-      <div class="section-top">
-        <h2 id="account-title">{{ t('account.mine') }}</h2>
-        <button
-          id="logout"
-          class="button quiet-button"
-          type="button"
-          :hidden="!user"
-          :disabled="busy.has('auth')"
-          @click="session.logout"
-        >
-          {{ t('session.logout') }}
-        </button>
-      </div>
-      <div id="account-summary" :hidden="!user">
-        <div class="account-identity">
-          <p id="account-name">{{ session.identityLabel.value }}</p>
-          <span id="account-verification" class="account-badge">{{
-            t(session.phoneAccount.value ? 'phoneAuth.accountBadge' : verified ? 'session.verified' : 'session.pending')
-          }}</span>
+    <div class="account-overview">
+      <section class="create-panel account-panel" aria-labelledby="account-title">
+        <div class="section-top">
+          <h2 id="account-title">{{ t('account.mine') }}</h2>
+          <button
+            id="logout"
+            class="button quiet-button"
+            type="button"
+            :hidden="!user"
+            :disabled="busy.has('auth')"
+            @click="session.logout"
+          >
+            {{ t('session.logout') }}
+          </button>
         </div>
-        <dl id="balance" class="account-balance" :aria-label="t('account.remaining')">
-          <div v-for="kind in ['free', 'paid']" :key="kind">
-            <dt>{{ t('session.' + kind) }}</dt>
-            <dd>
-              <strong>{{ balance?.[kind]?.remaining ?? '—' }}</strong><span> {{ t('session.unit') }}</span>
-            </dd>
+        <div id="account-summary" :hidden="!user">
+          <div class="account-identity">
+            <p id="account-name">{{ session.identityLabel.value }}</p>
+            <span id="account-verification" class="account-badge">{{
+              t(
+                session.phoneAccount.value
+                  ? 'phoneAuth.accountBadge'
+                  : verified
+                    ? 'session.verified'
+                    : 'session.pending',
+              )
+            }}</span>
           </div>
-        </dl>
-        <section class="account-referral" aria-labelledby="referral-title">
-          <h3 id="referral-title">{{ t('referral.title') }}</h3>
-          <p id="referral-credits">
-            {{
-              grantedCredits === null ? t('referral.pending') : t('referral.total', { count: grantedCredits })
-            }}
-          </p>
-          <p class="fine-print">{{ t('referral.help') }}</p>
+          <dl id="balance" class="account-balance" :aria-label="t('account.remaining')">
+            <div v-for="kind in ['free', 'paid']" :key="kind">
+              <dt>{{ t('session.' + kind) }}</dt>
+              <dd>
+                <strong>{{ balance?.[kind]?.remaining ?? '—' }}</strong><span> {{ t('session.unit') }}</span>
+              </dd>
+            </div>
+          </dl>
+          <div class="account-links">
+            <a class="text-link" href="#purchase">{{ t('account.topUp') }}</a><a
+              class="text-link"
+              :href="href('works.html')"
+              >{{ t('nav.works') }}</a
+            ><button
+              id="refresh-balance"
+              class="button quiet-button"
+              type="button"
+              :disabled="busy.has('balance')"
+              @click="session.action('balance', session.status, (ticket) => session.refreshBalance(ticket))"
+            >
+              {{ t('account.refreshBalance') }}
+            </button>
+          </div>
+        </div>
+      </section>
+      <section v-if="user" class="create-panel account-referral" aria-labelledby="referral-title">
+        <h2 id="referral-title">{{ t('referral.title') }}</h2>
+        <p class="referral-reward">{{ t('sharing.rewardAmount') }}</p>
+        <p class="referral-description">{{ t('referral.help') }}</p>
+        <p id="referral-credits" class="referral-total">
+          {{
+            grantedCredits === null ? t('referral.pending') : t('referral.total', { count: grantedCredits })
+          }}
+        </p>
+        <div class="referral-actions">
+          <button
+            id="copy-invitation"
+            type="button"
+            class="button primary"
+            :disabled="!invitationURL || busy.has('copy-invitation')"
+            @click="copyInvitation"
+          >
+            {{ t('referral.copy') }}
+          </button>
           <a
             v-if="invitationURL"
             id="invitation-link"
             class="text-link invitation-link"
             :href="invitationURL"
-            >{{ t('referral.link') }}</a
+            >{{ t('referral.preview') }}</a
           >
-        </section>
-        <div class="account-links">
-          <a class="text-link" href="#purchase">{{ t('account.topUp') }}</a><a
-            class="text-link"
-            :href="href('works.html')"
-            >{{ t('nav.works') }}</a
-          ><button
-            id="refresh-balance"
-            class="button quiet-button"
-            type="button"
-            :disabled="busy.has('balance')"
-            @click="session.action('balance', session.status, (ticket) => session.refreshBalance(ticket))"
-          >
-            {{ t('account.refreshBalance') }}
-          </button>
         </div>
-      </div>
-    </section>
+        <p class="referral-copy-status" role="status" aria-live="polite">{{ copyStatus }}</p>
+        <textarea
+          v-if="copyFallback"
+          ref="invitationInput"
+          class="invitation-copy-fallback"
+          :aria-label="t('referral.selectLink')"
+          :value="invitationURL"
+          readonly
+        />
+      </section>
+    </div>
     <section id="purchase" class="create-panel purchase-panel" aria-labelledby="plans-title">
       <div class="section-top">
         <h2 id="plans-title">{{ t('account.plans') }}</h2>

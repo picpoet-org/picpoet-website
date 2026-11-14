@@ -43,6 +43,11 @@
     "keepQR": "保留二维码"
   },
   "referral": {
+    "copy": "复制邀请链接",
+    "preview": "预览邀请页",
+    "copied": "邀请链接已复制，发给好友即可。",
+    "copyManually": "请选中下方链接并复制。",
+    "selectLink": "选择并复制邀请链接",
     "title": "邀请获赠",
     "total": "累计获赠 {count} 次",
     "pending": "累计获赠次数暂不可用，请刷新查看。",
@@ -141,6 +146,10 @@
     "balanceInvalid": "余额响应无效，请刷新重试。"
   },
   "auth": {
+    "signedInTitle": "你已登录",
+    "signedInIntro": "继续使用当前账户，或退出后登录其他账户。",
+    "currentAccount": "当前账户",
+    "signedInInvitation": "邀请奖励仅适用于新用户通过链接注册。你当前已登录，此次打开不会产生奖励；可将邀请链接分享给尚未注册的好友。",
     "title": "欢迎来到{brand}",
     "intro": "登录已有账户，或注册并验证邮箱。你的作品与次数会随账户保存。",
     "login": "登录",

@@ -22,7 +22,6 @@ const PHONE_USER = {
   status: 'active',
 };
 const INVITATION_CODE = 'inv_' + 'a1'.repeat(16);
-const INVITATION_URL = `https://picpoet.jqknono.com/${ID}/invite_code=${INVITATION_CODE}`;
 const calls = [],
   errors = [];
 let generationId,
@@ -138,6 +137,7 @@ const cfg = {
 };
 let server = createWebServer({ config: cfg, now: () => serverNow });
 const base = await listen(server);
+const INVITATION_URL = `${base}/${ID}/invite_code=${INVITATION_CODE}`;
 cfg.publicOrigin = base;
 cfg.publicOrigins = [base];
 cfg.publicHosts = [new URL(base).host];

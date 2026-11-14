@@ -2,8 +2,12 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
 import { createAPI, createScope, errorMessage } from '../../shared/create-core.mjs';
 import { useSite } from '../i18n/context.mjs';
 import { buildInvitationURL } from '../../shared/invitation.mjs';
-import { canUseAccount, hasAccountIdentity, isPhoneAccount, accountLabel } from '../../shared/account-identity.mjs';
-import deployment from '../../deployment.json';
+import {
+  canUseAccount,
+  hasAccountIdentity,
+  isPhoneAccount,
+  accountLabel,
+} from '../../shared/account-identity.mjs';
 import { startSessionVisits } from '../session-visits.mjs';
 
 export function useSession() {
@@ -23,7 +27,11 @@ export function useSession() {
   const identityLabel = computed(() => accountLabel(user.value));
   const balance = ref(null);
   const invitationURL = computed(() =>
-    buildInvitationURL(user.value?.id, balance.value?.referral?.invitationCode, deployment.websiteUrl),
+    buildInvitationURL(
+      user.value?.id,
+      balance.value?.referral?.invitationCode,
+      typeof window === 'undefined' ? '' : window.location.origin,
+    ),
   );
   const grantedCredits = computed(() => {
     const value = balance.value?.referral?.totalGrantedCredits;

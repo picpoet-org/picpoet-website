@@ -33,6 +33,13 @@ const returnTo =
   typeof location === 'undefined'
     ? 'create.html'
     : safeReturnTo(new URLSearchParams(location.search).get('returnTo'));
+const continueLabel = {
+  'create.html': 'account.create',
+  'works.html': 'nav.works',
+  'account.html': 'account.title',
+  'account.html#purchase': 'account.topUp',
+  'account.html#orders': 'account.orders',
+}[returnTo];
 onMounted(() => {
   // 仅在客户端读取邀请码，避免 SSR 与 hydration 因 query 不一致。
   const code = readInvitation(location.search);
@@ -154,21 +161,30 @@ session.resets.add(() => {
   <main id="main" class="shell auth-page" tabindex="-1">
     <section class="create-intro">
       <p class="eyebrow">{{ t('common.eyebrow') }}</p>
-      <h1>{{ t('auth.title') }}</h1>
-      <p class="lede">{{ t('phoneAuth.intro') }}</p>
+      <h1>{{ t(user ? 'auth.signedInTitle' : 'auth.title') }}</h1>
+      <p class="lede">{{ t(user ? 'auth.signedInIntro' : 'phoneAuth.intro') }}</p>
     </section>
     <SessionGate :session="session" />
     <div class="login-layout">
       <section class="create-panel account-panel" aria-labelledby="account-title">
         <div class="section-top">
-          <h2 id="account-title">{{ t('session.login') }}</h2>
-          <button id="logout" type="button" class="button secondary" :hidden="!user" @click="session.logout">
-            {{ t('session.logout') }}
-          </button>
+          <h2 id="account-title">{{ t(user ? 'auth.currentAccount' : 'session.login') }}</h2>
         </div>
         <div id="account-summary" :hidden="!user">
           <p id="account-name">{{ session.identityLabel.value }}</p>
-          <a id="continue-link" class="button primary" :href="href(returnTo)">{{ t('common.continue') }}</a>
+          <p v-if="invitation" class="signed-in-invitation">{{ t('auth.signedInInvitation') }}</p>
+          <div class="signed-in-actions">
+            <a id="continue-link" class="button primary" :href="href(returnTo)">{{ t(continueLabel) }}</a>
+            <button
+              id="logout"
+              type="button"
+              class="button quiet-button"
+              :disabled="busy.has('auth')"
+              @click="session.logout"
+            >
+              {{ t('session.logout') }}
+            </button>
+          </div>
         </div>
         <div id="auth-panel" :hidden="!!user">
           <div id="auth-switch" class="auth-switch" role="group" :aria-label="t('auth.operation')">

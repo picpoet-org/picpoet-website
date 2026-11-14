@@ -43,6 +43,11 @@
     "keepQR": "Keep QR Code"
   },
   "referral": {
+    "copy": "Copy invite link",
+    "preview": "Preview invitation",
+    "copied": "Invite link copied. Share it with a friend.",
+    "copyManually": "Select and copy the link below.",
+    "selectLink": "Select and copy the invite link",
     "title": "Referral Rewards",
     "total": "Total Earned: {count} Credits",
     "pending": "Total earned credits temporarily unavailable, please refresh to view.",
@@ -141,6 +146,10 @@
     "balanceInvalid": "Balance response is invalid, please refresh and try again."
   },
   "auth": {
+    "signedInTitle": "You’re signed in",
+    "signedInIntro": "Continue with this account, or sign out to use another account.",
+    "currentAccount": "Current account",
+    "signedInInvitation": "Referral rewards apply only when a new user registers through the link. You’re already signed in, so opening it won’t grant a reward. Share the invite link with a friend who hasn’t registered yet.",
     "title": "Welcome to {brand}",
     "intro": "Log in to an existing account, or register and verify your email. Your works and credits are saved with your account.",
     "login": "Log In",

@@ -43,6 +43,11 @@
     "keepQR": "保留二維碼"
   },
   "referral": {
+    "copy": "複製邀請連結",
+    "preview": "預覽邀請頁面",
+    "copied": "已複製邀請連結，傳給好友即可。",
+    "copyManually": "請選取並複製下方連結。",
+    "selectLink": "選取並複製邀請連結",
     "title": "邀請獲贈",
     "total": "累計獲贈 {count} 次",
     "pending": "累計獲贈次數暫不可用，請重新整理查看。",
@@ -141,6 +146,10 @@
     "balanceInvalid": "餘額回應無效，請重新整理重試。"
   },
   "auth": {
+    "signedInTitle": "你已登入",
+    "signedInIntro": "繼續使用目前帳號，或登出後登入其他帳號。",
+    "currentAccount": "目前帳號",
+    "signedInInvitation": "邀請獎勵僅適用於新使用者透過連結註冊。你目前已登入，這次開啟連結不會產生獎勵；可將邀請連結分享給尚未註冊的好友。",
     "title": "歡迎來到{brand}",
     "intro": "登入已有帳戶，或註冊並驗證信箱。你的作品與次數會隨帳戶儲存。",
     "login": "登入",

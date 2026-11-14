@@ -34,7 +34,7 @@ function searchParamsOf(search) {
   return new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
 }
 
-/** 由调用方传入 deployment.json 的 websiteUrl；缺数据时返回空串。 */
+/** 由调用方传入当前页面 origin，保持邀请与账号处于同一环境；缺数据时返回空串。 */
 export function buildInvitationURL(userId, code, origin) {
   const normalizedOrigin = normalizeOrigin(origin);
   const normalizedCode = normalizeInvitationCode(code);
