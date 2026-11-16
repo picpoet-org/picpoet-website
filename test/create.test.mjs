@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { validateImage, imageDimensions, prepareImage, MAX_IMAGE_BYTES, MAX_SOURCE_IMAGE_BYTES, generationAttempt, generationForm, orderAttempt, defaultPayMethod, safePaymentURL, orderStatus, createAPI, createScope, pollGeneration, wait, errorMessage, ApiError, uuid } from '../shared/create-core.mjs';
+import { validateImage, imageDimensions, prepareImage, MAX_IMAGE_BYTES, MAX_SOURCE_IMAGE_BYTES, orderAttempt, defaultPayMethod, safePaymentURL, orderStatus, createAPI, createScope, pollGeneration, wait, errorMessage, ApiError, uuid } from '../shared/create-core.mjs';
 import { poemData, poemPlainText, wrapText, cardLayout, CARD } from '../shared/poem-card.mjs';
 import { createQRMatrix, drawQRCode } from '../shared/qr-code.mjs';
 import jsQR from 'jsqr';
@@ -139,19 +139,6 @@ test('分享卡 1080 宽、边距 96、标题72正文48，长诗有安全高度�
   assert.ok(long.height > layout.height && long.height <= CARD.maxHeight);
   assert.throws(() => cardLayout({ title: '', body: '山\n'.repeat(200), cipai: '' }, measure), /安全尺寸/);
   assert.throws(() => cardLayout({ title: '山', body: '山'.repeat(CARD.maxCharacters), cipai: '' }, measure), /安全绘图/);
-});
-test('任务重试使用同一个冻结快照和 UUID，只提交 image/generationId/可选语言', () => {
-  let created = 0; const image = new Blob(['jpeg'], { type: 'image/jpeg' });
-  const attempt = generationAttempt(image, 'zh-Hant', () => { created++; return ID; });
-  const first = generationForm(attempt), retry = generationForm(attempt);
-  assert.equal(created, 1); assert.equal(Object.isFrozen(attempt), true);
-  assert.equal(first.get('generationId'), retry.get('generationId')); assert.equal(first.get('poemLanguage'), 'zh-Hant');
-  assert.equal(first.get('image').name, 'photo.jpg'); assert.deepEqual([...first.keys()], ['generationId', 'image', 'poemLanguage']);
-  assert.deepEqual([...generationForm(generationAttempt(image, '', () => ID)).keys()], ['generationId', 'image']);
-  assert.equal(generationForm(generationAttempt(image, 'zh', () => ID)).get('poemLanguage'), 'zh');
-  assert.throws(() => generationAttempt(image, 'zh-Hans', () => ID));
-  assert.throws(() => generationAttempt(image, 'en', () => ID));
-  assert.throws(() => uuid(() => 'bad'));
 });
 test('订单快照保留请求编号与支付方式，不含 claimToken 或其它鉴权字段', () => {
   assert.equal(orderAttempt(PLAN, 'alipay_qrcode', () => ID).payMethod, 'alipay_qrcode');

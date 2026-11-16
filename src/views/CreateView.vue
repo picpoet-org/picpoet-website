@@ -1,5 +1,6 @@
 <script setup>
 import ShareInvitationOption from '../components/ShareInvitationOption.vue';
+import PhotoInformation from '../components/PhotoInformation.vue';
 import { useSession } from '../composables/useSession.mjs';
 import { useGeneration } from '../composables/useGeneration.mjs';
 import SessionGate from '../components/SessionGate.vue';
@@ -7,6 +8,8 @@ import WaitingPoems from '../components/WaitingPoems.vue';
 const session = useSession();
 const { t, href, asset, verified, busy, balance } = session;
 const {
+  resultInfo,
+  preferencesStatus,
   includeInvitation,
   setIncludeInvitation,
   image,
@@ -65,6 +68,13 @@ const {
       <div class="create-controls">
         <section class="create-panel" aria-labelledby="compose-title">
           <h2 id="compose-title">{{ t('create.compose') }}</h2>
+          <p class="fine-print">
+            <a class="text-link" :href="href('account.html#creation-preferences')">{{
+              t('preferences.title')
+            }}</a>
+            · {{ t('preferences.nextTask') }}
+          </p>
+          <p v-if="preferencesStatus" role="status" class="fine-print">{{ preferencesStatus }}</p>
           <form id="create-form" @submit.prevent="!task && submit()">
             <fieldset id="generation-inputs" :disabled="!verified || !!task || busy.has('image')">
               <div class="image-picker">
@@ -109,7 +119,7 @@ const {
               id="resume-generation"
               class="button secondary"
               type="button"
-              :hidden="!task || busy.has('task') || !!poem"
+              :hidden="!task || busy.has('task') || !!resultInfo"
               @click="query"
             >
               {{ t('waiting.resume') }}</button><button
@@ -143,7 +153,7 @@ const {
       </div>
       <section class="create-panel result-panel" aria-labelledby="result-title">
         <h2 id="result-title">{{ t('create.result') }}</h2>
-        <div id="result-empty" class="empty-page" :hidden="!!poem">
+        <div id="result-empty" class="empty-page" :hidden="!!resultInfo">
           <p class="preview-label">{{ t('create.preview') }}</p>
           <img
             class="preview-mark"
@@ -155,7 +165,7 @@ const {
           /><span class="empty-title">{{ t('create.emptyTitle') }}</span>
           <p>{{ t('create.emptyHelp') }}</p>
         </div>
-        <div id="result-content" :hidden="!poem">
+        <div id="result-content" :hidden="!resultInfo">
           <p id="result-expiry" class="fine-print">{{ expiry }}</p>
           <figure id="card-preview" :hidden="!cardURL">
             <img
@@ -166,7 +176,7 @@ const {
             />
           </figure>
           <p id="card-status" class="create-status" role="status" aria-live="polite">{{ cardStatus }}</p>
-          <div class="actions share-actions">
+          <div v-if="poem" class="actions share-actions">
             <a
               id="download-card"
               class="button primary"
@@ -192,7 +202,7 @@ const {
               {{ t('create.share') }}
             </button>
           </div>
-          <div class="share-options">
+          <div v-if="poem" class="share-options">
             <ShareInvitationOption
               :model-value="includeInvitation"
               :disabled="busy.has('card') || busy.has('share')"
@@ -209,6 +219,7 @@ const {
             @focus="$event.target.select()"
           />
           <section
+            v-if="poem"
             id="poem-accessible"
             class="poem-text"
             :class="{ 'sr-only': !!cardURL }"
@@ -218,7 +229,8 @@ const {
             <p id="poem-cipai">{{ poem?.cipai ? t('common.cipai', { name: poem.cipai }) : '' }}</p>
             <p id="poem-body">{{ poem?.body }}</p>
           </section>
-          <aside v-if="poem" id="app-metadata-tip" class="notice" aria-labelledby="app-metadata-title">
+          <PhotoInformation v-if="resultInfo" :info="resultInfo" :t="t" />
+          <aside v-if="resultInfo" id="app-metadata-tip" class="notice" aria-labelledby="app-metadata-title">
             <h3 id="app-metadata-title">{{ t('appMetadata.title') }}</h3>
             <p>{{ t('appMetadata.description') }}</p>
             <div class="actions">

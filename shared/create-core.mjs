@@ -63,16 +63,18 @@ export function uuid(make = secureUUID) {
   if (!UUID.test(id)) throw new Error('浏览器无法创建请求编号，请在 HTTPS 或本机地址使用新版浏览器。');
   return id.toLowerCase();
 }
-export function generationAttempt(image, poemLanguage, makeUUID) {
+export function generationAttempt(image, preferences, makeUUID) {
   if (!image || image.type !== 'image/jpeg') throw new Error('请先选择并处理图片。');
-  if (!['', 'zh', 'zh-Hant'].includes(poemLanguage)) throw new Error('请选择支持的诗词语言。');
-  return Object.freeze({ id: uuid(makeUUID), image, poemLanguage });
+  return Object.freeze({ id: uuid(makeUUID), image, preferences: Object.freeze({ ...preferences }) });
 }
 export function generationForm(attempt) {
   const form = new FormData();
   form.set('generationId', attempt.id);
   form.set('image', attempt.image, 'photo.jpg');
-  if (attempt.poemLanguage) form.set('poemLanguage', attempt.poemLanguage);
+  // ci 的显式空值表示关闭词，不能省略后退回服务端 auto 默认值。
+  for (const key of ['language', 'poemLanguage', 'poem', 'poemMeter', 'rhymeStandard', 'ci', 'suggest']) {
+    form.set(key, String(attempt.preferences[key]));
+  }
   return form;
 }
 // 默认付款方式：窄屏用手机网站支付，宽屏用电脑网站支付（支付宝收银台内可扫码或登录付款）。

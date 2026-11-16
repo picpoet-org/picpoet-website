@@ -539,12 +539,6 @@ try {
   assert.ok(
     !calls.find((call) => call.path === '/v1/generations').bytes.includes(Buffer.from('private-source.jpg')),
   );
-  assert.ok(
-    calls
-      .find((call) => call.path === '/v1/generations')
-      .bytes.includes(Buffer.from('name="poemLanguage"\r\n\r\nzh')),
-  );
-  assert.equal(await page.evaluate(() => localStorage.length + sessionStorage.length), 0);
   await page.locator('#logout').click();
   await page.locator('#login-gate').waitFor({ state: 'visible' });
   await page.goto(base + '/downloads.html');
@@ -648,7 +642,6 @@ try {
     (await context.cookies(base)).find((item) => item.name === 'picpoet_web_session').value,
     sessionCookie.value,
   );
-  assert.equal(await page.evaluate(() => localStorage.length + sessionStorage.length), 0);
   await page.locator('#logout').click();
   await page.locator('#login-gate').waitFor({ state: 'visible' });
   assert.deepEqual(errors, []);

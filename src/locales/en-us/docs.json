@@ -1,5 +1,3 @@
-
-
 {
   "content": {
     "docs": {
@@ -41,7 +39,7 @@
       "t036": "Please download results in a timely manner",
       "t037": "Server-side results are available for a limited time. To keep them long-term, please download the poetry text or sharing image; do not rely solely on staying on the page.",
       "t038": "Review in My Works",
-      "t039": "After the history feature is enabled, newly submitted and successful official tasks will be written to the account portfolio: compressed photos and poetry are retained for 90 days by default and can be permanently deleted early. Original images are not saved, and old tasks are not backfilled.",
+      "t039": "With history enabled, newly submitted, successful official tasks are saved to your account: compressed photos, poetry, generated photo information, tags, and composition suggestions are retained for 90 days and can be permanently deleted earlier. Original images are not saved. Upgrades only restore recoverable content for existing history, without adding records for older tasks.",
       "t040": "The works page supports paginated browsing, opening details, and viewing compressed photos and full poetry.",
       "t041": "Details can generate and download pure poetry sharing images; a confirmation is required before permanent deletion.",
       "t042": "When history is not yet enabled, the page will display a prompt 'History is not yet enabled'; current generation and downloads can still continue.",
@@ -103,7 +101,7 @@
       "t098": "Local saving does not mean fully offline",
       "t099": "Please understand 'where results are saved' and 'where generation requests are sent' separately. Both the website and client will send photo content to the corresponding service during generation.",
       "t100": "Website online creation",
-      "t101": "After image selection, re-encode in the browser and remove EXIF; upload only occurs after clicking generate. The official service and its model services will receive the processed photos. After history is enabled, compressed photos and poetry will be retained on the server for 90 days; the browser will not write images or sharing images to local persistent storage.",
+      "t101": "Selected photos are re-encoded in the browser with EXIF removed and uploaded only when you click Generate. The official service and its model providers receive the processed photo. With history enabled, compressed photos, poetry, and generated photo information, including tags and composition suggestions, are retained on the server for 90 days and removed together when you delete history. Photos and sharing images are not stored persistently in the browser.",
       "t102": "Client custom model",
       "t103": "The selected photo and content needed for generation will be sent to the model service you configured. Data retention, usage, and fees are determined by the policy of that service; please read and confirm before sending.",
       "t104": "Client official service",

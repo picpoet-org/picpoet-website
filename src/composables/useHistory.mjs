@@ -1,6 +1,7 @@
 import { ref, shallowRef, watch, nextTick, onBeforeUnmount } from 'vue';
 import { ApiError, UUID } from '../../shared/create-core.mjs';
-import { poemData, renderPoemCard } from '../../shared/poem-card.mjs';
+import { renderPoemCard } from '../../shared/poem-card.mjs';
+import { generationResult } from '../../shared/generation-result.mjs';
 
 export function useHistory(session) {
   const { t, api, scope, user, failure, error, brand } = session;
@@ -200,11 +201,12 @@ export function useHistory(session) {
       scope.assert(ticket);
       if (!current()) return;
       if (data.id !== id) throw failure('history.invalidDetail');
-      const empty = Array.isArray(data.poem) && !data.poem.length && !data.verse && !data.text;
+      const info = generationResult(data);
       selected.value = {
         ...data,
-        poem: empty ? { title: '', body: t('common.emptyBody') } : poemData(data),
-        empty,
+        info,
+        poem: info.poem || { title: '', body: t('common.emptyBody') },
+        empty: !info.poem,
       };
       const blob = await image(id, ticket);
       if (!current()) return;

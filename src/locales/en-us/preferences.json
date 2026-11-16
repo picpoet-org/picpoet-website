@@ -1,0 +1,47 @@
+{
+  "preferences": {
+    "title": "Creation preferences",
+    "groupLanguage": "Language",
+    "groupPoetry": "Poetry",
+    "groupExtras": "Extras",
+    "scope": "Changes are saved automatically for this account in this browser only. Settings are separate from the app and do not sync across devices. Submitted tasks are unchanged.",
+    "language": "Tag language",
+    "autoLanguage": "Match interface",
+    "poemLanguage": "Poetry script",
+    "simplified": "Simplified Chinese",
+    "traditional": "Traditional Chinese",
+    "languageHelp": "Poetry supports simplified and traditional Chinese only, with traditional as the default. Tags and photo descriptions use the tag language.",
+    "form": "Poetic form",
+    "forms": {
+      "jueju": "Quatrain (jueju)",
+      "lvshi": "Regulated verse (lüshi)",
+      "line": "Couplet",
+      "ci": "Ci lyric",
+      "none": "No poetry"
+    },
+    "meter": "Characters per line",
+    "meters": { "five": "Five", "seven": "Seven" },
+    "lineHelp": "A couplet has two lines; each independently uses five or seven characters.",
+    "ci": "Ci tune pattern",
+    "searchCi": "Search patterns (simplified or traditional)",
+    "autoCi": "Choose automatically",
+    "noCi": "No matching pattern. Clear the search or choose automatically.",
+    "rhyme": "Rhyme reference",
+    "rhymes": {
+      "pingshui": "Pingshui Yun",
+      "cilin": "Cilin Zhengyun",
+      "zhongyuan": "Zhongyuan Yinyun",
+      "zhonghua": "Zhonghua Xinyun"
+    },
+    "rhymeHelp": "For Cantonese reading, Pingshui or Cilin is recommended; for Mandarin, Zhonghua or Zhongyuan is recommended.",
+    "suggest": "Include composition suggestions",
+    "suggestHelp": "Show composition suggestions with the photo information. Generating poetry and suggestions together uses one creation credit.",
+    "saved": "Saved for your next creation.",
+    "saveFailed": "The browser could not save your preferences. Allow local storage for this site, then select again. These changes will be lost when you leave the page.",
+    "loadFailed": "Saved preferences could not be read. Defaults are in use. Check browser storage permissions or choose your settings again.",
+    "nextTask": "New tasks use your account preferences",
+    "photoInfo": "Photo information",
+    "tags": "Tags",
+    "advice": "Composition suggestions"
+  }
+}

@@ -4,6 +4,7 @@ import { useSession } from '../composables/useSession.mjs';
 import { useOrders } from '../composables/useOrders.mjs';
 import SessionGate from '../components/SessionGate.vue';
 import OrderItem from '../components/OrderItem.vue';
+import GenerationPreferences from '../components/GenerationPreferences.vue';
 const session = useSession();
 const { t, href, user, verified, busy, balance, money, invitationURL, grantedCredits } = session;
 const copyStatus = ref('');
@@ -153,6 +154,7 @@ const {
         />
       </section>
     </div>
+    <GenerationPreferences v-if="user" :session="session" />
     <section id="purchase" class="create-panel purchase-panel" aria-labelledby="plans-title">
       <div class="section-top">
         <h2 id="plans-title">{{ t('account.plans') }}</h2>

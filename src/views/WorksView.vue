@@ -1,6 +1,7 @@
 <script setup>
 import { watch } from 'vue';
 import { loadCardFont } from '../../shared/poem-card.mjs';
+import PhotoInformation from '../components/PhotoInformation.vue';
 import ShareInvitationOption from '../components/ShareInvitationOption.vue';
 import { useSession } from '../composables/useSession.mjs';
 import { useHistory } from '../composables/useHistory.mjs';
@@ -105,9 +106,22 @@ function backdrop(event) {
             <img :src="item.url || undefined" :alt="item.alt" loading="lazy" width="240" height="400" />
           </button>
           <div class="history-item-copy">
-            <h3 class="history-item-title">{{ item.title || t('common.untitled') }}</h3>
+            <h3 class="history-item-title">
+              <button
+                type="button"
+                class="history-title-toggle"
+                aria-haspopup="dialog"
+                :aria-expanded="selected?.id === item.id"
+                aria-controls="history-detail"
+                @click="open(item.id, $event)"
+              >
+                {{ item.title || t('common.untitled') }}
+              </button>
+            </h3>
             <p class="history-excerpt">{{ item.excerpt }}</p>
-            <p class="fine-print">{{ time(item.createdAt) }}</p>
+            <p class="fine-print">
+              <time :datetime="item.createdAt">{{ time(item.createdAt) }}</time>
+            </p>
           </div>
         </article>
       </div>
@@ -159,22 +173,35 @@ function backdrop(event) {
           </p>
           <p id="history-body">{{ selected?.poem?.body }}</p>
         </div>
-        <div class="actions share-actions">
+        <PhotoInformation v-if="selected?.info" :info="selected.info" :t="t" />
+        <footer class="history-detail-footer">
+          <div class="history-share-tools">
+            <div class="actions share-actions">
+              <button
+                id="history-render"
+                class="button secondary"
+                type="button"
+                :disabled="!selected?.poem || selected?.empty || drawing"
+                @click="draw"
+              >
+                {{ t('common.render') }}</button><a
+                id="history-download"
+                class="button primary"
+                :href="cardURL || undefined"
+                download="picpoet-history-poem.png"
+                :hidden="!cardURL"
+                >{{ t('history.download') }}</a
+              >
+            </div>
+            <div v-if="!selected?.empty" class="share-options">
+              <ShareInvitationOption
+                :model-value="includeInvitation"
+                :disabled="drawing || deleting || !selected?.poem"
+                @update:model-value="setIncludeInvitation"
+              />
+            </div>
+          </div>
           <button
-            id="history-render"
-            class="button secondary"
-            type="button"
-            :disabled="!selected?.poem || selected?.empty || drawing"
-            @click="draw"
-          >
-            {{ t('common.render') }}</button><a
-            id="history-download"
-            class="button primary"
-            :href="cardURL || undefined"
-            download="picpoet-history-poem.png"
-            :hidden="!cardURL"
-            >{{ t('history.download') }}</a
-          ><button
             id="history-delete"
             class="button secondary"
             type="button"
@@ -183,14 +210,7 @@ function backdrop(event) {
           >
             {{ t('history.delete') }}
           </button>
-        </div>
-        <div class="share-options">
-          <ShareInvitationOption
-            :model-value="includeInvitation"
-            :disabled="drawing || deleting || !selected?.poem"
-            @update:model-value="setIncludeInvitation"
-          />
-        </div>
+        </footer>
         <p id="history-export-status" class="create-status" role="status" aria-live="polite">
           {{ exportStatus }}
         </p>

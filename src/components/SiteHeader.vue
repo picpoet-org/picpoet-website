@@ -61,20 +61,20 @@ function changeLanguage(event) {
             <span class="nav-label">{{ t('nav.' + label) }}</span>
           </span></a
         >
+        <label class="language-picker"
+          ><span class="sr-only">{{ t('nav.language') }}</span
+          ><select id="site-language" :value="locale" @change="changeLanguage">
+            <option
+              v-for="language in availableLocales"
+              :key="language.id"
+              :value="language.id"
+              :lang="language.tag"
+            >
+              {{ language.label }}
+            </option>
+          </select></label
+        >
       </nav>
-      <label class="language-picker"
-        ><span class="sr-only">{{ t('nav.language') }}</span
-        ><select id="site-language" :value="locale" @change="changeLanguage">
-          <option
-            v-for="language in availableLocales"
-            :key="language.id"
-            :value="language.id"
-            :lang="language.tag"
-          >
-            {{ language.label }}
-          </option>
-        </select></label
-      >
     </div>
   </header>
 </template>

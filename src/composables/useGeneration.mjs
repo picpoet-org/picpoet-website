@@ -7,10 +7,14 @@ import {
   pollGeneration,
   UUID,
 } from '../../shared/create-core.mjs';
-import { poemData, poemPlainText, renderPoemCard } from '../../shared/poem-card.mjs';
+import { poemPlainText, renderPoemCard } from '../../shared/poem-card.mjs';
+import { generationResult } from '../../shared/generation-result.mjs';
+import { useGenerationPreferences } from './useGenerationPreferences.mjs';
 
 export function useGeneration(session) {
   const { t, scope, action, request, api, user, verified, busy, balance, failure, brand } = session;
+  const preferences = useGenerationPreferences(session);
+  const resultInfo = shallowRef(null);
   const includeInvitation = ref(true);
   const image = shallowRef(null),
     photoURL = ref(''),
@@ -44,6 +48,7 @@ export function useGeneration(session) {
     includeInvitation.value = true;
     clearCard();
     poem.value = null;
+    resultInfo.value = null;
     expiry.value = '';
     cardStatus.value = '';
     copyStatus.value = '';
@@ -138,7 +143,8 @@ export function useGeneration(session) {
         const completedTask = task.value;
         const data = await request(ticket, `/generations/${target.id}/result`);
         if (task.value !== completedTask) return;
-        poem.value = poemData(data);
+        resultInfo.value = generationResult(data);
+        poem.value = resultInfo.value.poem;
         expiry.value = result.resultAvailableUntil
           ? t('create.expiry', { time: session.time(result.resultAvailableUntil) })
           : t('create.expiryUnknown');
@@ -157,7 +163,7 @@ export function useGeneration(session) {
     return action('task', generationStatus, async (ticket) => {
       if (!verified.value) throw failure('session.verifyFirst');
       if (!task.value) {
-        const attempt = generationAttempt(image.value?.blob, 'zh');
+        const attempt = generationAttempt(image.value?.blob, preferences.snapshot());
         setTask(attempt.id, attempt);
       }
       if (!task.value.attempt) throw failure('create.recovered');
@@ -234,6 +240,8 @@ export function useGeneration(session) {
     await draw();
   }
   return {
+    resultInfo,
+    preferencesStatus: preferences.status,
     includeInvitation,
     setIncludeInvitation,
     image,
