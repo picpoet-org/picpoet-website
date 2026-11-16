@@ -119,10 +119,17 @@ function backdrop(event) {
               </button>
             </h3>
             <p class="history-excerpt">{{ item.excerpt }}</p>
-            <p class="fine-print">
-              <time :datetime="item.createdAt">{{ time(item.createdAt) }}</time>
-            </p>
           </div>
+          <footer class="history-item-times fine-print">
+            <span
+              >{{ t('history.createdLabel')
+              }}<time :datetime="item.createdAt">{{ time(item.createdAt) }}</time></span
+            >
+            <span
+              >{{ t('history.autoDeleteLabel')
+              }}<time :datetime="item.expiresAt">{{ time(item.expiresAt) }}</time></span
+            >
+          </footer>
         </article>
       </div>
       <button
@@ -156,13 +163,6 @@ function backdrop(event) {
             ×
           </button>
         </div>
-        <p id="history-time" class="fine-print">
-          {{
-            selected?.createdAt
-              ? t('history.time', { created: time(selected.createdAt), expires: time(selected.expiresAt) })
-              : ''
-          }}
-        </p>
         <p id="history-detail-status" class="create-status" role="status" aria-live="polite">
           {{ detailStatus }}
         </p>
@@ -175,6 +175,16 @@ function backdrop(event) {
         </div>
         <PhotoInformation v-if="selected?.info" :info="selected.info" :t="t" />
         <footer class="history-detail-footer">
+          <div v-if="selected?.createdAt" id="history-time" class="history-item-times fine-print">
+            <span
+              >{{ t('history.createdLabel')
+              }}<time :datetime="selected.createdAt">{{ time(selected.createdAt) }}</time></span
+            >
+            <span
+              >{{ t('history.autoDeleteLabel')
+              }}<time :datetime="selected.expiresAt">{{ time(selected.expiresAt) }}</time></span
+            >
+          </div>
           <div class="history-share-tools">
             <div class="actions share-actions">
               <button

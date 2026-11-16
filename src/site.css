@@ -608,16 +608,31 @@
   line-height: 1.85;
   color: var(--create-muted);
 }
-.works-page .history-item-copy > .fine-print {
-  padding-block-start: 1rem;
+.works-page .history-item-times {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem 1.5rem;
+  grid-column: 1 / -1;
   font-size: 0.75rem;
   line-height: 1.6;
+}
+.works-page .history-item > .history-item-times {
+  margin-block-start: auto;
+  padding-block-start: 0.75rem;
+  border-block-start: 1px solid var(--pp-color-line);
+}
+.works-page .history-item-times span {
+  overflow-wrap: anywhere;
+}
+.works-page .history-item-times time {
+  display: inline-block;
 }
 .works-page dialog.history-detail {
   padding: clamp(1.125rem, 4vw, 2rem);
 }
 .works-page #history-time {
-  text-align: center;
+  flex-basis: 100%;
+  margin: 0;
   font-size: 0.8125rem;
 }
 .works-page .history-detail-footer {
