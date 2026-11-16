@@ -6,6 +6,7 @@ export const defaults = Object.freeze({
   photoInfo: false,
   suggest: false,
   ...options.defaults,
+  poemLanguage: 'zh',
 });
 const ciNames = new Set(['', 'auto', ...options.ci.map(([name]) => name)]);
 export function normalizePreferences(value) {
