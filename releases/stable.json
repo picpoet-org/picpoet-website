@@ -7,21 +7,21 @@
       "minimumSystem": "Android 8.0+；保存相册副本需 Android 10+",
       "applicationId": "org.picpoet.app.android",
       "minSdk": 26,
-      "versionName": "0.1.6",
-      "versionCode": 1006,
-      "publishedAt": "2026-11-14T05:14:30Z",
+      "versionName": "0.1.7",
+      "versionCode": 1007,
+      "publishedAt": "2026-11-16T11:27:56Z",
       "notes": [
-        "启用官方账号登录与创作，开放 Android 支付宝 APP 购买入口。",
-        "分享图可附加个人邀请二维码，也可选择不附加。",
-        "沿用正式签名，保留照片创作、本机历史与升级检查能力。"
+        "支持官方历史双向同步，完善照片读取与历史保留。",
+        "历史作品新增喜欢、收藏筛选与操作二次确认。",
+        "优化邀请二维码分享排版，沿用正式签名与 Android 支付宝购买入口。"
       ],
       "artifacts": [
         {
           "arch": "arm64-v8a",
-          "url": "https://downloads.nullprivate.com/picpoet/release/android/0.1.6/picpoet-0.1.6-arm64-v8a.apk",
+          "url": "https://downloads.nullprivate.com/picpoet/release/android/0.1.7/picpoet-0.1.7-arm64-v8a.apk",
           "format": "apk",
-          "sha256": "2160b1b78382a22af661502efddeae66633ab4629815e6784d6c1c3c700eec8c",
-          "sizeBytes": 66328160
+          "sha256": "eb660592fe68c7390823b69e1a5e4ea99b9e36cedfa5fc84eb5a3025b406d324",
+          "sizeBytes": 66402048
         }
       ]
     },
@@ -49,21 +49,21 @@
       "id": "linux",
       "name": "Linux",
       "minimumSystem": "Ubuntu 24.04 x64（GTK3、libsecret、libstdc++）",
-      "versionName": "0.1.6",
-      "versionCode": 1006,
-      "publishedAt": "2026-11-14T05:14:30Z",
+      "versionName": "0.1.7",
+      "versionCode": 1007,
+      "publishedAt": "2026-11-16T11:27:56Z",
       "notes": [
-        "启用官方账号登录与创作，桌面购买入口保持关闭。",
-        "分享图支持可选邀请二维码，随包提供原生处理引擎。",
-        "解压后运行 picpoet，系统需提供 GTK3、libsecret 与 libstdc++。"
+        "支持官方历史双向同步，新增喜欢、收藏筛选与操作二次确认。",
+        "优化照片读取与邀请二维码分享排版，更新随包原生引擎。",
+        "解压后运行 picpoet，系统需提供 GTK3、libsecret 与 libstdc++；桌面购买入口保持关闭。"
       ],
       "artifacts": [
         {
           "arch": "x64",
           "format": "tar.gz",
-          "url": "https://downloads.nullprivate.com/picpoet/release/linux/0.1.6/picpoet-0.1.6-linux-x64.tar.gz",
-          "sha256": "74976df34b7f930ddce1de72d94d1d55dd198f2ff34d0c5876ab143ba95e2ca6",
-          "sizeBytes": 42537030
+          "url": "https://downloads.nullprivate.com/picpoet/release/linux/0.1.7/picpoet-0.1.7-linux-x64.tar.gz",
+          "sha256": "f36ff81975115f1dbe35c1576acbe014fbab39eed96538e5388b0cf6c74edbd4",
+          "sizeBytes": 42567788
         }
       ]
     },
@@ -81,21 +81,21 @@
       "id": "windows",
       "name": "Windows",
       "minimumSystem": "Windows 10 x64",
-      "versionName": "0.1.6",
-      "versionCode": 1006,
-      "publishedAt": "2026-11-14T05:14:30Z",
+      "versionName": "0.1.7",
+      "versionCode": 1007,
+      "publishedAt": "2026-11-16T11:27:56Z",
       "notes": [
-        "启用官方账号登录与创作，桌面购买入口保持关闭。",
-        "分享图支持可选邀请二维码，解压后运行 picpoet.exe。",
-        "修复 Windows 发布工具链探测，随包提供原生引擎与 Visual C++ 运行库。"
+        "支持官方历史双向同步，新增喜欢、收藏筛选与操作二次确认。",
+        "优化照片读取与邀请二维码分享排版，解压后运行 picpoet.exe。",
+        "更新随包原生引擎，保留 Visual C++ 运行库；桌面购买入口保持关闭。"
       ],
       "artifacts": [
         {
           "arch": "x64",
           "format": "zip",
-          "url": "https://downloads.nullprivate.com/picpoet/release/windows/0.1.6/picpoet-0.1.6-windows-x64.zip",
-          "sha256": "ce9743a67f23db9f79b67f17d3adc546737f05d3871de36df8287c38ad66b8bb",
-          "sizeBytes": 44244359
+          "url": "https://downloads.nullprivate.com/picpoet/release/windows/0.1.7/picpoet-0.1.7-windows-x64.zip",
+          "sha256": "eaa3af2caf74c8b82815f76cb975c64727702097a905934076467cf186804466",
+          "sizeBytes": 44282977
         }
       ]
     }

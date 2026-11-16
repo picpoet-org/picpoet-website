@@ -232,7 +232,7 @@ Node 测试覆盖账户会话、原样 multipart、配额查询、任务重试�
 
 ## 统一发布清单
 
-`releases/stable.json` 是网站下载页和 Android 升级检查的共同数据源。当前登记 **0.1.6** 的 Android ARM64、Linux x64 和 Windows x64 安装包；iOS、HarmonyOS 和 macOS 保持“暂未发布”。发布时间采用 GitHub Release 的 `2026-11-14T05:14:30Z`，产物信息来自已完成 R2/CDN 校验的 `stable.candidate.json`。`artifacts: []` 表示“暂未发布”；接入真实产物后自动展示版本、更新说明、架构、大小与 SHA-256。下载页会推荐可能匹配的系统，用户仍需核对架构。生产 Node BFF、标准清单路径与 `/pages/releases/stable.json` 兼容路径均已核验为 0.1.6。
+`releases/stable.json` 是网站下载页和 Android 升级检查的共同数据源。当前登记 **0.1.7** 的 Android ARM64、Linux x64 和 Windows x64 安装包；iOS、HarmonyOS 和 macOS 保持“暂未发布”。发布时间采用 GitHub Release 的 `2026-11-16T11:27:56Z`，产物信息来自已完成 R2/CDN 校验的 `stable.candidate.json`。`artifacts: []` 表示“暂未发布”；接入真实产物后自动展示版本、更新说明、架构、大小与 SHA-256。下载页会推荐可能匹配的系统，用户仍需核对架构。生产 Node BFF 同时提供标准清单路径与 `/pages/releases/stable.json` 兼容路径，发布后须核验两者一致。
 
 清单包含 `schemaVersion: 1` 和六项 `platforms`。每个平台包含：
 
