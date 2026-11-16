@@ -14,7 +14,7 @@ const loginLink = computed(
 </script>
 <template>
   <p id="page-status" class="create-status" role="status" aria-live="polite" tabindex="-1">
-    {{ session.status.value }}
+    {{ session.status.value || session.balanceStatus.value }}
   </p>
   <button
     id="retry-session"

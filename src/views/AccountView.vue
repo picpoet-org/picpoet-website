@@ -104,15 +104,7 @@ const {
               class="text-link"
               :href="href('works.html')"
               >{{ t('nav.works') }}</a
-            ><button
-              id="refresh-balance"
-              class="button quiet-button"
-              type="button"
-              :disabled="busy.has('balance')"
-              @click="session.action('balance', session.status, (ticket) => session.refreshBalance(ticket))"
             >
-              {{ t('account.refreshBalance') }}
-            </button>
           </div>
         </div>
       </section>

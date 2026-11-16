@@ -281,6 +281,9 @@
   padding: 0.5rem 0.75rem;
   cursor: pointer;
 }
+.site-header .language-menu-content {
+  display: none;
+}
 @media (max-width: 62rem) {
   .site-header .header-controls nav {
     align-items: stretch;
@@ -293,20 +296,62 @@
     border: 0;
     align-items: stretch;
   }
+  .site-header nav .language-picker {
+    position: relative;
+    justify-content: center;
+    border-radius: 0.5rem;
+  }
+  .site-header .language-menu-content {
+    display: inline-flex;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: 1.5;
+    pointer-events: none;
+  }
+  .site-header .language-chevron {
+    inline-size: 0.875rem;
+    block-size: 0.875rem;
+    flex-shrink: 0;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .site-header nav .language-picker:hover {
+    background: var(--pp-color-panel);
+  }
+  .site-header nav .language-picker:focus-within {
+    outline: 2px solid var(--pp-color-ink);
+    outline-offset: 2px;
+  }
   .site-header nav .language-picker select {
+    position: absolute;
+    inset: 0;
     inline-size: 100%;
+    block-size: 100%;
     padding-inline: 0.5rem;
+    appearance: none;
+    color: transparent;
+    background: transparent;
+    border-color: transparent;
+  }
+  .site-header nav .language-picker select option {
+    color: var(--pp-color-ink);
+    background: var(--pp-color-paper);
   }
 }
 @supports (appearance: base-select) {
   @media (max-width: 62rem) {
     /* 原生顶层选择器跟随页面锚点，避开窄屏预览的系统弹窗坐标偏移。 */
-    .site-header .language-picker select,
+    .site-header nav .language-picker select,
     .site-header .language-picker select::picker(select),
     .create-page .preference-field .select-control select,
     .create-page .preference-field .select-control select::picker(select) {
       appearance: base-select;
     }
+    .site-header .language-picker select::picker-icon,
     .create-page .select-control select::picker-icon {
       display: none;
     }

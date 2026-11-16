@@ -1,4 +1,4 @@
-import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { createAPI, createScope, errorMessage } from '../../shared/create-core.mjs';
 import { useSite } from '../i18n/context.mjs';
 import { buildInvitationURL } from '../../shared/invitation.mjs';
@@ -57,6 +57,7 @@ export function useSession() {
     busy.clear();
     user.value = null;
     balance.value = null;
+    balanceStatus.value = '';
     for (const callback of resets) callback();
   }
   async function request(ticket, path, body, method) {
@@ -83,13 +84,29 @@ export function useSession() {
       if (scope.current(ticket)) busy.delete(key);
     }
   }
+  let balanceRequest = 0;
   async function refreshBalance(ticket) {
+    const sequence = ++balanceRequest;
     const data = await request(ticket, '/balance');
     if (![data?.free?.remaining, data?.paid?.remaining].every((n) => Number.isSafeInteger(n) && n >= 0))
       throw failure('session.balanceInvalid');
-    balance.value = data;
+    if (sequence === balanceRequest) {
+      balance.value = data;
+      balanceStatus.value = '';
+    }
     return data;
   }
+  const balanceStatus = ref('');
+  function updateBalance() {
+    if (!user.value || document.visibilityState !== 'visible') return;
+    return action('balance', balanceStatus, async (ticket) => {
+      await refreshBalance(ticket);
+      balanceStatus.value = '';
+    });
+  }
+  watch(user, (value) => {
+    if (value) void updateBalance();
+  });
   async function ensureInvitationURL(ticket) {
     if (!balance.value) {
       try {
@@ -142,12 +159,18 @@ export function useSession() {
     stopVisits = startSessionVisits(loadSession);
     addEventListener('pagehide', pageHide);
     addEventListener('pageshow', pageShow);
+    addEventListener('focus', updateBalance);
+    addEventListener('online', updateBalance);
+    document.addEventListener('visibilitychange', updateBalance);
   });
   onBeforeUnmount(() => {
     stopVisits?.();
     reset();
     removeEventListener('pagehide', pageHide);
     removeEventListener('pageshow', pageShow);
+    removeEventListener('focus', updateBalance);
+    removeEventListener('online', updateBalance);
+    document.removeEventListener('visibilitychange', updateBalance);
   });
   return {
     ...site,
@@ -163,6 +186,7 @@ export function useSession() {
     grantedCredits,
     ensureInvitationURL,
     status,
+    balanceStatus,
     retrySession,
     retryLogout,
     busy,

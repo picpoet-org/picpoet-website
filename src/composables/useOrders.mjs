@@ -183,7 +183,6 @@ export function useOrders(session) {
   session.resets.add(reset);
   watch(user, (value) => {
     if (value) {
-      void action('balance', session.status, (ticket) => session.refreshBalance(ticket));
       void loadOrders();
     }
   });

@@ -63,6 +63,16 @@ function changeLanguage(event) {
         >
         <label class="language-picker"
           ><span class="sr-only">{{ t('nav.language') }}</span
+          ><span class="language-menu-content nav-item-content" aria-hidden="true">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9" />
+              <ellipse cx="12" cy="12" rx="4" ry="9" />
+              <path d="M3 12h18" />
+            </svg>
+            <span class="nav-label">{{
+              availableLocales.find((language) => language.id === locale)?.label
+            }}</span>
+            <svg class="language-chevron" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5" /></svg> </span
           ><select id="site-language" :value="locale" @change="changeLanguage">
             <option
               v-for="language in availableLocales"

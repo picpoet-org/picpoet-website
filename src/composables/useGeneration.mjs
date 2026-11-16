@@ -226,9 +226,6 @@ export function useGeneration(session) {
       }
     });
   }
-  watch(user, (value) => {
-    if (value) void action('balance', session.status, (ticket) => session.refreshBalance(ticket));
-  });
   watch(balance, (value) => {
     if (value?.activeGenerationId && value.activeGenerationId !== task.value?.id && !busy.has('task')) {
       setTask(value.activeGenerationId);
