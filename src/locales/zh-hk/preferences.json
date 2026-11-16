@@ -1,5 +1,6 @@
 {
   "preferences": {
+    "enableContent": "請選擇詩詞體裁後開始創作。",
     "retry": "重試同步",
     "saving": "正在同步至帳戶…",
     "loading": "正在讀取帳戶偏好…",
@@ -10,7 +11,7 @@
     "scope": "偏好自動同步至目前帳戶，可在其他瀏覽器及裝置登入後使用；與 App 獨立，已提交的任務不受影響。",
     "language": "標籤語言",
     "autoLanguage": "跟隨介面",
-    "poemLanguage": "詩詞用字",
+    "poemLanguage": "用字",
     "simplified": "簡體",
     "traditional": "繁體",
     "languageHelp": "詩詞只支援簡繁中文，預設為繁體。標籤及相片描述使用標籤語言。",

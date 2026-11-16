@@ -40,7 +40,7 @@ npm run dev
 - `shared/`：复用图片压缩、任务协议、诗词排版、本地字体与清单校验；旧 DOM 页面控制器已由 Vue 替代。
 - `scripts/sync-public.mjs`：从同一套 Vue 组件预渲染完整 HTML，再挂载客户端；Vite 维护带内容 hash 的 JS/CSS。`public/` 与 `.build/` 是忽略的生成目录。
 
-保留根目录 `.html` 地址和 `/pages/` 兼容入口。非简体中文使用 `/zh-hk/`、`/zh-tw/`、`/en-us/`、`/ko-kr/`、`/ja-jp/` 路径；共享页头按语言生成站内地址，保留当前页面与登录目标。每个已交付语言均有对应 `lang`、canonical 和 hreflang。界面语言选择不写 Cookie 或浏览器存储；界面语言、标签语言与 `poemLanguage` 分开。个人中心的“创作偏好”覆盖标签语言、诗词用字、体裁、字数、完整词牌目录、韵书与构图建议，不含 App 实验功能。默认标签语言跟随界面、诗词繁体、自动词牌、五言、中华新韵，不附加构图建议。
+保留根目录 `.html` 地址和 `/pages/` 兼容入口。非简体中文使用 `/zh-hk/`、`/zh-tw/`、`/en-us/`、`/ko-kr/`、`/ja-jp/` 路径；共享页头按语言生成站内地址，保留当前页面与登录目标。每个已交付语言均有对应 `lang`、canonical 和 hreflang。界面语言选择不写 Cookie 或浏览器存储；界面语言、标签语言与 `poemLanguage` 分开。个人中心的“创作偏好”仅展示诗词体裁、用字、词牌／字数与韵书，组内宽屏两列、窄屏单列。网站统一关闭照片信息生成：默认值和读取旧账户偏好时均将 `photoInfo` 视为 false，隐藏照片信息开关、标签语言及构图建议配置；提交固定发送 `photoInfo=false`、`suggest=false`，不执行照片描述、标签或构图建议请求。服务器旧偏好不作批量改写，既有历史作品不变。选择“不生成诗词”时禁用生成并提示选择诗词体裁。App 与生成服务旧客户端的默认行为不变。生成服务须已应用 `20261116_photo_info.up.sql`，支持任务快照、重启恢复及幂等重试。
 
 偏好通过 BFF 的 `GET/PUT /web-api/preferences` 同步到账户服务 `GET/PUT /api/v1/picpoet/preferences`，以 JWT 中的用户 ID 存入 `user-dashboard` 的 `picpoet_preferences` 表（迁移 000015，支持 PostgreSQL 与 SQLite）。浏览器不能指定其他账号；最后一次成功写入覆盖整份配置。首次读取账户尚无配置时，将当前浏览器旧版 `picpoet:creation:v1:<account-id>` 偏好导入；`initialize: true` 使用原子插入，已有账户配置不被其他浏览器旧数据覆盖。无旧配置则初始化默认值。
 

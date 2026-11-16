@@ -1,5 +1,6 @@
 {
   "preferences": {
+    "enableContent": "창작을 시작하려면 시·사 형식을 선택해 주세요.",
     "retry": "동기화 재시도",
     "saving": "계정에 동기화 중…",
     "loading": "계정 설정 불러오는 중…",

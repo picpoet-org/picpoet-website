@@ -1,5 +1,6 @@
 {
   "preferences": {
+    "enableContent": "Choose a poetic form to start creating.",
     "retry": "Retry sync",
     "saving": "Syncing to your account…",
     "loading": "Loading account preferences…",

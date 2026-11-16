@@ -1,5 +1,6 @@
 {
   "preferences": {
+    "enableContent": "創作を始めるには詩形を選択してください。",
     "retry": "同期を再試行",
     "saving": "アカウントに同期中…",
     "loading": "アカウントの設定を読み込み中…",

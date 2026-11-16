@@ -14,6 +14,9 @@ import { useGenerationPreferences } from './useGenerationPreferences.mjs';
 export function useGeneration(session) {
   const { t, scope, action, request, api, user, verified, busy, balance, failure, brand } = session;
   const preferences = useGenerationPreferences(session);
+  const hasGenerationContent = computed(
+    () => preferences.value.value.photoInfo || !!preferences.value.value.poem || !!preferences.value.value.ci,
+  );
   const resultInfo = shallowRef(null);
   const includeInvitation = ref(true);
   const image = shallowRef(null),
@@ -165,6 +168,7 @@ export function useGeneration(session) {
       if (!task.value) {
         const snapshot = await preferences.snapshot();
         scope.assert(ticket);
+        if (!snapshot.photoInfo && !snapshot.poem && !snapshot.ci) throw failure('preferences.enableContent');
         const attempt = generationAttempt(image.value?.blob, snapshot);
         setTask(attempt.id, attempt);
       }
@@ -243,6 +247,7 @@ export function useGeneration(session) {
   }
   return {
     resultInfo,
+    hasGenerationContent,
     preferencesStatus: preferences.status,
     includeInvitation,
     setIncludeInvitation,

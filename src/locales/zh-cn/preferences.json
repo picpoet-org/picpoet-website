@@ -1,5 +1,6 @@
 {
   "preferences": {
+    "enableContent": "请选择诗词体裁后开始创作。",
     "retry": "重试同步",
     "saving": "正在同步到账户…",
     "loading": "正在读取账户偏好…",
@@ -10,7 +11,7 @@
     "scope": "偏好自动同步到当前账号，可在其他浏览器和设备登录后使用；与 App 独立，已提交的任务不受影响。",
     "language": "标签语言",
     "autoLanguage": "跟随界面",
-    "poemLanguage": "诗词用字",
+    "poemLanguage": "用字",
     "simplified": "简体",
     "traditional": "繁体",
     "languageHelp": "诗词仅支持简繁中文，默认繁体。标签与照片描述使用标签语言。",

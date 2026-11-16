@@ -159,7 +159,7 @@ async function multipart(req, cfg) {
   const body = await readBody(req, cfg.imageBytes + cfg.jsonBytes, cfg.bodyTimeoutMs);
   let form;
   try { form = await new Response(body, { headers: { 'Content-Type': contentType } }).formData(); } catch { bad(); }
-  const allowed = new Set(['image', 'generationId', 'language', 'poemLanguage', 'poem', 'poemMeter', 'rhymeStandard', 'ci', 'suggest', 'authorPersona', 'authorCharacter', 'metadataConfig']);
+  const allowed = new Set(['image', 'generationId', 'photoInfo', 'language', 'poemLanguage', 'poem', 'poemMeter', 'rhymeStandard', 'ci', 'suggest', 'authorPersona', 'authorCharacter', 'metadataConfig']);
   let textBytes = 0;
   for (const key of new Set(form.keys())) {
     if (!allowed.has(key) || form.getAll(key).length !== 1) bad();

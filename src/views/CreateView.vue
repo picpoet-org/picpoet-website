@@ -10,6 +10,7 @@ const { t, href, asset, verified, busy, balance } = session;
 const {
   resultInfo,
   preferencesStatus,
+  hasGenerationContent,
   includeInvitation,
   setIncludeInvitation,
   image,
@@ -75,6 +76,9 @@ const {
             · {{ t('preferences.nextTask') }}
           </p>
           <p v-if="preferencesStatus" role="status" class="fine-print">{{ preferencesStatus }}</p>
+          <p v-if="!hasGenerationContent" role="status" class="fine-print">
+            {{ t('preferences.enableContent') }}
+          </p>
           <form id="create-form" @submit.prevent="!task && submit()">
             <fieldset id="generation-inputs" :disabled="!verified || !!task || busy.has('image')">
               <div class="image-picker">
@@ -95,7 +99,7 @@ const {
                 id="generate"
                 type="submit"
                 class="button primary"
-                :disabled="!image || !verified || !!task || busy.has('image')"
+                :disabled="!image || !verified || !!task || busy.has('image') || !hasGenerationContent"
                 :aria-busy="busy.has('task')"
               >
                 {{ t(busy.has('image') ? 'create.processing' : 'create.generate') }}

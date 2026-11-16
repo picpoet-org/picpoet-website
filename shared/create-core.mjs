@@ -70,10 +70,11 @@ export function generationAttempt(image, preferences, makeUUID) {
 export function generationForm(attempt) {
   const form = new FormData();
   form.set('generationId', attempt.id);
+  form.set('photoInfo', 'false');
   form.set('image', attempt.image, 'photo.jpg');
   // ci 的显式空值表示关闭词，不能省略后退回服务端 auto 默认值。
   for (const key of ['language', 'poemLanguage', 'poem', 'poemMeter', 'rhymeStandard', 'ci', 'suggest']) {
-    form.set(key, String(attempt.preferences[key]));
+    form.set(key, String(key === 'suggest' ? false : attempt.preferences[key]));
   }
   return form;
 }
