@@ -25,6 +25,7 @@ const INVITATION_CODE = 'inv_' + 'a1'.repeat(16);
 const calls = [],
   errors = [];
 let generationId,
+  preferences = null,
   phoneLocked = false,
   generationComplete = false,
   removed = false,
@@ -64,6 +65,10 @@ const upstream = http.createServer(async (req, res) => {
       refreshExpiresIn: 30 * 24 * 3600,
     });
   if (path.includes('/auth/')) return json(res, { message: 'ok' });
+  if (path.endsWith('/preferences')) {
+    if (req.method === 'PUT' && (!body.initialize || preferences === null)) preferences = body.preferences;
+    return json(res, { preferences });
+  }
   if (path.endsWith('/balance'))
     return json(res, {
       free: { remaining: 3 },

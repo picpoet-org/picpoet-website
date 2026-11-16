@@ -6,7 +6,7 @@ import { useGenerationPreferences } from '../composables/useGenerationPreference
 import { options } from '../../shared/generation-preferences.mjs';
 const props = defineProps({ session: { type: Object, required: true } });
 const { t } = props.session;
-const { value, status, save } = useGenerationPreferences(props.session);
+const { value, status, ready, failed, save, retry } = useGenerationPreferences(props.session);
 const languages = {
   zh: '简体中文',
   'zh-Hant': '繁體中文',
@@ -38,8 +38,8 @@ function setKind(next) {
       <h2 id="preferences-title">{{ t('preferences.title') }}</h2>
       <p class="preferences-status" role="status" aria-live="polite">{{ status }}</p>
     </header>
-    <p class="fine-print preferences-scope">{{ t('preferences.scope') }}</p>
-    <fieldset class="preferences-group">
+    <button v-if="failed" type="button" class="button" @click="retry">{{ t('preferences.retry') }}</button>
+    <fieldset class="preferences-group" :disabled="!ready">
       <legend>{{ t('preferences.groupLanguage') }}</legend>
       <div class="preferences-grid">
         <div class="preference-field">
@@ -72,7 +72,7 @@ function setKind(next) {
       </div>
       <p id="verse-language-help" class="fine-print preference-help">{{ t('preferences.languageHelp') }}</p>
     </fieldset>
-    <fieldset class="preferences-group">
+    <fieldset class="preferences-group" :disabled="!ready">
       <legend>{{ t('preferences.groupPoetry') }}</legend>
       <div class="preferences-grid">
         <div class="preference-field">
@@ -127,7 +127,7 @@ function setKind(next) {
         {{ t('preferences.rhymeHelp') }}
       </p>
     </fieldset>
-    <fieldset class="preferences-group">
+    <fieldset class="preferences-group" :disabled="!ready">
       <legend>{{ t('preferences.groupExtras') }}</legend>
       <label class="preference-suggest" for="composition-suggest">
         <input

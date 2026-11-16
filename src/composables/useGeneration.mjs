@@ -163,7 +163,9 @@ export function useGeneration(session) {
     return action('task', generationStatus, async (ticket) => {
       if (!verified.value) throw failure('session.verifyFirst');
       if (!task.value) {
-        const attempt = generationAttempt(image.value?.blob, preferences.snapshot());
+        const snapshot = await preferences.snapshot();
+        scope.assert(ticket);
+        const attempt = generationAttempt(image.value?.blob, snapshot);
         setTask(attempt.id, attempt);
       }
       if (!task.value.attempt) throw failure('create.recovered');

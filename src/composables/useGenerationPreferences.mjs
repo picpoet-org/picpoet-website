@@ -2,39 +2,151 @@ import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { defaults, normalizePreferences, resolvePreferences } from '../../shared/generation-preferences.mjs';
 
 export function useGenerationPreferences(session) {
-  const value = ref({ ...defaults });
-  const status = ref('');
-  const key = () => (session.user.value?.id ? `picpoet:creation:v1:${session.user.value.id}` : '');
-  function load() {
-    value.value = { ...defaults };
-    status.value = '';
-    if (!key() || typeof window === 'undefined') return;
+  const value = ref({ ...defaults }),
+    status = ref(''),
+    ready = ref(false),
+    failed = ref(false);
+  let mounted = false,
+    epoch = 0,
+    pending = null,
+    saving = null,
+    loading = null;
+  const key = (version) => `picpoet:creation:v${version}:${session.user.value?.id}`;
+  function cached(version) {
     try {
-      const raw = window.localStorage.getItem(key());
-      if (!raw) return;
-      const saved = JSON.parse(raw);
-      if (saved?.version !== 1 || !saved.preferences || typeof saved.preferences !== 'object')
-        throw new Error('invalid preferences');
-      value.value = normalizePreferences(saved.preferences);
+      const data = JSON.parse(localStorage.getItem(key(version)));
+      return data?.version === version && data.preferences ? normalizePreferences(data.preferences) : null;
     } catch {
-      status.value = session.t('preferences.loadFailed');
+      return null;
     }
+  }
+  function cache(preferences) {
+    try {
+      localStorage.setItem(key(2), JSON.stringify({ version: 2, preferences }));
+    } catch {
+      /* 缓存不可用不影响账户保存。 */
+    }
+  }
+  function read(data) {
+    if (!data?.preferences || typeof data.preferences !== 'object' || Array.isArray(data.preferences))
+      throw session.failure('preferences.loadFailed');
+    return normalizePreferences(data.preferences);
+  }
+  function load() {
+    if (loading) return loading;
+    if (!mounted || !session.user.value?.id) return Promise.resolve(false);
+    const current = epoch,
+      ticket = session.scope.capture();
+    ready.value = false;
+    failed.value = false;
+    status.value = session.t('preferences.loading');
+    loading = (async () => {
+      try {
+        let data = await session.request(ticket, '/preferences');
+        if (current !== epoch) return false;
+        if (data?.preferences === null) {
+          // 只在账户尚无配置时导入；并发初始化由服务器原子地保留首份配置。
+          data = await session.request(
+            ticket,
+            '/preferences',
+            {
+              preferences: cached(1) || { ...defaults },
+              initialize: true,
+            },
+            'PUT',
+          );
+        }
+        if (current !== epoch) return false;
+        value.value = read(data);
+        cache(value.value);
+        ready.value = true;
+        status.value = '';
+        return true;
+      } catch {
+        if (current === epoch) {
+          failed.value = true;
+          status.value = session.t('preferences.loadFailed');
+        }
+        return false;
+      } finally {
+        if (current === epoch) loading = null;
+      }
+    })();
+    return loading;
+  }
+  function flush() {
+    if (saving) return saving;
+    const current = epoch,
+      ticket = session.scope.capture();
+    failed.value = false;
+    status.value = session.t('preferences.saving');
+    saving = (async () => {
+      try {
+        while (pending && current === epoch) {
+          const next = pending;
+          const data = await session.request(ticket, '/preferences', { preferences: next }, 'PUT');
+          if (current !== epoch) return;
+          const confirmed = read(data);
+          cache(confirmed);
+          if (pending === next) {
+            pending = null;
+            value.value = confirmed;
+          }
+        }
+        if (current === epoch) status.value = '';
+      } catch {
+        if (current === epoch) {
+          failed.value = true;
+          status.value = session.t('preferences.saveFailed');
+        }
+      } finally {
+        if (current === epoch) saving = null;
+      }
+    })();
+    return saving;
   }
   function save(next) {
-    if (!key()) return;
+    if (!ready.value || !session.user.value?.id) return;
     value.value = normalizePreferences(next);
-    try {
-      window.localStorage.setItem(key(), JSON.stringify({ version: 1, preferences: value.value }));
-      status.value = session.t('preferences.saved');
-    } catch {
-      status.value = session.t('preferences.saveFailed');
-    }
+    pending = value.value;
+    return flush();
+  }
+  function retry() {
+    return pending ? flush() : load();
+  }
+  function refresh() {
+    if (!pending && !saving && document.visibilityState === 'visible') void load();
   }
   function changed(event) {
-    if (event.key === null || event.key === key()) load();
+    if (event.key === null || event.key === key(2)) refresh();
   }
-  watch(() => session.user.value?.id, load, { immediate: true, flush: 'sync' });
-  onMounted(() => window.addEventListener('storage', changed));
-  onBeforeUnmount(() => window.removeEventListener('storage', changed));
-  return { value, status, save, snapshot: () => resolvePreferences(value.value, session.locale) };
+  function reset() {
+    epoch++;
+    pending = saving = loading = null;
+    ready.value = failed.value = false;
+    value.value = mounted ? cached(2) || cached(1) || { ...defaults } : { ...defaults };
+    status.value = '';
+    if (mounted) void load();
+  }
+  watch(() => session.user.value?.id, reset, { flush: 'sync' });
+  onMounted(() => {
+    mounted = true;
+    reset();
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('storage', changed);
+  });
+  onBeforeUnmount(() => {
+    mounted = false;
+    epoch++;
+    window.removeEventListener('focus', refresh);
+    document.removeEventListener('visibilitychange', refresh);
+    window.removeEventListener('storage', changed);
+  });
+  async function snapshot() {
+    if (saving) await saving;
+    if (pending || !(await load())) throw session.failure('preferences.loadFailed');
+    return resolvePreferences(value.value, session.locale);
+  }
+  return { value, status, ready, failed, save, retry, snapshot };
 }

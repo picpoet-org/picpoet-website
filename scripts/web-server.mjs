@@ -183,6 +183,7 @@ const fixedRoutes = new Map([
   ['GET /balance', 'balance'], ['GET /plans', 'plans'], ['GET /orders', 'orders'],
   ['POST /orders', 'create-order'], ['POST /generations', 'create-generation'],
   ['GET /history', 'history-list'],
+  ['GET /preferences', 'preferences'], ['PUT /preferences', 'preferences'],
 ]);
 function routeFor(method, pathname) {
   const fixed = fixedRoutes.get(`${method} ${pathname}`);
@@ -418,6 +419,15 @@ export function createWebServer({ config: cfg = config, fetch: fetchImpl = globa
       result = { status: 200, data: { authenticated: false } };
     } else if (kind === 'plans') {
       result = accepted(await upstream(cfg.dashboardApiUrl, '/picpoet/plans', 'GET'));
+    } else if (kind === 'preferences') {
+      let body;
+      if (req.method === 'PUT') {
+        body = await jsonBody(req, cfg);
+        if (Object.keys(body).some(key => !['preferences', 'initialize'].includes(key))) bad();
+        if (!body.preferences || typeof body.preferences !== 'object' || Array.isArray(body.preferences) ||
+            (body.initialize !== undefined && typeof body.initialize !== 'boolean')) bad();
+      }
+      result = await jwt(session, '/preferences', req.method, body);
     } else if (kind === 'balance' || kind === 'orders') {
       result = await jwt(session, `/${kind}`, 'GET');
     } else if (kind === 'create-order') {
