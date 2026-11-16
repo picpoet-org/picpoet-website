@@ -20,11 +20,7 @@ function setKind(next) {
 }
 </script>
 <template>
-  <section
-    id="creation-preferences"
-    class="create-panel preferences-panel"
-    aria-labelledby="preferences-title"
-  >
+  <section class="create-panel preferences-panel" aria-labelledby="preferences-title">
     <header class="preferences-head">
       <h2 id="preferences-title">{{ t('preferences.title') }}</h2>
       <p class="preferences-status" role="status" aria-live="polite">{{ status }}</p>

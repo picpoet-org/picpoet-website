@@ -146,7 +146,9 @@ const {
         />
       </section>
     </div>
-    <GenerationPreferences v-if="user" :session="session" />
+    <div id="creation-preferences">
+      <GenerationPreferences v-if="user" :session="session" />
+    </div>
     <section id="purchase" class="create-panel purchase-panel" aria-labelledby="plans-title">
       <div class="section-top">
         <h2 id="plans-title">{{ t('account.plans') }}</h2>
