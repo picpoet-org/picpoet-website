@@ -1,6 +1,6 @@
 # 图赋 / PicPoet website
 
-Vue 3 + Vite 网站，维护产品说明、下载、在线创作与独立 Node BFF。简体中文品牌为 **图赋**，其余语言品牌为 **PicPoet**。
+Vue 3 + Vite 纯前端网站，维护产品说明、下载与在线创作界面。BFF、登录会话与业务代理全部由相邻 `picpoet-server` 的 Go 服务实现，本仓库不包含后端运行服务。简体中文品牌为 **图赋**，其余语言品牌为 **PicPoet**。
 
 ## 正式发布地址
 
@@ -29,7 +29,7 @@ npm ci
 npm run dev
 ```
 
-打开 <http://127.0.0.1:8080>。Vite 实时预渲染 Vue 组件并提供热更新；业务请求 `/web-api` 代理到本机 `18090` BFF，BFF 启动方式见下文。仅查看公开内容时无需启动业务后端。`npm run build` / `public:sync` 生成 `public/`，`npm start` 使用 Python 3 静态预览该产物。
+打开 <http://127.0.0.1:8080>。Vite 实时预渲染 Vue 组件并提供热更新；`/web-api` 与邀请深路径仅转发到 `VITE_API_PROXY_TARGET`（默认 `http://127.0.0.1:18081`）的 Go 服务，保留浏览器 Host/Origin。后端应允许当前开发页面来源。仅查看公开内容时无需启动业务后端。`npm run build` / `public:sync` 生成 `public/`，`npm start` 使用 Python 3 静态预览该产物，不提供业务代理。
 
 次数由共享会话逻辑自动维护：进入已登录页面、回到前台或网络恢复时查询，购买到账及创作完成后更新；不定时轮询次数，个人中心不提供手动刷新按钮。暂时查询失败时保留上次次数并显示错误，下一次上述事件触发后恢复；其他设备的变化在回到页面时同步。
 
@@ -67,7 +67,6 @@ npm run dev
 ```bash
 npm run locales:check  # 六种语言的文件、键、占位符和品牌检查
 npm run build:all      # 严格六语言预渲染
-node test/vue.browser.integration.mjs --all-locales
 ```
 
 各语言必须保持相同的键、对象结构、数组长度和 `{brand}`、`{count}` 等占位符，不使用空值、源文占位或删除字典绕过校验。简体中文品牌为“图赋”，其他语言为“PicPoet”，通过 `{brand}` 统一插值。完整性检查不能代替翻译语义审校；正式六语言交付以完整性检查、`build:all` 和六语言浏览器验收成功为准。普通 `npm run build` 可用于阶段性构建，完整交付仍使用 `build:all`。
@@ -121,7 +120,7 @@ https://picpoet.jqknono.com/{user.id}/invite_code={invitationCode}
 
 本地 `http://127.0.0.1:18090` 页面生成同源邀请地址；手机扫码联调时，应从手机可达的局域网地址打开网站再生成分享图，回环地址不能用于其他设备访问。已经下载的旧分享图不会自动更新，需要重新生成。
 
-路径中的用户 ID 稳定且不包含邮箱；归因仍以服务端邀请码为准，不依赖显示用户名。Node BFF 和 Vite 开发入口只对合法邀请路径跳转到固定的注册页面，自动填入邀请码；登录回跳白名单保持原有边界。语言切换保留有效邀请码。余额/邀请码暂不可用时允许导出无邀请二维码的作品，并明确提示，避免影响诗词保存。
+路径中的用户 ID 稳定且不包含邮箱；归因仍以服务端邀请码为准，不依赖显示用户名。Go BFF 只对合法邀请路径跳转到固定的注册页面，自动填入邀请码；登录回跳白名单保持原有边界。语言切换保留有效邀请码。余额/邀请码暂不可用时允许导出无邀请二维码的作品，并明确提示，避免影响诗词保存。
 
 所有注册入口的新用户携带有效邀请码、创建账户成功后，Dashboard 在注册事务内给邀请人发放 **3 次可累计创作额度**，不等邮箱验证，不设每日上限；同一新账号仅发一次，首次生成不重复发奖。此规则会给未验证邮箱的注册发奖，沿用现有注册限流，正式运营需持续监测邀请滥用。历史邀请继续旧规则，不回收或重算已到账额度。
 
@@ -131,58 +130,33 @@ https://picpoet.jqknono.com/{user.id}/invite_code={invitationCode}
 
 累计获赠下方提供默认收起的“已邀请用户”。每次展开时，网站通过需登录的 `GET /web-api/invitations` 读取 Dashboard 的 `GET /api/v1/invitations`，复用 JWT 续期和服务端用户身份校验，不接受浏览器指定邀请人；仅返回记录 ID 与完整邮箱，不返回用户名或手机号。无邮箱记录显示“手机号用户”，加载失败可重试，成功空列表与接口失败分别提示；退出或切换账户清除列表。记录沿用 Dashboard 成功邀请的统计口径，不能将列表人数乘以当前奖励额度替代累计实际获赠。此功能需更新并重启网站 BFF，无需数据库迁移。奖励迁移及规则说明见 [Dashboard 邀请奖励说明](../../user-dashboard/docs/picpoet-referral-registration-rewards.md)。
 
-**交付边界：** Dashboard 需升级并应用 `000013`，网站 BFF 需重启加载邀请路由。纯静态 ESA 部署不处理动态邀请路径，正式域名需将邀请深路径和 `/web-api/*` 路由到 Node BFF；只上传 `public/` 不能完成注册获赠。以上为代码与隔离测试能力，未自动修改线上或联调数据库。
+**交付边界：** Dashboard 需升级并应用 `000013`，网站 BFF 需重启加载邀请路由。纯静态 ESA 部署不处理动态邀请路径，正式域名需将邀请深路径和 `/web-api/*` 路由到 Go BFF；只上传 `public/` 不能完成注册获赠。以上为代码与隔离测试能力，未自动修改线上或联调数据库。
 
 ## 网页版创作（本地验收）
 
 网页版复用 Dashboard 的 Picpoet 邮箱注册／OTP 验证、账户及额度，通过官方异步任务生成诗词。分享卡在浏览器以文楷绘制，沿用客户端的纸色、1080px 宽度和品牌底纹，不包含原照片。文楷使用 ZSFT 发布的霞鹜文楷 v1.530 Regular 网页分片，缓存在 `assets/fonts/lxgw-wenkai/`；绘制时只启用当次文字覆盖的同源 woff2，不请求外部字体，也不再下载完整 TTF。图片选中后仅在本机解码、缩小及 JPEG 重编码（移除原图 EXIF）；点击生成才上传。历史启用后，新提交的账户官方成功任务保存压缩照片与诗词 90 天，可提前永久删除；不保存原图、不回填旧任务。是否已保存以历史接口记录为准，需要长期保留的作品请下载。
 
-工作目录 `picpoet-website/`，Node.js 22.13+：
+工作目录 `picpoet-website/`，Node.js 22.13+。先启动启用了网页接口的 Go 服务，然后启动前端：
 
 ```bash
-# 两个上游需分别启动；以下是默认本地端口，不会加载任何 .env。
-DASHBOARD_API_URL=http://127.0.0.1:8080/api/v1 \
-PICPOET_API_URL=http://127.0.0.1:8081/v1 npm run dev:web
+VITE_API_PROXY_TARGET=http://127.0.0.1:18081 npm run dev:web
 ```
 
-打开 <http://127.0.0.1:18090/create.html>。此地址的 Host/Origin 必须与 `WEB_PUBLIC_ORIGIN` 一致（默认 `http://127.0.0.1:18090`），不能混用 localhost。需要前端热更新时另运行 `npm run dev`，使用 <http://127.0.0.1:8080/create.html>；开发代理将同源请求转给 BFF，令牌仅在 BFF 服务端保管。
+打开 <http://127.0.0.1:18090/create.html>。`dev:web` / `dev:web:official` 都是 Vite 前端入口，不再启动 Node BFF。Go 服务必须允许开发页面的 Host/Origin，后端启动配置见相邻 [picpoet-server](../picpoet-server/README.md)。
 
-一键启动前后端联调（推荐）：
-
-```bash
-# 工作目录 picpoet-website/
-npm run dev:stack
-```
-
-该命令复用 `picpoet-app/official-dev.sh start --no-gui`，启动 Mailpit、Dashboard API/Web、Picpoet Server、Payments，并纳入 website BFF（`0.0.0.0:18090`）。不启动 Flutter GUI；需要 GUI 时使用独立入口 `npm run dev:stack:gui`。两个入口均无需附加参数。查看状态与停止仍走：
+一键联调继续使用 `npm run dev:stack`（无 Flutter GUI）或 `npm run dev:stack:gui`，由 `picpoet-app/official-dev.sh` 统一管理。网站进程只运行 Vite；登录、额度、订单和生成转接由 Go 服务执行。查看状态与停止使用：
 
 ```bash
 bash ../picpoet-app/official-dev.sh status
 bash ../picpoet-app/official-dev.sh stop
 ```
 
-浏览器可打开 `http://127.0.0.1:18090/create.html` 或 `http://192.168.31.7:18090/create.html`（BFF 同时接受这两个 Origin，不要混用 `localhost`）。注册验证码在联调 Mailpit `http://127.0.0.1:18025` 查看。
+账户和额度属于官方联调的 debug 数据库，不是生产库；注册验证码在联调 Mailpit `http://127.0.0.1:18025` 查看。网页支持本机和配置的局域网入口；不要混用未允许的 `localhost`。
 
-若后端已由官方联调启动，仅需启动 website BFF：
-
-```bash
-npm run dev:web:official
-# 已同步 public/ 时也可执行 npm run start:web:official
-```
-
-此入口默认连接 Dashboard `http://127.0.0.1:18080/api/v1` 和 Picpoet `http://127.0.0.1:18081/v1`，不启动或重启后端，不读取任何秘密文件；显式环境变量仍优先。账户与额度属于现有官方联调的 debug 数据库，不是主开发库或生产库。网页端口仍为 18090，请先停止旧网页进程再切换入口。
-
-排查连接时，Dashboard `/health` 应为 200、`/api/v1/picpoet/plans` 应返回套餐数组，Picpoet `/healthz` 应为 204；再检查网页 `/web-api/plans`。仅 `/web-api/session` 返回 200 并不能证明上游连通。真实图片生成会调用模型并消耗相应次数，健康检查与登录验收不代表模型生成已通过。
-
-- `scripts/web-server.mjs` 同时托管 `public/` 和固定 `/web-api` 同源代理；只用用户自己的 JWT / 业务凭证，不需要模型、Dashboard 内部或 payments 服务密钥。
-- 账户令牌仅在服务端保管，浏览器持有 HttpOnly、SameSite=Strict 的持久 Cookie，不向 JavaScript/localStorage 交付 JWT、refresh 或业务凭证。HTTPS 时启用 Secure；生产环境要求设置 `NODE_ENV=production` 和 HTTPS `WEB_PUBLIC_ORIGIN`。
-- 会话默认 **7 天滑动有效期**：访问任意页面或页面重新回到前台时，`/web-api/session` 同步将 Cookie 与服务端截止时间延长到此次访问后 7 天。每天访问可持续保持登录；连续 7 天未访问则正常到期。相邻 focus/visibility 事件一分钟内合并，业务轮询不单独续期。`WEB_SESSION_TTL_MS` 可延长到最多 30 天，低于 7 天的旧配置自动提升为 7 天；容量 `WEB_MAX_SESSIONS` 默认 1000 个。
-- 会话保存在 `WEB_SESSION_FILE`（默认本仓库 `.local/web/sessions.sqlite`），**BFF 重启后仍可恢复**。SQLite 只保存会话 ID 的 SHA-256 与 AES-256-GCM 加密载荷，密钥首次启动自动生成于同名 `.key`；两个文件权限均为 `0600`，默认目录为 `0700`，目录已加入 Git/镜像上下文忽略。临时测试使用独立目录并自动清理。
-- 首次登录按需新增业务凭证，不撤销其他设备凭证。退出会立即删除持久会话并撤销本设备最新刷新令牌；短暂网络故障保留会话供重试，确认认证失效才注销。上游尚无单业务凭证撤销接口。
-- 浏览器可选择最大 25 MiB 的原图，限制 4000 万像素；本地重编码缩至长边 2048px，压缩后上传仍最多 10 MiB，后端再次校验边界。`WEB_MAX_IMAGE_BYTES` 可降低服务端上传限制；增大不会改变前端限制。
-- `WEB_HOST` / `WEB_PORT` 默认为 `127.0.0.1` / `18090`；官方联调栈将 `WEB_HOST` 设为 `0.0.0.0`。`WEB_PUBLIC_ORIGIN` 仍可用；多 Origin 用逗号分隔的 `WEB_PUBLIC_ORIGINS`（例如 `http://127.0.0.1:18090,http://192.168.31.7:18090`）。上游超时 `WEB_UPSTREAM_TIMEOUT_MS` 默认 30000，读取请求超时 `WEB_BODY_TIMEOUT_MS` 默认 15000。
-- Dashboard 需开启 Picpoet、邮箱认证与购买功能，配置邮件、独立数据库、支付及可信结算信息；Picpoet Server 需具备官方生成、额度结算和模型服务能力。参考各仓库说明，不向前端配置服务密钥。
-- 套餐价格来自服务端；用户明确下单后打开支付宝 PC 网页或 WAP 收银台。跳转不表示到账，通过订单详情和余额确认。重试保留请求编号；会话丢失后从账户订单列表恢复，不盲目重新购买。
+- 浏览器仅持有 HttpOnly 会话 Cookie，不接收 JWT、刷新令牌或业务凭证。会话持久化、七天滑动续期、限流和上游超时均由 Go BFF 维护，配置与运维说明归属 server 仓库。
+- 浏览器可选择最大 25 MiB、4000 万像素的原图，本地压缩到长边 2048px 后上传；后端仍限制上传大小，不向前端配置模型或服务密钥。
+- 套餐价格来自服务端；用户明确下单后打开支付宝收银台。跳转不表示到账，通过订单详情和余额确认。重试保留请求编号，不盲目重新购买。
+- 健康检查与登录验收不代表模型生成已通过；真实生成与支付另行授权验收。
 
 ### 账户历史：接口与启用前置条件
 
@@ -195,7 +169,7 @@ npm run dev:web:official
 | `GET /web-api/history/{id}/image` | `GET /v1/history/{id}/image` | JPEG，最大 2 MiB，独立超时默认 15 秒（`WEB_HISTORY_IMAGE_TIMEOUT_MS`，最大 30 秒） |
 | `DELETE /web-api/history/{id}` | `DELETE /v1/history/{id}` | 用户明确确认后发送，成功须返回 `{deleted:true}` |
 
-所有历史接口仅接受已登录会话，BFF 使用该用户的业务 credential，不使用共享服务 token。其他路由仍禁止查询参数。图片代理禁止重定向，独立限制流式字节数和 MIME，不转发 Cookie、认证、缓存标识等上游隐私头；返回 `no-store` / `nosniff`。JSON 仍经过原有 `safeJSON` 脱敏。
+所有历史接口仅接受已登录会话，BFF 使用该用户的业务 credential，不使用共享服务 token。其他路由仍禁止查询参数。图片代理禁止重定向，独立限制流式字节数和 MIME，不转发 Cookie、认证、缓存标识等上游隐私头；返回 `no-store` / `nosniff`。JSON 由 Go BFF 统一过滤敏感字段。
 
 **后端未启用时历史返回 503，页面显示“历史尚未启用”，不阻止生成、当前作品下载和购买。** 404/410 表示记录已删除或过期。客户端不会仅凭生成成功宣称历史自动保存。
 
@@ -207,28 +181,19 @@ npm run dev:web:official
 
 停用时保留历史表与新版清理 worker，按服务端 README 处理归档/清理；普通停用不执行破坏性 down 迁移。永久删除清除服务端可读历史与任务结果副本，但数据库备份/WAL 的销毁受运维保留策略约束。本网站实现与自动测试不启动真实后端、不运行数据库迁移、不调用模型或支付。
 
-### 登录态持久化与续期配置
+### 登录态与后端职责
 
-Dashboard Picpoet 登录与 refresh 响应新增 `refreshExpiresIn`（秒）。访问 JWT 保持原短期配置（默认 15 分钟），refresh 每次轮换后重新计算有效期，Picpoet 至少保留 30 天，为网站七天滑动会话留出余量；通用 Dashboard 认证配置不变。BFF 在 JWT 将到期或 refresh 剩余时间不足完整会话窗口时串行轮换，并立即保存新令牌；旧后端未返回时长时，每次页面访问都刷新。要完整保证七天体验，应同步更新 Dashboard 与 BFF；旧后端若将 refresh 配置为短于七天，单独延长 Cookie 无法弥补。
-
-持久化文件路径相对进程工作目录解析；默认路径按脚本位置解析，不受启动目录影响。生产将数据库与 `.key` 同目录一起保留、备份和恢复，并保证仅运行服务的账户可读写。镜像的可写目录为 `/app/.local/web`，部署时将它挂载到持久卷；仅靠容器可写层不能保留重新创建容器后的登录态。密钥丢失时，从对应备份恢复文件对，或在明确接受全员重新登录后移走整组会话文件重新初始化。
-
-当前实现按**单 BFF 进程**运行，刷新串行锁在进程内；部署副本扩展时需迁移到带跨进程刷新锁的共享会话存储，不让多个进程并用同一本地会话库。首次从旧内存版更新时原内存会话无法迁移，需重新登录一次；之后常规重启可恢复。上游已轮换、BFF 尚未落盘的极短崩溃窗口仍可能要求该会话重新登录。
-
-本次代码和隔离测试不更新真实数据库或重启联调服务；此会话变更本身无需新增 Dashboard 数据库迁移。前一轮手机号能力仍需按其 `000014` 迁移要求处理。
+会话、加密存储、凭证刷新、注册与登录、订单幂等、邀请跳转和上游协议全部在 [picpoet-server](../picpoet-server/README.md) 实现。网站只调用既有同源 `/web-api/*`，不直接访问 Dashboard，不持有后端秘密。升级 Go BFF 时应保留旧会话数据库与配对密钥，按 server 的迁移说明执行。
 
 ### 验证与发布边界
 
 ```bash
 npm test
-npm run public:sync
-npm run test:browser:create  # 需要 google-chrome；独立 HTTP 替身，不花费模型/支付额度
+npm run build:all
 npm run format:check
 ```
 
-Node 测试覆盖账户会话、原样 multipart、配额查询、任务重试、订单幂等、刷新并发、安全边界和预渲染交付；会话通过推进时钟验证每日访问超过 35 天、七天闲置、进程重建、令牌加密落盘与退出清理。Vue Chrome 正向验收覆盖八页 hydration、375/768/900/1280px 导航布局、注册与 OTP、登录回跳、上传、生成、PNG 实际下载、历史详情与分享图、取消和确认删除、购买到账及退出，并检查持久 Cookie、公开页续期与前台恢复；测试照片由 Canvas 合成，实际页面经独立 BFF 访问 HTTP 替身并启用正式 CSP。真实邮件、模型、沙箱付款和移动系统分享需另行验收；替身通过不等于真实上游联通。
-
-**现有 ESA 纯静态发布不具备 BFF 能力。** 上线前须为同一官网 origin 的 `/web-api/*` 部署 Node 服务并配置同源路由，或由 Node 服务统一托管官网；反向代理保留公开 Host，API 不缓存。本文不执行线上变更。当前会话为单进程加密持久化，扩容前应建设共享会话存储、可信代理限流和业务凭证生命周期管理；完整网页版交付同时包含 `public/`、BFF 与持久存储。
+保留前端图片压缩、分享图、请求取消、订单请求编号、多语言、导航和静态产物的既有测试。旧 Node BFF 专属测试及依赖旧 Node 服务的浏览器集成脚本已按开发者要求删除，不再维护另一套后端实现。真实登录、支付、生成和跨设备分享需在实际服务环境另行验收。
 
 字体位于 `assets/fonts/`，附 `OFL.txt`；使用本地 WOFF2 分片，按当次作品所需字形加载。生成分享图的底纹按界面语言使用“图赋”或“PicPoet”。
 
@@ -236,7 +201,7 @@ Node 测试覆盖账户会话、原样 multipart、配额查询、任务重试�
 
 ## 统一发布清单
 
-`releases/stable.json` 是网站下载页和 Android 升级检查的共同数据源。当前登记 **0.1.7** 的 Android ARM64、Linux x64 和 Windows x64 安装包；iOS、HarmonyOS 和 macOS 保持“暂未发布”。发布时间采用 GitHub Release 的 `2026-11-16T11:27:56Z`，产物信息来自已完成 R2/CDN 校验的 `stable.candidate.json`。`artifacts: []` 表示“暂未发布”；接入真实产物后自动展示版本、更新说明、架构、大小与 SHA-256。下载页会推荐可能匹配的系统，用户仍需核对架构。生产 Node BFF 同时提供标准清单路径与 `/pages/releases/stable.json` 兼容路径，发布后须核验两者一致。
+`releases/stable.json` 是网站下载页和 Android 升级检查的共同数据源。当前登记 **0.1.7** 的 Android ARM64、Linux x64 和 Windows x64 安装包；iOS、HarmonyOS 和 macOS 保持“暂未发布”。发布时间采用 GitHub Release 的 `2026-11-16T11:27:56Z`，产物信息来自已完成 R2/CDN 校验的 `stable.candidate.json`。`artifacts: []` 表示“暂未发布”；接入真实产物后自动展示版本、更新说明、架构、大小与 SHA-256。下载页会推荐可能匹配的系统，用户仍需核对架构。ESA Pages 同时提供标准清单路径与 `/pages/releases/stable.json` 兼容路径，发布后须核验两者一致。
 
 清单包含 `schemaVersion: 1` 和六项 `platforms`。每个平台包含：
 
@@ -287,9 +252,16 @@ npm run public:sync
 
 ## ESA Pages
 
-生产官网当前由 k3s 中的 Website / Node BFF 统一托管，ESA 通过源站池代理访问；ESA Pages 为独立静态发布路径，不替代 BFF。不要为修复静态构建而将生产域名重新绑定到 Pages，否则同源 `/web-api/*` 和动态邀请路径将失去后端服务。
+官网 `picpoet.jqknono.com` **直接绑定 ESA Pages**，静态前端由 Pages 项目 `picpoet-website` 提供。全部后端能力归属 `picpoet-server`：
 
-从 Git 仓库导入 ESA Pages 时，根目录选择本仓库根目录（含 `package.json` 和 `esa.jsonc`）。`esa.jsonc` 已声明以下云端构建配置；控制台如有覆盖配置，应保持一致：
+- 静态页面、JS/CSS、字体、图片及发布清单 → Pages。
+- `/web-api*` 与邀请深路径 → server 仓库 `edge/` 中的 ESA 薄代理 → `picpoet-api.jqknono.com` → Go BFF。
+- `/v1/*` → 现有 Picpoet Server 核心 API，保持 App 契约。
+- 浏览器仍使用同源 Cookie，边缘代理保留原始 Origin，不包含登录、订单、会话或邀请校验逻辑。动态接口不缓存。
+
+Pages 默认将 `.html` 地址 307 到无后缀地址；前端兼容两种路径。2026-11-17 已完成 Go BFF 会话迁移及同源代理验证，并将旧 OP 记录替换为 Pages 域名绑定。公网 CNAME 名称保持相同，但 ESA 关联已改为 compute/Pages，不再是集群源站池。具体版本与回滚以相邻 `ecs-manager` 的发布记录为准。
+
+从 Git 仓库导入 ESA Pages 时，根目录选择本仓库根目录（含 `package.json` 和 `esa.jsonc`）。`esa.jsonc` 是构建配置的唯一来源，优先于控制台同名设置：
 
 | 配置项 | 值 |
 | --- | --- |
@@ -308,7 +280,9 @@ npm run build:all
 esa-cli deploy --assets ./public --name picpoet-website --environment staging --no-preview
 ```
 
-自定义域名绑定、DNS 与证书须单独配置，不由本地构建脚本代办；生产域名继续保留现有 k3s 源站链路。
+本仓库不再提供 Docker 后端镜像；Go BFF 随 `picpoet-server` 构建和部署。ESA 薄代理也在 server 仓库维护，网站 `esa.jsonc` 仅声明静态构建。
+
+ESA 路由、域名绑定与安全响应头配置见相邻 `ecs-manager/k3s/resources/jqknono.com/picpoet-pages.json`。它们属于站点配置，不是 `esa.jsonc` 构建字段，发布静态产物不会自动修改这些规则。回滚必须协调后端版本、会话存储与动态路由，详细步骤见相邻 `ecs-manager` 的 `picpoet-release.md`。
 
 同步脚本根据 `deployment.json` 为已交付语言生成正式官网 canonical、hreflang、`robots.txt` 和 `sitemap.xml`。保留 `/pages/` 兼容产物，资源使用同源根路径；旧 `jqknono.com/pages/*` 路由若继续保留，可在 ESA 单独配置跳转到正式官网。上线后检查官网、清单和真实安装包路径均可通过 HTTPS 访问，清单直接返回 JSON。
 

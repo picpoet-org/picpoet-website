@@ -1,38 +1,13 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { fileURLToPath } from 'node:url';
-import { invitationRedirect } from './shared/invitation.mjs';
+const apiTarget = process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:18081';
 import { parseLocation } from './src/i18n/context.mjs';
 const root = fileURLToPath(new URL('.', import.meta.url));
 export default defineConfig({
   root,
   plugins: [
     vue(),
-    {
-      name: 'picpoet-invitation-redirect',
-      configureServer(server) {
-        server.middlewares.use((request, response, next) => {
-          const url = new URL(request.url || '/', 'http://localhost');
-          const invite = invitationRedirect(url.pathname, url.searchParams);
-          if (!invite) return next();
-          if (!['GET', 'HEAD'].includes(request.method || 'GET')) {
-            response.statusCode = 405;
-            response.end();
-            return;
-          }
-          if (invite.status === 404) {
-            response.statusCode = 404;
-            response.end();
-            return;
-          }
-          response.statusCode = invite.status;
-          response.setHeader('Cache-Control', 'no-store');
-          response.setHeader('Referrer-Policy', 'no-referrer');
-          response.setHeader('Location', invite.location);
-          response.end();
-        });
-      },
-    },
     {
       name: 'picpoet-vue-pages',
       configureServer(server) {
@@ -78,17 +53,8 @@ export default defineConfig({
     port: 8080,
     strictPort: true,
     proxy: {
-      '/web-api': {
-        target: 'http://127.0.0.1:18090',
-        changeOrigin: true,
-        configure(proxy) {
-          proxy.on('proxyReq', (forwarded, request) => {
-            // Vite 仅将来自当前开发页面的 Origin 映射到 BFF；BFF 自身保持原有来源校验。
-            if (request.headers.origin === `http://${request.headers.host}`)
-              forwarded.setHeader('Origin', 'http://127.0.0.1:18090');
-          });
-        },
-      },
+      '/web-api': { target: apiTarget, changeOrigin: false },
+      '^/[^/]+/invite_code=': { target: apiTarget, changeOrigin: false },
     },
   },
   appType: 'mpa',
