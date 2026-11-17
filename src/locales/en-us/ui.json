@@ -44,7 +44,6 @@
   },
   "referral": {
     "copy": "Copy invite link",
-    "preview": "Preview invitation",
     "copied": "Invite link copied. Share it with a friend.",
     "copyManually": "Select and copy the link below.",
     "selectLink": "Select and copy the invite link",
@@ -52,7 +51,12 @@
     "total": "Total Earned: {count} Credits",
     "pending": "Total earned credits temporarily unavailable, please refresh to view.",
     "help": "When friends successfully register via your sharing QR code or invitation link, you will receive 3 creation opportunities. Earned credits accumulate and do not reset with daily free credits.",
-    "link": "My Invitation Link"
+    "link": "My Invitation Link",
+    "invitedUsers": "Invited users",
+    "loading": "Loading invitations…",
+    "retry": "Try again",
+    "empty": "No successful invitations yet. Share your invite link to get started.",
+    "phoneUser": "Phone account"
   },
   "waiting": {
     "uploading": "Preparing photo…",

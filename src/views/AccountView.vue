@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
 import { useSession } from '../composables/useSession.mjs';
 import { useOrders } from '../composables/useOrders.mjs';
 import SessionGate from '../components/SessionGate.vue';
@@ -7,9 +7,40 @@ import OrderItem from '../components/OrderItem.vue';
 import GenerationPreferences from '../components/GenerationPreferences.vue';
 const session = useSession();
 const { t, href, user, verified, busy, balance, money, invitationURL, grantedCredits } = session;
+const grantedLabel = computed(() => t('referral.total', { count: '{count}' }).split('{count}'));
 const copyStatus = ref('');
 const copyFallback = ref(false);
 const invitationInput = ref();
+const invitationsOpen = ref(false);
+const invitations = ref(null);
+const invitationsStatus = ref('');
+function resetInvitations() {
+  invitationsOpen.value = false;
+  invitations.value = null;
+  invitationsStatus.value = '';
+}
+session.resets.add(resetInvitations);
+onBeforeUnmount(() => session.resets.delete(resetInvitations));
+async function loadInvitations() {
+  if (!user.value) return;
+  await session.action('invitations', invitationsStatus, async (ticket) => {
+    invitationsStatus.value = '';
+    const data = await session.request(ticket, '/invitations');
+    if (
+      !Array.isArray(data?.records) ||
+      data.records.some(
+        (record) => !record || typeof record.id !== 'string' || typeof record.inviteeEmail !== 'string',
+      )
+    ) {
+      throw session.failure('http.generic');
+    }
+    invitations.value = data.records;
+  });
+}
+function toggleInvitations(event) {
+  invitationsOpen.value = event.target.open;
+  if (invitationsOpen.value) void loadInvitations();
+}
 watch(invitationURL, () => {
   copyStatus.value = '';
   copyFallback.value = false;
@@ -112,11 +143,38 @@ const {
         <h2 id="referral-title">{{ t('referral.title') }}</h2>
         <p class="referral-reward">{{ t('sharing.rewardAmount') }}</p>
         <p class="referral-description">{{ t('referral.help') }}</p>
-        <p id="referral-credits" class="referral-total">
-          {{
-            grantedCredits === null ? t('referral.pending') : t('referral.total', { count: grantedCredits })
-          }}
+        <p v-if="grantedCredits !== null" id="referral-credits" class="referral-total">
+          {{ grantedLabel[0] }}<strong>{{ session.number(grantedCredits) }}</strong
+          >{{ grantedLabel[1] }}
         </p>
+        <p v-else id="referral-credits" class="referral-total referral-total-pending">
+          {{ t('referral.pending') }}
+        </p>
+        <details class="referral-details" :open="invitationsOpen" @toggle="toggleInvitations">
+          <summary>
+            {{ t('referral.invitedUsers')
+            }}<span v-if="invitations !== null" class="referral-count">{{
+              session.number(invitations.length)
+            }}</span>
+          </summary>
+          <div class="referral-records" :aria-busy="busy.has('invitations')">
+            <p v-if="busy.has('invitations')" role="status">{{ t('referral.loading') }}</p>
+            <template v-else-if="invitationsStatus">
+              <p role="status">{{ invitationsStatus }}</p>
+              <button type="button" class="button quiet-button" @click="loadInvitations">
+                {{ t('referral.retry') }}
+              </button>
+            </template>
+            <template v-else-if="invitations !== null">
+              <p v-if="!invitations.length">{{ t('referral.empty') }}</p>
+              <ul v-else>
+                <li v-for="record in invitations" :key="record.id">
+                  {{ record.inviteeEmail || t('referral.phoneUser') }}
+                </li>
+              </ul>
+            </template>
+          </div>
+        </details>
         <div class="referral-actions">
           <button
             id="copy-invitation"
@@ -127,13 +185,6 @@ const {
           >
             {{ t('referral.copy') }}
           </button>
-          <a
-            v-if="invitationURL"
-            id="invitation-link"
-            class="text-link invitation-link"
-            :href="invitationURL"
-            >{{ t('referral.preview') }}</a
-          >
         </div>
         <p class="referral-copy-status" role="status" aria-live="polite">{{ copyStatus }}</p>
         <textarea

@@ -536,7 +536,7 @@ try {
     .waitFor({ state: 'hidden' });
   await page.goto(base + '/account.html');
   await page.locator('#referral-credits').filter({ hasText: '累计获赠 6 次' }).waitFor();
-  assert.equal(await page.locator('#invitation-link').getAttribute('href'), INVITATION_URL);
+  assert.equal(await page.locator('#invitation-link').count(), 0);
   await page.locator('[data-plan-id]').click();
   await page.locator('.payment-qr').waitFor({ state: 'visible' });
   await page.locator('.order-status').filter({ hasText: '已到账 10 次' }).waitFor({ timeout: 15000 });

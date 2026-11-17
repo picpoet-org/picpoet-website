@@ -182,7 +182,7 @@ const fixedRoutes = new Map([
   ['POST /register', 'register'], ['POST /verify-email', 'verify-email'], ['POST /resend-otp', 'resend-otp'],
   ['GET /balance', 'balance'], ['GET /plans', 'plans'], ['GET /orders', 'orders'],
   ['POST /orders', 'create-order'], ['POST /generations', 'create-generation'],
-  ['GET /history', 'history-list'],
+  ['GET /history', 'history-list'], ['GET /invitations', 'invitations'],
   ['GET /preferences', 'preferences'], ['PUT /preferences', 'preferences'],
 ]);
 function routeFor(method, pathname) {
@@ -331,18 +331,18 @@ export function createWebServer({ config: cfg = config, fetch: fetchImpl = globa
     if (!sessions.save(session, true)) unauthorized();
     setCookie(res, cfg, session.id);
   }
-  async function jwt(session, suffix, method, body) {
+  async function jwt(session, suffix, method, body, prefix = '/picpoet') {
     live(session);
     if (session.refreshPromise || session.accessExpiresAt <= now() + 5000) await refresh(session);
     live(session);
     const used = session.accessToken;
     const version = session.tokenVersion;
-    let result = await upstream(cfg.dashboardApiUrl, `/picpoet${suffix}`, method, body, used);
+    let result = await upstream(cfg.dashboardApiUrl, `${prefix}${suffix}`, method, body, used);
     if (result.status === 401) {
       // 已使用旧 JWT 的并发请求复用当前刷新结果，避免再次消费 refresh token。
       if (session.tokenVersion === version) await refresh(session);
       live(session);
-      result = await upstream(cfg.dashboardApiUrl, `/picpoet${suffix}`, method, body, session.accessToken);
+      result = await upstream(cfg.dashboardApiUrl, `${prefix}${suffix}`, method, body, session.accessToken);
       if (result.status === 401) { sessions.remove(session.id); unauthorized(); }
     }
     live(session);
@@ -428,6 +428,13 @@ export function createWebServer({ config: cfg = config, fetch: fetchImpl = globa
             (body.initialize !== undefined && typeof body.initialize !== 'boolean')) bad();
       }
       result = await jwt(session, '/preferences', req.method, body);
+    } else if (kind === 'invitations') {
+      result = await jwt(session, '/invitations', 'GET', undefined, '');
+      if (!Array.isArray(result.data?.records) || result.data.records.some(record =>
+        !record || typeof record.id !== 'string' || typeof record.inviteeEmail !== 'string')) {
+        fail(502, 'UPSTREAM_ERROR', '邀请记录响应无效');
+      }
+      result.data = { records: result.data.records.map(({ id, inviteeEmail }) => ({ id, inviteeEmail })) };
     } else if (kind === 'balance' || kind === 'orders') {
       result = await jwt(session, `/${kind}`, 'GET');
     } else if (kind === 'create-order') {
