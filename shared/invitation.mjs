@@ -1,3 +1,4 @@
+import { apiOrigin } from './api-origin.mjs';
 // 与 Dashboard users.invite_code 默认生成一致：inv_ + 32 位小写十六进制；API 上限 40。
 const USER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const INVITATION_CODE = /^inv_[0-9a-f]{32}$/i;
@@ -36,7 +37,7 @@ export function buildInvitationURL(userId, code, origin) {
   const normalizedOrigin = normalizeOrigin(origin);
   const normalizedCode = normalizeInvitationCode(code);
   if (!normalizedOrigin || !isInvitationUserId(userId) || !normalizedCode) return '';
-  return `${normalizedOrigin}/${userId.toLowerCase()}/invite_code=${normalizedCode}`;
+  return `${apiOrigin(normalizedOrigin) || normalizedOrigin}/${userId.toLowerCase()}/invite_code=${normalizedCode}`;
 }
 
 /** 登录页 query 中的受限 invitationCode；无效则空串。 */

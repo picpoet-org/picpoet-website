@@ -1,3 +1,4 @@
+import { apiURL } from './api-origin.mjs';
 // 页面与 node:test 共用的边界校验、请求身份及生命周期。
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 export const MAX_SOURCE_IMAGE_BYTES = 25 * 1024 * 1024;
@@ -147,8 +148,8 @@ export function createAPI({ fetchImpl = globalThis.fetch, timeoutMs = 35_000 } =
     const timer = setTimeout(abort, timeoutMs);
     try {
       const multipart = body instanceof FormData;
-      const response = await fetchImpl(`/web-api${path}`, {
-        method, credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal: controller.signal,
+      const response = await fetchImpl(apiURL(path), {
+        method, credentials: 'include', cache: 'no-store', redirect: 'error', signal: controller.signal,
         headers: { Accept: 'application/json', ...(body !== undefined && !multipart ? { 'Content-Type': 'application/json' } : {}) },
         body: body === undefined ? undefined : multipart ? body : JSON.stringify(body),
       });

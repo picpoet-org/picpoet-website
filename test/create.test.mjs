@@ -50,7 +50,7 @@ test('createAPI 显式 DELETE，默认无 body GET、有 body POST 保持兼容'
   await api('/history?limit=20'); await api('/login', { body: {} }); await api(`/history/${ID}`, { method: 'DELETE' });
   assert.deepEqual(calls.map(call => call.method), ['GET', 'POST', 'DELETE']);
   assert.equal(calls[2].body, undefined);
-  assert.ok(calls.every(call => call.credentials === 'same-origin' && call.redirect === 'error' && call.cache === 'no-store'));
+  assert.ok(calls.every(call => call.credentials === 'include' && call.redirect === 'error' && call.cache === 'no-store'));
 });
 
 test('只接受四种图片 MIME，原图允许到 25 MiB，超过一个字节拒绝', () => {
@@ -182,7 +182,7 @@ test('请求只用同源 BFF Cookie；orders details/payment 明确 POST {}', as
   const api = createAPI({ fetchImpl: async (url, options) => { calls.push({ url, options }); return json({ ok: true }); } });
   await api(`/orders/${ID}/details`, { body: {} }); await api(`/orders/${ID}/payment`, { body: {} }); await api('/balance');
   for (const call of calls) {
-    assert.ok(call.url.startsWith('/web-api/')); assert.equal(call.options.credentials, 'same-origin'); assert.equal(call.options.redirect, 'error');
+    assert.ok(call.url.startsWith('/web-api/')); assert.equal(call.options.credentials, 'include'); assert.equal(call.options.redirect, 'error');
     assert.equal(call.options.headers.Authorization, undefined);
   }
   assert.equal(calls[0].options.body, '{}'); assert.equal(calls[1].options.method, 'POST'); assert.equal(calls[2].options.method, 'GET');

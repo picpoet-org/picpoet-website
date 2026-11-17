@@ -7,10 +7,13 @@ const CODE = 'inv_0123456789abcdef0123456789abcdef';
 const ORIGIN = 'https://picpoet.jqknono.com';
 
 test('邀请链接仅用 user.id 与 invite_code，origin 由调用方提供', () => {
-  assert.equal(buildInvitationURL(USER, CODE, ORIGIN), `${ORIGIN}/${USER}/invite_code=${CODE}`);
+  assert.equal(
+    buildInvitationURL(USER, CODE, ORIGIN),
+    `https://picpoet-api.jqknono.com/${USER}/invite_code=${CODE}`,
+  );
   assert.equal(
     buildInvitationURL(USER.toUpperCase(), CODE.toUpperCase(), `${ORIGIN}/`),
-    `${ORIGIN}/${USER}/invite_code=${CODE}`,
+    `https://picpoet-api.jqknono.com/${USER}/invite_code=${CODE}`,
   );
   for (const [userId, code, origin] of [
     ['', CODE, ORIGIN],

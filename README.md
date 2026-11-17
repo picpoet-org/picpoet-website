@@ -160,7 +160,7 @@ bash ../picpoet-app/official-dev.sh stop
 
 ### 账户历史：接口与启用前置条件
 
-独立作品页在登录后读取历史列表，支持游标分页、详情、压缩照片、完整诗词、纯诗词分享 PNG 和显式二次确认永久删除。历史以统一账户归属，不局限当前浏览器或某个业务凭证。照片通过同源 Cookie 请求 Blob，缩略图进入视口附近才加载；登出/账户切换会取消请求、清除内容并释放对象 URL，浏览器持久存储不写入历史。
+独立作品页在登录后读取历史列表，支持游标分页、详情、压缩照片、完整诗词、纯诗词分享 PNG 和显式二次确认永久删除。历史以统一账户归属，不局限当前浏览器或某个业务凭证。照片通过API 域名的凭证请求读取 Blob，缩略图进入视口附近才加载；登出/账户切换会取消请求、清除内容并释放对象 URL，浏览器持久存储不写入历史。
 
 | 网站同源接口 | 官方上游 | 约束 |
 | --- | --- | --- |
@@ -183,7 +183,7 @@ bash ../picpoet-app/official-dev.sh stop
 
 ### 登录态与后端职责
 
-会话、加密存储、凭证刷新、注册与登录、订单幂等、邀请跳转和上游协议全部在 [picpoet-server](../picpoet-server/README.md) 实现。网站只调用既有同源 `/web-api/*`，不直接访问 Dashboard，不持有后端秘密。升级 Go BFF 时应保留旧会话数据库与配对密钥，按 server 的迁移说明执行。
+会话、加密存储、凭证刷新、注册与登录、订单幂等、邀请跳转和上游协议全部在 [picpoet-server](../picpoet-server/README.md) 实现。网站直接调用 API 域名的 `/web-api/*`，不直接访问 Dashboard，不持有后端秘密。升级 Go BFF 时应保留旧会话数据库与配对密钥，按 server 的迁移说明执行。
 
 ### 验证与发布边界
 
@@ -255,11 +255,11 @@ npm run public:sync
 官网 `picpoet.jqknono.com` **直接绑定 ESA Pages**，静态前端由 Pages 项目 `picpoet-website` 提供。全部后端能力归属 `picpoet-server`：
 
 - 静态页面、JS/CSS、字体、图片及发布清单 → Pages。
-- `/web-api*` 与邀请深路径 → server 仓库 `edge/` 中的 ESA 薄代理 → `picpoet-api.jqknono.com` → Go BFF。
+- 浏览器直接请求 `https://picpoet-api.jqknono.com/web-api/*` → Go BFF；邀请链接使用 API 域名并跳回官网登录页。
 - `/v1/*` → 现有 Picpoet Server 核心 API，保持 App 契约。
-- 浏览器仍使用同源 Cookie，边缘代理保留原始 Origin，不包含登录、订单、会话或邀请校验逻辑。动态接口不缓存。
+- 浏览器使用 `credentials: include`，Go 后端精确允许官网来源；Cookie 为 API host-only、HttpOnly、Secure、SameSite=Strict，不共享父域。切换后需重新登录一次。动态接口不缓存，不经 Pages 转发。
 
-Pages 默认将 `.html` 地址 307 到无后缀地址；前端兼容两种路径。2026-11-17 已完成 Go BFF 会话迁移及同源代理验证，并将旧 OP 记录替换为 Pages 域名绑定。公网 CNAME 名称保持相同，但 ESA 关联已改为 compute/Pages，不再是集群源站池。具体版本与回滚以相邻 `ecs-manager` 的发布记录为准。
+Pages 默认将 `.html` 地址 307 到无后缀地址；前端兼容两种路径。2026-11-17 已完成 Go BFF 会话迁移及 API 直连验证，并将旧 OP 记录替换为 Pages 域名绑定。公网 CNAME 名称保持相同，但 ESA 关联已改为 compute/Pages，不再是集群源站池。具体版本与回滚以相邻 `ecs-manager` 的发布记录为准。
 
 从 Git 仓库导入 ESA Pages 时，根目录选择本仓库根目录（含 `package.json` 和 `esa.jsonc`）。`esa.jsonc` 是构建配置的唯一来源，优先于控制台同名设置：
 
@@ -280,7 +280,7 @@ npm run build:all
 esa-cli deploy --assets ./public --name picpoet-website --environment staging --no-preview
 ```
 
-本仓库不再提供 Docker 后端镜像；Go BFF 随 `picpoet-server` 构建和部署。ESA 薄代理也在 server 仓库维护，网站 `esa.jsonc` 仅声明静态构建。
+本仓库不再提供 Docker 后端镜像；Go BFF 随 `picpoet-server` 构建和部署。独立 `picpoet-web-gateway` 已删除，网站 `esa.jsonc` 仅声明静态构建。旧邀请链接只用 ESA 302 兼容跳转，不做代理。
 
 ESA 路由、域名绑定与安全响应头配置见相邻 `ecs-manager/k3s/resources/jqknono.com/picpoet-pages.json`。它们属于站点配置，不是 `esa.jsonc` 构建字段，发布静态产物不会自动修改这些规则。回滚必须协调后端版本、会话存储与动态路由，详细步骤见相邻 `ecs-manager` 的 `picpoet-release.md`。
 

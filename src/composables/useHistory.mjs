@@ -1,3 +1,4 @@
+import { apiURL } from '../../shared/api-origin.mjs';
 import { ref, shallowRef, watch, nextTick, onBeforeUnmount } from 'vue';
 import { ApiError, UUID } from '../../shared/create-core.mjs';
 import { renderPoemCard } from '../../shared/poem-card.mjs';
@@ -79,8 +80,8 @@ export function useHistory(session) {
     ticket.signal.addEventListener('abort', abort, { once: true });
     const timer = setTimeout(abort, 20_000);
     try {
-      const response = await fetch(`/web-api/history/${id}/image`, {
-        credentials: 'same-origin',
+      const response = await fetch(apiURL(`/history/${id}/image`), {
+        credentials: 'include',
         cache: 'no-store',
         redirect: 'error',
         signal: controller.signal,
