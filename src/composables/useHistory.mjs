@@ -35,7 +35,6 @@ export function useHistory(session) {
     dialog.value?.close();
     deleteDialog.value?.close();
     selected.value = null;
-    release(photoURL.value);
     release(cardURL.value);
     photoURL.value = '';
     cardURL.value = '';
@@ -44,9 +43,14 @@ export function useHistory(session) {
     drawing.value = false;
     if (trigger?.isConnected) trigger.focus();
   }
+  function clearImage(row) {
+    release(row.url);
+    row.url = '';
+    row.imageRequest = null;
+  }
   function clearRows() {
     observer?.disconnect();
-    for (const row of rows.value) release(row.url);
+    for (const row of rows.value) clearImage(row);
     rows.value = [];
   }
   function reset() {
@@ -113,16 +117,40 @@ export function useHistory(session) {
       ticket.signal.removeEventListener('abort', abort);
     }
   }
+  async function photo(id, ticket) {
+    scope.assert(ticket);
+    const row = rows.value.find((item) => item.id === id);
+    if (!row) throw new ApiError(404);
+    if (row.url) return row.url;
+    // 列表和详情共用图片地址与在途请求；地址由列表统一释放。
+    if (!row.imageRequest) {
+      const request = image(id, ticket)
+        .then((blob) => {
+          scope.assert(ticket);
+          if (!rows.value.includes(row) || row.imageRequest !== request)
+            throw new DOMException('图片已失效', 'AbortError');
+          row.url = URL.createObjectURL(blob);
+          row.alt = '';
+          return row.url;
+        })
+        .finally(() => {
+          if (row.imageRequest === request) row.imageRequest = null;
+        });
+      row.imageRequest = request;
+    }
+    return row.imageRequest;
+  }
   async function thumbnail(id) {
     const ticket = scope.capture();
     const row = rows.value.find((item) => item.id === id);
     if (!row || row.url || row.loading) return;
     row.loading = true;
     try {
-      const blob = await image(id, ticket);
-      if (scope.current(ticket) && rows.value.includes(row)) row.url = URL.createObjectURL(blob);
+      await photo(id, ticket);
     } catch (cause) {
       if (scope.current(ticket) && !unauthorized(cause)) row.alt = t('history.imageUnavailable');
+    } finally {
+      row.loading = false;
     }
   }
   function observe(element) {
@@ -170,7 +198,7 @@ export function useHistory(session) {
       rows.value.push(
         ...data.items
           .filter((item) => !seen.has(item.id))
-          .map((item) => ({ ...item, url: '', alt: '', loading: false })),
+          .map((item) => ({ ...item, url: '', alt: '', loading: false, imageRequest: null })),
       );
       cursor.value = data.nextCursor || null;
       status.value = rows.value.length ? '' : t('history.empty');
@@ -209,13 +237,18 @@ export function useHistory(session) {
         poem: info.poem || { title: '', body: t('common.emptyBody') },
         empty: !info.poem,
       };
-      const blob = await image(id, ticket);
+      const url = await photo(id, ticket);
       if (!current()) return;
-      photoURL.value = URL.createObjectURL(blob);
+      photoURL.value = url;
       detailStatus.value = '';
     } catch (cause) {
-      if (current() && cause.name !== 'AbortError' && !unauthorized(cause))
+      if (current() && cause.name !== 'AbortError' && !unauthorized(cause)) {
+        if ([404, 410].includes(cause.status)) {
+          const row = rows.value.find((item) => item.id === id);
+          if (row) clearImage(row);
+        }
         detailStatus.value = report(cause);
+      }
     }
   }
   async function draw() {
@@ -255,7 +288,7 @@ export function useHistory(session) {
       const data = await api(`/history/${id}`, { method: 'DELETE', body: {}, signal: ticket.signal });
       scope.assert(ticket);
       if (data?.deleted !== true) throw failure('history.deletePending');
-      for (const row of rows.value.filter((item) => item.id === id)) release(row.url);
+      for (const row of rows.value.filter((item) => item.id === id)) clearImage(row);
       rows.value = rows.value.filter((item) => item.id !== id);
       clearDetail();
       status.value = t('history.deleted');

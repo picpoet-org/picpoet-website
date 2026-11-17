@@ -75,7 +75,7 @@ export function useGeneration(session) {
     if (!UUID.test(id)) throw failure('create.invalidTask');
     pollScope.reset();
     clearResult();
-    task.value = { id, attempt, terminal: false, status: 'unknown', errorCode: '' };
+    task.value = { id, attempt, terminal: false, status: 'unknown' };
   }
   async function pick(event) {
     if (task.value || !verified.value) return;
@@ -129,14 +129,10 @@ export function useGeneration(session) {
           return data;
         },
         onStatus: (status) => {
-          const errorCode = status.error?.code || '';
-          task.value = { ...target, status: status.status, errorCode };
+          task.value = { ...target, status: status.status };
           generationStatus.value = t(
             (['queued', 'running'].includes(status.status) ? 'waiting.' : 'create.') + status.status,
           );
-          if (status.status === 'failed' && errorCode) {
-            generationStatus.value += ` ${t('create.errorCode', { code: errorCode })}`;
-          }
         },
       });
       scope.assert(ticket);

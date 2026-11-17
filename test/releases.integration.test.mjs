@@ -4,8 +4,38 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { detectPlatform, formatSize, loadManifest, releaseCopy, validateManifest } from '../shared/releases.mjs';
 import { androidVersionCode, deployment, validatePublishedManifest } from '../scripts/deployment-config.mjs';
+import { loadPublishedManifest } from '../scripts/check-live-release.mjs';
 
 const base = JSON.parse(await readFile(new URL('../releases/stable.json', import.meta.url), 'utf8'));
+
+test('公开升级验收不跟随 ESA 挑战，拒绝 HTML，接受匿名 JSON 请求', async (t) => {
+  const requests = [];
+  const server = createServer((request, response) => {
+    requests.push(request);
+    if (request.url === '/challenge') {
+      response.writeHead(307, { Location: '/stable.json', 'Set-Cookie': 'challenge=required' });
+      response.end();
+    } else if (request.url === '/html') {
+      response.writeHead(200, { 'Content-Type': 'text/html' });
+      response.end('<html>请完成验证</html>');
+    } else {
+      response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      response.end(JSON.stringify(base));
+    }
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  await assert.rejects(loadPublishedManifest(`${origin}/challenge`), /HTTP 307/);
+  assert.equal(requests.length, 1);
+  await assert.rejects(loadPublishedManifest(`${origin}/html`), /200 JSON/);
+  assert.deepEqual(await loadPublishedManifest(`${origin}/stable.json`), base);
+  for (const request of requests) {
+    assert.equal(request.headers.cookie, undefined);
+    assert.equal(request.headers.accept, 'application/json');
+    assert.match(request.headers['user-agent'], /^Dart\//);
+  }
+});
 function publishedManifest() {
   const manifest = structuredClone(base);
   for (const platform of manifest.platforms) {

@@ -12,13 +12,13 @@ Vue 3 + Vite 纯前端网站，维护产品说明、下载与在线创作界面�
 | Android 更新清单 | `https://picpoet.jqknono.com/releases/stable.json` |
 | 安装包 CDN 根路径 | `https://downloads.nullprivate.com/picpoet/release` |
 
-共享 R2 下载桶按项目划分顶层前缀，PicPoet 独占 `picpoet/`，公开项目根为 `https://downloads.nullprivate.com/picpoet/`；安装包路径约定为 `<CDN 根路径>/<平台>/<版本>/<文件名>`。当前稳定版为 **0.1.6**，提供 Android ARM64、Linux x64 与 Windows x64，版本源仍在客户端 `pubspec.yaml`。例如：
+共享 R2 下载桶按项目划分顶层前缀，PicPoet 独占 `picpoet/`，公开项目根为 `https://downloads.nullprivate.com/picpoet/`；安装包路径约定为 `<CDN 根路径>/<平台>/<版本>/<文件名>`。当前稳定版为 **0.1.7**，提供 Android ARM64、Linux x64 与 Windows x64，版本源仍在客户端 `pubspec.yaml`。例如：
 
 ```text
-https://downloads.nullprivate.com/picpoet/release/android/0.1.6/picpoet-0.1.6-arm64-v8a.apk
+https://downloads.nullprivate.com/picpoet/release/android/0.1.7/picpoet-0.1.7-arm64-v8a.apk
 ```
 
-三平台产物与校验文件已由 [0.1.6 标签流水线](https://github.com/picpoet-org/picpoet-app/actions/runs/43558726034) 上传 R2，公开回下载的大小与 SHA-256 均与发布清单一致。`npm run releases:check` 会校验所有已发布安装包均位于指定 CDN 的平台／版本目录，并校验 Android 系统版本码由版本自动推导。网站部署与客户端属于独立仓库，客户端对应配置位于工作区 `../picpoet-app/android/packaging/release-config.json`；调整公开地址时同步两侧。
+三平台产物与校验文件已由 [0.1.7 标签发布](https://github.com/picpoet-org/picpoet-app/releases/tag/0.1.7) 上传 R2，公开回下载的大小与 SHA-256 须与发布清单一致。`npm run releases:check` 会校验所有已发布安装包均位于指定 CDN 的平台／版本目录，并校验 Android 系统版本码由版本自动推导。网站部署与客户端属于独立仓库，客户端对应配置位于工作区 `../picpoet-app/android/packaging/release-config.json`；调整公开地址时同步两侧。
 
 ## 本地预览
 
@@ -47,6 +47,8 @@ npm run dev
 偏好通过 BFF 的 `GET/PUT /web-api/preferences` 同步到账户服务 `GET/PUT /api/v1/picpoet/preferences`，以 JWT 中的用户 ID 存入 `user-dashboard` 的 `picpoet_preferences` 表（迁移 000015，支持 PostgreSQL 与 SQLite）。浏览器不能指定其他账号；最后一次成功写入覆盖整份配置。首次读取账户尚无配置时，将当前浏览器旧版 `picpoet:creation:v1:<account-id>` 偏好导入；`initialize: true` 使用原子插入，已有账户配置不被其他浏览器旧数据覆盖。无旧配置的新账户默认使用简体诗词（`poemLanguage=zh`）、中华新韵（`rhymeStandard=zhonghua`）、词（`poem=""`、`ci=auto`，自动选择词牌），不随界面语言切换。已有账户保存的偏好与可迁移的旧浏览器偏好保持不变；网站诗词用字默认值独立于 App／原生参数默认值。
 
 `picpoet:creation:v2:<account-id>` 仅缓存服务器确认过的配置，不保存凭据。登录、页面恢复前台和新任务提交前重新读取账户配置；跨浏览器登录同一账号即可读取，已打开的其他浏览器在恢复前台或提交新任务时更新，不做实时推送。App 设置暂独立。读取失败时显示重试并阻止修改或新任务；保存失败保留当前页待同步修改，明确提示未保存，可重试，离开页面后未保存修改会丢失。正常读取和保存成功后不显示说明文字；失败时仍显示提示和重试入口。缓存写入失败不影响服务器保存成功。新任务固定提交时的全部参数，重试保持原快照；恢复任务只查询，不重新提交。关闭诗词时显式发送空 `poem`、`ci`，结果与历史仍显示照片信息、标签和构图建议，仅有诗词时提供分享图。历史详情读取服务端独立归档的 `metadata`，按实际内容展示；全部为空时隐藏照片信息区，不显示空标题。服务端须先执行 `20261115_history_metadata.up.sql` 并更新版本；该迁移只补齐仍可恢复的有效历史，已清理的旧结果无法恢复。
+
+历史图片在当前作品列表生命周期内共享内存缓存：列表、详情和并发加载复用同一图片请求及 Blob URL，关闭后再次打开详情不重复下载。详情文字与权限仍每次向服务端确认；删除／过期响应清除对应图片，刷新列表、退出、切换账号或离开页面释放缓存。图片不写入持久浏览器存储或公共 CDN，首次加载继续使用带凭证的 no-store 请求。
 
 历史列表采用照片、可点击标题、限行诗词摘要和时间的层级，完整内容在详情中阅读，不在卡片内嵌滚动区域。创作时间与自动删除时间作为次级信息置于每张卡片底部分隔区，窄屏自动换行；详情将同一时间信息放到正文之后、操作区上方，不再占据标题与图片之间的位置。自动删除时间表示服务端历史保留期结束，不改变实际清理规则。详情保留标签原文，使用低强调标签样式；构图建议仅将明确的项目符号整理为语义列表，普通段落保留原文，不解析模型 HTML。分享操作与永久删除分区，删除仍需确认。
 
@@ -258,6 +260,10 @@ npm run public:sync
 - 浏览器直接请求 `https://picpoet-api.jqknono.com/web-api/*` → Go BFF；邀请链接使用 API 域名并跳回官网登录页。
 - `/v1/*` → 现有 Picpoet Server 核心 API，保持 App 契约。
 - 浏览器使用 `credentials: include`，Go 后端精确允许官网来源；Cookie 为 API host-only、HttpOnly、Secure、SameSite=Strict，不共享父域。切换后需重新登录一次。动态接口不缓存，不经 Pages 转发。
+
+Android 更新清单是机器接口，必须在无 Cookie、无浏览器挑战、无重定向的情况下直接返回 `200 application/json`。2026-11-17 修复 ESA `denied by http_auto_ratelimit` 导致的 `307` 自跳转：在现有白名单规则 `23755670` 中保留 API 条件，仅追加 `picpoet.jqknono.com` 的 `/releases/stable.json` 路径及 `GET` / `HEAD` 方法。站点白名单额度已满，因此复用原规则，不关闭全站防护。运维配置同步在 `ecs-manager/k3s/resources/jqknono.com/picpoet-pages.json`；回滚时仅移除新增的清单条件，保留 API 条件及原动作。
+
+0.1.6 与 0.1.7 客户端的清单地址和更新逻辑相同，此服务端修复同时恢复两者，无须重签或替换历史安装包。每次发布或调整 ESA 防护后执行 `npm run releases:check:live`：以 Dart 请求头、不带 Cookie、不跟随跳转读取生产清单，校验 12 秒超时、512 KiB 上限、发布契约及与本地清单一致性。该联网验收独立于默认离线构建，不能仅用已通过浏览器挑战的页面代替。
 
 Pages 默认将 `.html` 地址 307 到无后缀地址；前端兼容两种路径。2026-11-17 已完成 Go BFF 会话迁移及 API 直连验证，并将旧 OP 记录替换为 Pages 域名绑定。公网 CNAME 名称保持相同，但 ESA 关联已改为 compute/Pages，不再是集群源站池。具体版本与回滚以相邻 `ecs-manager` 的发布记录为准。
 

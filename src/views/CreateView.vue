@@ -151,13 +151,6 @@ const {
               {{ t('waiting.pause') }}
             </button>
             <p id="generation-id" class="request-id">{{ task ? t('create.taskId', { id: task.id }) : '' }}</p>
-            <p
-              id="generation-error-code"
-              class="request-id"
-              :hidden="task?.status !== 'failed' || !task?.errorCode"
-            >
-              {{ task?.errorCode ? t('create.errorCode', { code: task.errorCode }) : '' }}
-            </p>
             <p class="fine-print">{{ t('create.taskHelp') }}</p>
           </details>
         </section>

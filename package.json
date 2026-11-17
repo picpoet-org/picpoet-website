@@ -21,6 +21,7 @@
     "build:all": "npm run releases:check && node scripts/sync-public.mjs --all-locales",
     "locales:check": "node scripts/check-locales.mjs",
     "releases:check": "node scripts/check-releases.mjs",
+    "releases:check:live": "node scripts/check-releases.mjs --live",
     "public:sync": "npm run build"
   },
   "dependencies": {
