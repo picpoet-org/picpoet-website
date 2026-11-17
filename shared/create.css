@@ -139,14 +139,19 @@
 .account-page .plan-price { font-size: 2rem; font-weight: 600; font-variant-numeric: tabular-nums; margin-bottom: 24px; }
 .account-page .plan-item .button { width: 100%; margin-top: auto; }
 .account-page .orders-panel { margin-bottom: 40px; }
-.account-page .orders-panel > summary { padding: 0; min-height: 48px; display: list-item; align-content: center; }
-.account-page .orders-panel > summary h2 { display: inline; margin: 0; }
-.account-page .orders-panel[open] > summary { margin-bottom: 16px; }
-.account-page .orders-panel > .section-top { justify-content: flex-end; }
+.account-page .orders-panel > summary { padding: 0; min-block-size: 3rem; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .625rem; list-style: none; }
+.account-page .orders-panel > summary::-webkit-details-marker { display: none; }
+.account-page .orders-panel > summary::before { content: ''; inline-size: .5rem; block-size: .5rem; border-inline-end: .125rem solid var(--pp-color-accent-dark); border-block-end: .125rem solid var(--pp-color-accent-dark); transform: rotate(-45deg); }
+.account-page .orders-panel[open] > summary::before { transform: rotate(45deg); }
+.account-page .orders-panel > summary h2 { margin: 0; }
+.account-page .orders-panel > summary .button { margin: 0; }
+.account-page .orders-panel[open] > summary { margin-block-end: 1rem; }
 .account-page .order-list { margin-top: 0; }
 .account-page .orders-pagination { display: flex; align-items: center; justify-content: center; gap: 12px; padding-top: 20px; border-top: 1px solid var(--pp-color-line); }
 .account-page #orders-page { min-width: 48px; text-align: center; font-variant-numeric: tabular-nums; color: var(--create-muted); }
-.account-page .order-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px 16px; align-items: start; padding-block: 16px; }
+.account-page .order-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem 1rem; align-items: start; padding-block: 1rem; }
+.account-page .order-checkout { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .75rem 1rem; min-inline-size: 0; }
+.account-page .order-checkout .order-price { margin: 0; }
 .account-page .order-info { min-width: 0; }
 .account-page .order-info h3 { font-size: 1rem; margin: 0 0 8px; }
 .account-page .order-price { font-size: 1.125rem; font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -157,15 +162,14 @@
 .create-page .payment-qr { display: block; width: 160px; height: 160px; max-width: 100%; margin-inline: auto; }
 .create-page .order-payment-qr figcaption { margin-top: 4px; font-size: .8125rem; }
 .create-page .order-payment .payment-link { display: inline-flex; }
-.account-page .order-payment { grid-column: 3; grid-row: span 2; }
-.account-page .order-item > .actions { grid-column: 1 / 3; flex-direction: row; justify-content: flex-start; gap: 8px; }
+.account-page .order-item > .actions { grid-column: 1 / -1; flex-direction: row; justify-content: flex-start; gap: 8px; }
 .account-page .order-item > .actions .button { min-height: 40px; padding: 6px 12px; }
 .account-page .order-item .actions { margin: 0; justify-content: flex-end; flex-direction: column; align-items: stretch; }
 .account-page .order-item .actions .button { font-size: .875rem; }
 @media (max-width: 700px) {
 	.create-page .order-payment .payment-link { display: inline-flex; }
-	.account-page .order-payment { grid-column: 1 / -1; grid-row: auto; }
-	.account-page .order-item { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; }
+	.account-page .order-checkout { grid-column: 1 / -1; justify-content: flex-start; }
+	.account-page .order-item { grid-template-columns: minmax(0, 1fr); gap: .75rem; }
 	.account-page .order-item .actions { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; }
 	.account-page .order-item .actions .button { width: auto; flex: 1 1 140px; }
 	.account-page .account-links { gap: 8px 16px; }

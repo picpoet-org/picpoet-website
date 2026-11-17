@@ -259,18 +259,16 @@ const {
     <details id="orders-panel" ref="panel" class="create-panel orders-panel">
       <summary>
         <h2 id="orders-title">{{ t('account.orders') }}</h2>
-      </summary>
-      <div class="section-top">
         <button
           id="refresh-orders"
           class="button quiet-button"
           type="button"
           :disabled="!user || busy.has('orders')"
-          @click="loadOrders"
+          @click.stop.prevent="loadOrders"
         >
           {{ t('account.refreshOrders') }}
         </button>
-      </div>
+      </summary>
       <p id="orders-status" class="create-status" role="status" aria-live="polite">{{ ordersStatus }}</p>
       <div id="orders" class="order-list">
         <p v-if="!orders.length">{{ t(user ? 'account.emptyOrders' : 'account.loginOrders') }}</p>

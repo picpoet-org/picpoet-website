@@ -35,15 +35,17 @@ const payment = computed(() => {
         t('account.created', { time: time(order.createdAt) })
       }}</time>
     </div>
-    <p v-if="order.amountMinor !== undefined && order.currency" class="order-price">
-      {{ money(order.amountMinor, order.currency) }}
-    </p>
-    <div v-if="order.status === 'pending' && payment" class="order-payment">
-      <figure v-if="order.payment.qrCode" class="order-payment-qr">
-        <PaymentQR :value="payment" />
-        <figcaption>{{ t('account.scan') }}</figcaption>
-      </figure>
-      <a v-else :href="payment" class="button primary payment-link">{{ t('account.payment') }}</a>
+    <div class="order-checkout">
+      <p v-if="order.amountMinor !== undefined && order.currency" class="order-price">
+        {{ money(order.amountMinor, order.currency) }}
+      </p>
+      <div v-if="order.status === 'pending' && payment" class="order-payment">
+        <figure v-if="order.payment.qrCode" class="order-payment-qr">
+          <PaymentQR :value="payment" />
+          <figcaption>{{ t('account.scan') }}</figcaption>
+        </figure>
+        <a v-else :href="payment" class="button primary payment-link">{{ t('account.payment') }}</a>
+      </div>
     </div>
     <div v-if="order.status === 'pending'" class="actions">
       <button
