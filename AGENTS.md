@@ -14,7 +14,7 @@ npm run build:all
 
 - 页面内容在 `src/views/` 修改，共享组件在 `src/components/`，业务状态与生命周期在 `src/composables/`；`shared/` 维护图片、诗词、发布和导航等纯契约模块。
 - `public:sync` / `build` 用 Vite 编译并从相同组件预渲染到 `public/`；同时校验发布清单，交付完整字典的语言。`build:all` 严格验证六种语言齐全。
-- `npm run dev` 使用 Vite 热更新；`dev:web` 使用 18090 端口。`/web-api` 和邀请深路径转发 `VITE_API_PROXY_TARGET`（默认本机 18081），保留 Host/Origin；Go 后端需允许开发来源。全栈联调使用 `dev:stack`。
+- `npm run dev` 使用 Vite 热更新；`dev:web` 使用 18090 端口。官方联调 `18090` 同样跑 Vite，改 `src/` 即可热更新，不必先 `public:sync`。`/web-api` 和邀请深路径转发 `VITE_API_PROXY_TARGET`（默认本机 18081），保留 Host/Origin；Go 后端需允许开发来源。全栈联调使用 `dev:stack`。
 - 旧 Node BFF 专属测试及混合浏览器集成脚本已删除；保留前端现有测试，真实上游联通与生成另行验收。
 - 多语言由 agent 直接维护，不使用 project-translator-cli 或其他自动翻译生成流程。`src/locales/zh-cn/` 为文案源；新增或修改文案时，在同一变更中直接同步 `zh-hk`、`zh-tw`、`en-us`、`ko-kr`、`ja-jp` 字典，仅修改相关键，不整文件重译。保持键、结构、数组长度和 `{brand}`、`{count}` 等占位符一致，不以源文占位或删除目标字典绕过校验。
 - 翻译需结合界面与业务语境，区分香港／台湾用语，保留产品事实、协议值和链接。完成后执行 `npm run locales:check`、`npm run build:all` 并检查六语言页面；结构检查不能代替语义审校。

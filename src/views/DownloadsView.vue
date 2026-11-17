@@ -57,6 +57,7 @@ const upcoming = computed(() => platforms.value.filter((platform) => !platform.a
         <h2>{{ t('content.downloads.t036') }}</h2>
         <p>{{ t('content.downloads.t037') }}</p>
         <div class="actions">
+          <a class="button primary" :href="href('create.html')">{{ t('content.downloads.t040') }}</a>
           <a class="button secondary" :href="href('docs.html#app')">{{ t('content.downloads.t038') }}</a><a
             class="text-link"
             :href="href('docs.html#website')"
