@@ -287,14 +287,28 @@ npm run public:sync
 
 ## ESA Pages
 
-网站使用根目录的 `esa.jsonc` 配置 ESA Pages，静态资源目录为 `public`。部署前将页面资源同步到 `public`，然后在项目目录执行：
+生产官网当前由 k3s 中的 Website / Node BFF 统一托管，ESA 通过源站池代理访问；ESA Pages 为独立静态发布路径，不替代 BFF。不要为修复静态构建而将生产域名重新绑定到 Pages，否则同源 `/web-api/*` 和动态邀请路径将失去后端服务。
+
+从 Git 仓库导入 ESA Pages 时，根目录选择本仓库根目录（含 `package.json` 和 `esa.jsonc`）。`esa.jsonc` 已声明以下云端构建配置；控制台如有覆盖配置，应保持一致：
+
+| 配置项 | 值 |
+| --- | --- |
+| Node.js | 22.13+（使用受支持的 22 或 24 版本） |
+| 安装命令 | `npm ci --include=dev` |
+| 构建命令 | `npm run build:all` |
+| 构建结果目录 | `public` |
+
+`public/` 是 Git 忽略的生成目录。云端必须先安装包括 Vite 在内的构建依赖，再执行六语言构建；若日志出现安装或构建被跳过，请检查上述命令和根目录，不要提交生成目录来绕过问题。配置修改需推送到 ESA 关联分支，再触发重新部署。
+
+CLI 不会执行 `esa.jsonc` 中的安装和构建命令，须先在项目目录手动构建，再发布到测试环境：
 
 ```bash
-npm run public:sync
-esa-cli deploy --assets ./public --name picpoet-website --environment production --no-preview
+npm ci --include=dev
+npm run build:all
+esa-cli deploy --assets ./public --name picpoet-website --environment staging --no-preview
 ```
 
-在 ESA 控制台将 `picpoet.jqknono.com` 绑定到该 Pages 项目，并按控制台指引配置 DNS 和 HTTPS 证书。`esa.jsonc` 负责静态资源目录；自定义域名绑定、DNS 与证书须在服务端完成，不由本地构建脚本代办。
+自定义域名绑定、DNS 与证书须单独配置，不由本地构建脚本代办；生产域名继续保留现有 k3s 源站链路。
 
 同步脚本根据 `deployment.json` 为已交付语言生成正式官网 canonical、hreflang、`robots.txt` 和 `sitemap.xml`。保留 `/pages/` 兼容产物，资源使用同源根路径；旧 `jqknono.com/pages/*` 路由若继续保留，可在 ESA 单独配置跳转到正式官网。上线后检查官网、清单和真实安装包路径均可通过 HTTPS 访问，清单直接返回 JSON。
 

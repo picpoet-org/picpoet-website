@@ -1,8 +1,10 @@
 {
   "name": "picpoet-website",
   "description": "Picpoet documentation, pricing, and download pages.",
+  "installCommand": "npm ci --include=dev",
+  "buildCommand": "npm run build:all",
   "assets": {
     "directory": "./public",
-    "notFoundStrategy": "404Page"
-  }
+    "notFoundStrategy": "404Page",
+  },
 }
