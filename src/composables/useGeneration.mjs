@@ -1,4 +1,4 @@
-import { ref, shallowRef, computed, watch, onBeforeUnmount } from 'vue';
+import { ref, shallowRef, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import {
   createScope,
   generationAttempt,
@@ -226,13 +226,15 @@ export function useGeneration(session) {
       }
     });
   }
-  watch(balance, (value) => {
+  function restoreTask(value) {
     if (value?.activeGenerationId && value.activeGenerationId !== task.value?.id && !busy.has('task')) {
       setTask(value.activeGenerationId);
       generationStatus.value = t('create.recovering');
       void query();
     }
-  });
+  }
+  watch(balance, restoreTask);
+  onMounted(() => restoreTask(balance.value));
   onBeforeUnmount(() => {
     session.resets.delete(reset);
     reset();

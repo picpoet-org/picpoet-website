@@ -1,4 +1,4 @@
-import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, provide, inject } from 'vue';
 import { createAPI, createScope, errorMessage } from '../../shared/create-core.mjs';
 import { useSite } from '../i18n/context.mjs';
 import { buildInvitationURL } from '../../shared/invitation.mjs';
@@ -10,14 +10,16 @@ import {
 } from '../../shared/account-identity.mjs';
 import { startSessionVisits } from '../session-visits.mjs';
 
-export function useSession() {
+const sessionKey = Symbol('session');
+
+export function provideSession() {
   const site = useSite();
   const { t, messages } = site;
   const api = createAPI(),
     scope = createScope();
   const user = ref(null),
     ready = ref(false),
-    status = ref(t('session.checking')),
+    status = ref(''),
     retrySession = ref(false),
     retryLogout = ref(false);
   const busy = reactive(new Set());
@@ -53,6 +55,8 @@ export function useSession() {
   };
   const failure = (key) => Object.assign(new Error(t(key)), { localized: true });
   function reset() {
+    sessionRequest = null;
+    retrySession.value = false;
     scope.reset();
     busy.clear();
     user.value = null;
@@ -120,7 +124,18 @@ export function useSession() {
     scope.assert(ticket);
     return invitationURL.value;
   }
-  async function loadSession() {
+  let sessionRequest = null;
+  function loadSession() {
+    if (logoutRequest) return logoutRequest.then(() => true);
+    if (sessionRequest) return sessionRequest;
+    const ticket = scope.capture();
+    const pending = performLoadSession(ticket).finally(() => {
+      if (sessionRequest === pending) sessionRequest = null;
+    });
+    sessionRequest = pending;
+    return pending;
+  }
+  async function performLoadSession(ticket) {
     retrySession.value = false;
     const success = await action('session', status, async (ticket) => {
       const data = await request(ticket, '/session');
@@ -130,12 +145,33 @@ export function useSession() {
         // 仅续期时保持引用，避免前台恢复重复装载作品、订单或扰动当前创作。
         if (JSON.stringify(user.value) !== JSON.stringify(data.user)) user.value = data.user;
       } else if (user.value) reset();
+      ready.value = true;
       status.value = user.value && !verified.value ? t('session.unverified') : '';
     });
-    ready.value = true;
-    retrySession.value = !success;
+    if (scope.current(ticket)) {
+      ready.value = true;
+      retrySession.value = !success;
+    }
+    return !!success;
   }
-  async function logout() {
+  let channel;
+  function acceptLogin(value) {
+    reset();
+    user.value = value;
+    ready.value = true;
+    status.value = verified.value ? '' : t('session.unverified');
+    retrySession.value = false;
+    channel?.postMessage('changed');
+  }
+  let logoutRequest = null;
+  function logout() {
+    if (logoutRequest) return logoutRequest;
+    logoutRequest = performLogout().finally(() => {
+      logoutRequest = null;
+    });
+    return logoutRequest;
+  }
+  async function performLogout() {
     reset();
     ready.value = true;
     retryLogout.value = false;
@@ -144,21 +180,31 @@ export function useSession() {
       try {
         await request(ticket, '/logout', {});
         status.value = t('session.loggedOut');
+        channel?.postMessage('logout');
       } catch {
         status.value = t('session.logoutPending');
         retryLogout.value = true;
       }
     });
   }
-  const pageHide = () => reset();
-  const pageShow = (event) => {
-    if (event.persisted) location.reload();
+  const pageHide = () => {
+    reset();
+    ready.value = false;
   };
   let stopVisits;
   onMounted(() => {
+    if (typeof BroadcastChannel !== 'undefined') {
+      channel = new BroadcastChannel('picpoet-session');
+      channel.onmessage = ({ data }) => {
+        if (!['logout', 'changed'].includes(data)) return;
+        reset();
+        status.value = '';
+        ready.value = data === 'logout';
+        if (data === 'changed') void loadSession();
+      };
+    }
     stopVisits = startSessionVisits(loadSession);
     addEventListener('pagehide', pageHide);
-    addEventListener('pageshow', pageShow);
     addEventListener('focus', updateBalance);
     addEventListener('online', updateBalance);
     document.addEventListener('visibilitychange', updateBalance);
@@ -167,12 +213,12 @@ export function useSession() {
     stopVisits?.();
     reset();
     removeEventListener('pagehide', pageHide);
-    removeEventListener('pageshow', pageShow);
+    channel?.close();
     removeEventListener('focus', updateBalance);
     removeEventListener('online', updateBalance);
     document.removeEventListener('visibilitychange', updateBalance);
   });
-  return {
+  const session = {
     ...site,
     api,
     scope,
@@ -197,7 +243,81 @@ export function useSession() {
     refreshBalance,
     loadSession,
     logout,
+    acceptLogin,
     error,
     failure,
+  };
+  provide(sessionKey, session);
+  return session;
+}
+
+export function useSession() {
+  const shared = inject(sessionKey);
+  // 账户状态属于应用；页面任务有独立的取消域，切页不能清空登录或留下旧请求。
+  const scope = createScope();
+  const busy = reactive(new Set());
+  const resets = new Set();
+  function resetPage() {
+    scope.reset();
+    busy.clear();
+    for (const callback of resets) callback();
+  }
+  shared.resets.add(resetPage);
+  onBeforeUnmount(() => {
+    shared.resets.delete(resetPage);
+    resetPage();
+  });
+  async function request(ticket, path, body, method) {
+    scope.assert(ticket);
+    const data = await shared.api(path, { body, method, signal: ticket.signal });
+    scope.assert(ticket);
+    return data;
+  }
+  async function action(key, target, callback) {
+    if (busy.has(key)) return;
+    const ticket = scope.capture();
+    busy.add(key);
+    try {
+      await callback(ticket);
+      return true;
+    } catch (cause) {
+      if (!scope.current(ticket) || cause.name === 'AbortError') return;
+      if (cause.status === 401 && key !== 'auth') {
+        shared.reset();
+        shared.ready.value = true;
+        shared.status.value = shared.t('http.s401');
+      } else target.value = shared.error(cause);
+    } finally {
+      if (scope.current(ticket)) busy.delete(key);
+    }
+  }
+  async function refreshBalance(ticket) {
+    scope.assert(ticket);
+    const data = await shared.refreshBalance(shared.scope.capture());
+    scope.assert(ticket);
+    return data;
+  }
+  async function ensureInvitationURL(ticket) {
+    scope.assert(ticket);
+    const url = await shared.ensureInvitationURL(shared.scope.capture());
+    scope.assert(ticket);
+    return url;
+  }
+  const pageBusy = new Proxy(busy, {
+    get(target, key) {
+      if (key === 'has') return (name) => target.has(name) || (name === 'auth' && shared.busy.has('auth'));
+      return Reflect.get(target, key);
+    },
+  });
+  return {
+    ...shared,
+    scope,
+    busy: pageBusy,
+    resets,
+    request,
+    action,
+    refreshBalance,
+    ensureInvitationURL,
+    logout: () => action('auth', shared.status, shared.logout),
   };
 }

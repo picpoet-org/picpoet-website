@@ -122,7 +122,8 @@ async function authenticate() {
       verifyStatus.value = t(data.otpSent ? 'auth.registered' : 'auth.registeredPending');
     } else {
       if (!hasAccountIdentity(data?.user)) throw failure('auth.invalid');
-      location.assign(href(returnTo));
+      session.acceptLogin(data.user);
+      await session.navigate(href(returnTo));
     }
   });
   await nextTick();

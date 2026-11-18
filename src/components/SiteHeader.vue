@@ -1,9 +1,14 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, toRef, watch } from 'vue';
 import { readInvitation } from '../../shared/invitation.mjs';
 import { pagePath, useSite } from '../i18n/context.mjs';
-const { t, href, asset, brand, page, locale, compatibility, availableLocales } = useSite();
+const site = useSite();
+const { t, href, asset, brand, locale, compatibility, availableLocales } = site;
+const page = toRef(site, 'page');
 const expanded = ref(false);
+watch(page, () => {
+  expanded.value = false;
+});
 const menuButton = ref(null);
 function closeMenu() {
   if (!expanded.value) return;
@@ -19,8 +24,8 @@ const items = [
 ];
 function changeLanguage(event) {
   // 仅保留站内登录目标、有效邀请码、锚点和界面语言；照片和凭据继续只保存在内存。
-  const target = new URL(pagePath(page, event.target.value, compatibility), location.origin);
-  if (page === 'login') {
+  const target = new URL(pagePath(page.value, event.target.value, compatibility), location.origin);
+  if (page.value === 'login') {
     const params = new URLSearchParams(location.search);
     const returnTo = params.get('returnTo');
     if (returnTo) target.searchParams.set('returnTo', returnTo);

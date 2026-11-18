@@ -1,5 +1,5 @@
 import { apiURL } from '../../shared/api-origin.mjs';
-import { ref, shallowRef, watch, nextTick, onBeforeUnmount } from 'vue';
+import { ref, shallowRef, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { ApiError, UUID } from '../../shared/create-core.mjs';
 import { renderPoemCard } from '../../shared/poem-card.mjs';
 import { generationResult } from '../../shared/generation-result.mjs';
@@ -303,6 +303,9 @@ export function useHistory(session) {
   }
   watch(user, (value) => {
     if (value) void load();
+  });
+  onMounted(() => {
+    if (user.value) void load();
   });
   onBeforeUnmount(() => {
     session.resets.delete(reset);

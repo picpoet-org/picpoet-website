@@ -13,6 +13,15 @@ const loginLink = computed(
 );
 </script>
 <template>
+  <div
+    v-if="!session.ready.value"
+    class="session-placeholder"
+    role="status"
+    aria-busy="true"
+    :aria-label="t('session.checking')"
+  >
+    <span></span><span></span>
+  </div>
   <p id="page-status" class="create-status" role="status" aria-live="polite" tabindex="-1">
     {{ session.status.value || session.balanceStatus.value }}
   </p>
@@ -29,7 +38,7 @@ const loginLink = computed(
     v-if="page !== 'login'"
     id="login-gate"
     class="notice"
-    :hidden="!session.ready.value || session.verified.value"
+    :hidden="!session.ready.value || session.retrySession.value || session.verified.value"
   >
     <div>
       <h2>{{ t('session.loginTitle') }}</h2>
@@ -47,3 +56,20 @@ const loginLink = computed(
     {{ t('session.retryLogout') }}
   </button>
 </template>
+<style scoped>
+.session-placeholder {
+  display: grid;
+  gap: 0.5rem;
+  padding-block: 0.75rem;
+}
+.session-placeholder span {
+  height: 0.75rem;
+  width: min(18rem, 70%);
+  border-radius: 0.25rem;
+  background: currentColor;
+  opacity: 0.08;
+}
+.session-placeholder span + span {
+  width: min(11rem, 45%);
+}
+</style>

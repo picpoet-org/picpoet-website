@@ -1,4 +1,6 @@
-import { createSSRApp } from 'vue';
+import { createSSRApp, reactive } from 'vue';
+import { createNavigation } from './navigation.mjs';
+import { parseLocation } from './i18n/context.mjs';
 import App from './App.vue';
 import { createSiteContext, provideSite, locales } from './i18n/context.mjs';
 import sourceMetadata from './locales/zh-cn/metadata.json';
@@ -17,7 +19,12 @@ export async function createSite(options) {
   );
   if (!files.length) throw new Error(`缺少语言字典：${options.locale}，请由 agent 补齐对应译文。`);
   const messages = (await Promise.all(files.map(([, load]) => load()))).reduce(merge, {});
-  const context = createSiteContext({ ...options, messages });
+  const context = reactive(createSiteContext({ ...options, messages }));
+  const router = await createNavigation(options);
+  router.afterEach((to) => {
+    context.page = parseLocation(to.path).page;
+  });
+  context.navigate = (target) => router.push(target);
   context.sourceErrors = sourceMetadata.errors;
   const filesFor = (id) =>
     Object.keys(dictionaries)
@@ -29,5 +36,6 @@ export async function createSite(options) {
   );
   const app = createSSRApp(App);
   provideSite(app, context);
-  return { app, context };
+  app.use(router);
+  return { app, context, router };
 }

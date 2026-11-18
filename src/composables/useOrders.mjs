@@ -187,6 +187,7 @@ export function useOrders(session) {
     }
   });
   onMounted(() => {
+    if (user.value) void loadOrders();
     void loadPlans();
     document.addEventListener('visibilitychange', schedule);
   });
