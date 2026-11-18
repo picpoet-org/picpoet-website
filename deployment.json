@@ -1,5 +1,6 @@
 {
   "websiteUrl": "https://picpoet.jqknono.com",
   "manifestUrl": "https://picpoet.jqknono.com/releases/stable.json",
+  "releaseFeedUrl": "https://downloads.nullprivate.com/picpoet/release/stable.json",
   "downloadBaseUrl": "https://downloads.nullprivate.com/picpoet/release"
 }

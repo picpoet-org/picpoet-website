@@ -12,13 +12,7 @@ Vue 3 + Vite 纯前端网站，维护产品说明、下载与在线创作界面�
 | Android 更新清单 | `https://picpoet.jqknono.com/releases/stable.json` |
 | 安装包 CDN 根路径 | `https://downloads.nullprivate.com/picpoet/release` |
 
-共享 R2 下载桶按项目划分顶层前缀，PicPoet 独占 `picpoet/`，公开项目根为 `https://downloads.nullprivate.com/picpoet/`；安装包路径约定为 `<CDN 根路径>/<平台>/<版本>/<文件名>`。当前稳定版为 **0.1.7**，提供 Android ARM64、Linux x64 与 Windows x64，版本源仍在客户端 `pubspec.yaml`。例如：
-
-```text
-https://downloads.nullprivate.com/picpoet/release/android/0.1.7/picpoet-0.1.7-arm64-v8a.apk
-```
-
-三平台产物与校验文件已由 [0.1.7 标签发布](https://github.com/picpoet-org/picpoet-app/releases/tag/0.1.7) 上传 R2，公开回下载的大小与 SHA-256 须与发布清单一致。`npm run releases:check` 会校验所有已发布安装包均位于指定 CDN 的平台／版本目录，并校验 Android 系统版本码由版本自动推导。网站部署与客户端属于独立仓库，客户端对应配置位于工作区 `../picpoet-app/android/packaging/release-config.json`；调整公开地址时同步两侧。
+PicPoet 的安装包与正式发布 JSON 由客户端标签流水线写入 R2 的 `picpoet/release/`。客户端版本、更新说明、文件大小和 SHA-256 以 [R2 稳定清单](https://downloads.nullprivate.com/picpoet/release/stable.json) 为准；安装包路径为 `<CDN 根路径>/<平台>/<版本>/<文件名>`。网站无需随客户端发版修改或重新部署。调整公开地址时，同步客户端配置 `../picpoet-app/android/packaging/release-config.json` 与 ESA 清单中继。
 
 ## 本地预览
 
@@ -207,7 +201,7 @@ npm run format:check
 
 ## 统一发布清单
 
-`releases/stable.json` 是网站下载页和 Android 升级检查的共同数据源。当前登记 **0.1.7** 的 Android ARM64、Linux x64 和 Windows x64 安装包；iOS、HarmonyOS 和 macOS 保持“暂未发布”。发布时间采用 GitHub Release 的 `2026-11-16T11:27:56Z`，产物信息来自已完成 R2/CDN 校验的 `stable.candidate.json`。`artifacts: []` 表示“暂未发布”；接入真实产物后自动展示版本、更新说明、架构、大小与 SHA-256。下载页会推荐可能匹配的系统，用户仍需核对架构。ESA Pages 同时提供标准清单路径与 `/pages/releases/stable.json` 兼容路径，发布后须核验两者一致。
+网站下载页和 Android 都在运行时读取同源 `/releases/stable.json`；兼容页面读取 `/pages/releases/stable.json`。官网域名上的两个路径由 ESA 精确路由转发 R2 稳定清单，不依赖 Pages 构建和网站仓库提交。仓库内 `releases/stable.json` 是离线预渲染及测试快照，不随每次客户端发版更新。`artifacts: []` 表示“暂未发布”；有真实产物后自动展示版本、更新说明、架构、大小与 SHA-256。
 
 清单包含 `schemaVersion: 1` 和六项 `platforms`。每个平台包含：
 
@@ -224,19 +218,11 @@ Android 额外提供固定的 `applicationId: org.picpoet.app.android` 与 `minS
 
 Android 当前已验证产物为 `arm64-v8a` / `apk`，仅在完整引擎及安装验收通过后声明其他 ABI。其余平台按最终构建填写实际架构；iOS 支持 `ipa`，HarmonyOS 支持 `hap` / `app`，Linux 支持 `tar.gz` / `AppImage` / `deb` / `rpm` / `zip`，macOS 支持 `dmg` / `pkg` / `zip`，Windows 支持 `exe` / `msi` / `zip`。包格式受支持表示页面可分发该格式，不代表当前已经生成该产物。
 
-发布流程：
-
-1. 生成正式签名包，核对包名、版本码、最低系统、CPU 架构及 Rust 引擎随包分发。
-2. 上传安装包到 CDN 的版本化路径，验证公开 HTTPS 下载；计算最终文件 SHA-256 与字节数。
-3. 更新 `releases/stable.json`，补全真实版本、系统要求、日期、说明和安装包信息。
-4. 运行 `npm run releases:check`、`npm test`、`npm run public:sync`。
-5. 部署 `public/` 并刷新清单 CDN 缓存，再验证下载直链与 Android 升级提示。
-
-根路径和 `/pages/` 均同步相同清单；Vue 按兼容上下文读取站内 `/releases/stable.json` 或 `/pages/releases/stable.json`，无需硬编码官网域名。清单建议响应 `Content-Type: application/json`、`Cache-Control: no-cache` 或较短 TTL；安装包使用包含版本的稳定地址和正确 MIME 类型，可配置 `Content-Disposition: attachment`。清单请求不跟随重定向，使用最终可直接返回 JSON 的地址。
+客户端发布流程先构建和验证安装包，再上传版本化对象。流水线使用客户端仓库的 `releases/<版本>.json` 生成正式版本化清单，由 CDN 回下载验证后条件更新 `stable.json`。网站不接收提交或部署通知；Vue 继续按站内路径读取，清单变化会自动反映到页面。两个生产入口直接返回 `200 application/json` 与 `Cache-Control: no-store`，不跟随重定向。客户端发版后可用 `npm run releases:check:live` 核对官网两个入口与 R2 是否一致。
 
 Android 正式构建脚本自动注入 `--dart-define=PICPOET_UPDATE_MANIFEST_URL=https://picpoet.jqknono.com/releases/stable.json`。在客户端目录执行 `python3 android/packaging/init-signing.py` 完成本机交互式证书初始化并加密备份后，执行 `python3 android/packaging/build-release.py`；已有签名配置时复用原签名。Flutter 源版本声明为 `version: 0.1.4` 时，Android 系统必需的整数字段按 `主版本 × 1000000 + 次版本 × 1000 + 修订版本` 自动生成，结果为 `1004`；界面与下载路径显示 `0.1.4`。次版本和修订版本各小于 1000，生成值为正整数且不超过 2100000000。桌面清单的 `1004` 是发布排序值，区别于可执行文件自身的平台版本资源。
 
-客户端本地正式构建生成 Android 单平台候选，标签发布流程在 GitHub Release 附加三平台聚合的 `stable.candidate.json`。候选的发布时间为 `null`；完整验证上传后补齐真实日期、更新说明及网站清单需要的版本字段，按平台 ID 合入本网站六平台清单，并保留其他平台状态。自动检查滚动 24 小时最多一次，手动检查可再次提示已忽略版本。用户确认后由浏览器下载、系统完成安装；同包名、同签名且新版本对应更高的系统版本码才能覆盖升级。首次从调试签名迁移到正式签名需另行处理数据备份。签名细节见客户端仓库的 `README.md`（工作区路径 `../picpoet-app/README.md`）。
+GitHub Release 保留三平台聚合候选 `stable.candidate.json` 和完整的 `stable.json` 供核验；生产网站不直接访问 GitHub。Android 自动检查滚动 24 小时最多一次，手动检查可再次提示已忽略版本。用户确认后由浏览器下载、系统完成安装；同包名、同签名且新版本对应更高的系统版本码才能覆盖升级。首次从调试签名迁移到正式签名需另行处理数据备份。签名细节见 [客户端 README](../picpoet-app/README.md)。
 
 ## 验证
 
@@ -260,14 +246,14 @@ npm run public:sync
 
 官网 `picpoet.jqknono.com` **直接绑定 ESA Pages**，静态前端由 Pages 项目 `picpoet-website` 提供。全部后端能力归属 `picpoet-server`：
 
-- 静态页面、JS/CSS、字体、图片及发布清单 → Pages。
+- 静态页面、JS/CSS、字体和图片 → Pages；官网两个发布清单路径 → 独立 ESA 中继 → R2。
 - 浏览器直接请求 `https://picpoet-api.jqknono.com/web-api/*` → Go BFF；邀请链接使用 API 域名并跳回官网登录页。
 - `/v1/*` → 现有 Picpoet Server 核心 API，保持 App 契约。
 - 浏览器使用 `credentials: include`，Go 后端精确允许官网来源；Cookie 为 API host-only、HttpOnly、Secure、SameSite=Strict，不共享父域。切换后需重新登录一次。动态接口不缓存，不经 Pages 转发。
 
 Android 更新清单是机器接口，必须在无 Cookie、无浏览器挑战、无重定向的情况下直接返回 `200 application/json`。2026-11-17 修复 ESA `denied by http_auto_ratelimit` 导致的 `307` 自跳转：在现有白名单规则 `23755670` 中保留 API 条件，仅追加 `picpoet.jqknono.com` 的 `/releases/stable.json` 路径及 `GET` / `HEAD` 方法。站点白名单额度已满，因此复用原规则，不关闭全站防护。运维配置同步在 `ecs-manager/k3s/resources/jqknono.com/picpoet-pages.json`；回滚时仅移除新增的清单条件，保留 API 条件及原动作。
 
-0.1.6 与 0.1.7 客户端的清单地址和更新逻辑相同，此服务端修复同时恢复两者，无须重签或替换历史安装包。每次发布或调整 ESA 防护后执行 `npm run releases:check:live`：以 Dart 请求头、不带 Cookie、不跟随跳转读取生产清单，校验 12 秒超时、512 KiB 上限、发布契约及与本地清单一致性。该联网验收独立于默认离线构建，不能仅用已通过浏览器挑战的页面代替。
+旧版 Android 无需重签或替换安装包。每次客户端发版或调整 ESA 防护后执行 `npm run releases:check:live`：以 Dart 请求头、不带 Cookie、不跟随跳转读取官网标准和兼容清单，严格校验响应和发布契约，并与 R2 当前清单比较。该联网验收独立于默认离线构建。
 
 Pages 默认将 `.html` 地址 307 到无后缀地址；前端兼容两种路径。2026-11-17 已完成 Go BFF 会话迁移及 API 直连验证，并将旧 OP 记录替换为 Pages 域名绑定。公网 CNAME 名称保持相同，但 ESA 关联已改为 compute/Pages，不再是集群源站池。具体版本与回滚以相邻 `ecs-manager` 的发布记录为准。
 
