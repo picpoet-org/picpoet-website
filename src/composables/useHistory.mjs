@@ -7,6 +7,7 @@ import { generationResult } from '../../shared/generation-result.mjs';
 export function useHistory(session) {
   const { t, api, scope, user, failure, error, brand } = session;
   const includeInvitation = ref(true);
+  const includePhoto = ref(true);
   const rows = ref([]),
     cursor = ref(null),
     listBusy = ref(false),
@@ -17,6 +18,7 @@ export function useHistory(session) {
     exportStatus = ref(''),
     photoURL = ref(''),
     cardURL = ref('');
+  const loadingPhoto = ref(false);
   const deleting = ref(false),
     drawing = ref(false),
     dialog = ref(),
@@ -31,12 +33,14 @@ export function useHistory(session) {
   };
   function clearDetail() {
     includeInvitation.value = true;
+    includePhoto.value = true;
     detailVersion++;
     dialog.value?.close();
     deleteDialog.value?.close();
     selected.value = null;
     release(cardURL.value);
     photoURL.value = '';
+    loadingPhoto.value = false;
     cardURL.value = '';
     detailStatus.value = '';
     exportStatus.value = '';
@@ -237,6 +241,7 @@ export function useHistory(session) {
         poem: info.poem || { title: '', body: t('common.emptyBody') },
         empty: !info.poem,
       };
+      loadingPhoto.value = true;
       const url = await photo(id, ticket);
       if (!current()) return;
       photoURL.value = url;
@@ -249,10 +254,12 @@ export function useHistory(session) {
         }
         detailStatus.value = report(cause);
       }
+    } finally {
+      if (current()) loadingPhoto.value = false;
     }
   }
   async function draw() {
-    if (!selected.value?.poem || selected.value.empty || drawing.value) return;
+    if (!selected.value?.poem || selected.value.empty || loadingPhoto.value || drawing.value) return;
     const source = selected.value,
       version = detailVersion,
       ticket = scope.capture();
@@ -262,6 +269,7 @@ export function useHistory(session) {
       const invitationURL = includeInvitation.value ? await session.ensureInvitationURL(ticket) : '';
       const blob = await renderPoemCard(source.poem, {
         brand,
+        photoURL: includePhoto.value ? photoURL.value : '',
         invitationURL,
         invitationLabel: t('sharing.scan'),
       });
@@ -311,14 +319,23 @@ export function useHistory(session) {
     session.resets.delete(reset);
     reset();
   });
-  async function setIncludeInvitation(value) {
+  function setIncludePhoto(value) {
+    includePhoto.value = value;
+    return redrawCard();
+  }
+  function setIncludeInvitation(value) {
     includeInvitation.value = value;
+    return redrawCard();
+  }
+  async function redrawCard() {
     const hadCard = !!cardURL.value;
     release(cardURL.value);
     cardURL.value = '';
     if (hadCard) await draw();
   }
   return {
+    includePhoto,
+    setIncludePhoto,
     includeInvitation,
     setIncludeInvitation,
     rows,
@@ -330,6 +347,7 @@ export function useHistory(session) {
     detailStatus,
     exportStatus,
     photoURL,
+    loadingPhoto,
     cardURL,
     deleting,
     drawing,

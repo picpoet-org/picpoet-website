@@ -2,13 +2,16 @@
 import { watch } from 'vue';
 import { loadCardFont } from '../../shared/poem-card.mjs';
 import PhotoInformation from '../components/PhotoInformation.vue';
-import ShareInvitationOption from '../components/ShareInvitationOption.vue';
+import ShareImageOptions from '../components/ShareImageOptions.vue';
 import { useSession } from '../composables/useSession.mjs';
 import { useHistory } from '../composables/useHistory.mjs';
 import SessionGate from '../components/SessionGate.vue';
 const session = useSession();
 const { t, href, user, time } = session;
 const {
+  loadingPhoto,
+  includePhoto,
+  setIncludePhoto,
   includeInvitation,
   setIncludeInvitation,
   rows,
@@ -191,7 +194,7 @@ function backdrop(event) {
                 id="history-render"
                 class="button secondary"
                 type="button"
-                :disabled="!selected?.poem || selected?.empty || drawing"
+                :disabled="!selected?.poem || selected?.empty || loadingPhoto || drawing"
                 @click="draw"
               >
                 {{ t('common.render') }}</button><a
@@ -204,7 +207,10 @@ function backdrop(event) {
               >
             </div>
             <div v-if="!selected?.empty" class="share-options">
-              <ShareInvitationOption
+              <ShareImageOptions
+                :has-photo="!!photoURL"
+                :photo="includePhoto"
+                @update:photo="setIncludePhoto"
                 :model-value="includeInvitation"
                 :disabled="drawing || deleting || !selected?.poem"
                 @update:model-value="setIncludeInvitation"

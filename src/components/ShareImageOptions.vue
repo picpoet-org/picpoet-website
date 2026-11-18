@@ -2,8 +2,8 @@
 import { ref } from 'vue';
 import { useSite } from '../i18n/context.mjs';
 const { t } = useSite();
-defineProps({ modelValue: Boolean, disabled: Boolean });
-const emit = defineEmits(['update:modelValue']);
+defineProps({ modelValue: Boolean, photo: Boolean, hasPhoto: Boolean, disabled: Boolean });
+const emit = defineEmits(['update:modelValue', 'update:photo']);
 const dialog = ref();
 function change(event) {
   const checked = event.target.checked;
@@ -17,7 +17,16 @@ function omit() {
 }
 </script>
 <template>
-  <label class="share-invitation-option">
+  <label v-if="hasPhoto" class="share-option">
+    <input
+      type="checkbox"
+      :checked="photo"
+      :disabled="disabled"
+      @change="$emit('update:photo', $event.target.checked)"
+    />
+    <span>{{ t('sharing.includePhoto') }}</span>
+  </label>
+  <label class="share-option">
     <input type="checkbox" :checked="modelValue" :disabled="disabled" @change="change" />
     <span>{{ t('sharing.includeQR') }}</span>
   </label>
@@ -37,7 +46,7 @@ function omit() {
   </dialog>
 </template>
 <style scoped>
-label.share-invitation-option {
+label.share-option {
   display: inline-flex;
   align-items: center;
   gap: 0.5em;
@@ -49,7 +58,7 @@ label.share-invitation-option {
   color: var(--text-secondary);
   cursor: pointer;
 }
-.share-invitation-option input {
+.share-option input {
   flex: 0 0 auto;
   inline-size: 1.125em;
   block-size: 1.125em;
@@ -58,10 +67,10 @@ label.share-invitation-option {
   padding: 0;
   accent-color: var(--pp-color-ink);
 }
-.share-invitation-option:hover {
+.share-option:hover {
   color: var(--pp-color-ink);
 }
-.share-invitation-option:has(:disabled) {
+.share-option:has(:disabled) {
   cursor: not-allowed;
 }
 .share-invitation-dialog {

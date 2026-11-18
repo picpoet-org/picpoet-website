@@ -90,7 +90,7 @@ export async function loadCardFont(text) {
     throw new Error('文楷字体未能启用，分享图尚未生成。可先拷贝诗词，稍后从我的作品下载分享图。');
   }
 }
-export async function renderPoemCard(data, { brand = '图赋', invitationURL = '', invitationLabel = '扫码，一起写诗' } = {}) {
+export async function renderPoemCard(data, { brand = '图赋', photoURL = '', invitationURL = '', invitationLabel = '扫码，一起写诗' } = {}) {
   const matrix = invitationURL ? createQRMatrix(invitationURL) : null;
   const qrScale = 4;
   const qrSize = matrix ? (matrix.length + 8) * qrScale : 0;
@@ -100,12 +100,27 @@ export async function renderPoemCard(data, { brand = '图赋', invitationURL = '
   if (!ctx) throw new Error('浏览器无法创建分享画布。');
   const measure = (glyph, size) => { ctx.font = `${size}px "${CARD_FONT_FAMILY}"`; return ctx.measureText(glyph).width; };
   const layout = cardLayout(data, measure, { qrSize });
-  canvas.width = layout.width; canvas.height = layout.height;
+  const photo = photoURL ? new Image() : null;
+  let photoWidth = 0, photoHeight = 0, poemLeft = 0;
+  if (photo) {
+    photo.src = photoURL;
+    await photo.decode();
+    const inset = CARD.padding / 2;
+    const scale = Math.min((layout.width - 2 * inset) / photo.naturalWidth, (layout.height - 2 * inset) / photo.naturalHeight);
+    photoWidth = photo.naturalWidth * scale;
+    photoHeight = photo.naturalHeight * scale;
+    poemLeft = Math.ceil(photoWidth + inset);
+  }
+  canvas.width = poemLeft + layout.width; canvas.height = layout.height;
   const colors = getComputedStyle(document.documentElement);
   const color = (name, fallback) => colors.getPropertyValue(`--pp-color-${name}`).trim() || fallback;
   try {
     ctx.fillStyle = color('paper', '#f5f3ee'); ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = color('line', '#d7d3c9'); ctx.lineWidth = 1; ctx.strokeRect(36, 36, canvas.width - 72, canvas.height - 72);
+    if (photo) {
+      ctx.drawImage(photo, CARD.padding / 2, (layout.height - photoHeight) / 2, photoWidth, photoHeight);
+      ctx.translate(poemLeft, 0);
+    }
+    ctx.strokeStyle = color('line', '#d7d3c9'); ctx.lineWidth = 1; ctx.strokeRect(36, 36, layout.width - 72, layout.height - 72);
     const drawLine = (text, size, spacing, center, top) => {
       const glyphs = graphemes(text);
       ctx.font = `${size}px "${CARD_FONT_FAMILY}"`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';

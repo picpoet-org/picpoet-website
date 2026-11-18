@@ -1,5 +1,5 @@
 <script setup>
-import ShareInvitationOption from '../components/ShareInvitationOption.vue';
+import ShareImageOptions from '../components/ShareImageOptions.vue';
 import PhotoInformation from '../components/PhotoInformation.vue';
 import { useSession } from '../composables/useSession.mjs';
 import { useGeneration } from '../composables/useGeneration.mjs';
@@ -11,6 +11,9 @@ const {
   resultInfo,
   preferencesStatus,
   hasGenerationContent,
+  cardPhotoURL,
+  includePhoto,
+  setIncludePhoto,
   includeInvitation,
   setIncludeInvitation,
   image,
@@ -207,7 +210,10 @@ const {
             </button>
           </div>
           <div v-if="poem" class="share-options">
-            <ShareInvitationOption
+            <ShareImageOptions
+              :has-photo="!!cardPhotoURL"
+              :photo="includePhoto"
+              @update:photo="setIncludePhoto"
               :model-value="includeInvitation"
               :disabled="busy.has('card') || busy.has('share')"
               @update:model-value="setIncludeInvitation"

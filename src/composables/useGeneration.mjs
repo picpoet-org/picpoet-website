@@ -19,6 +19,7 @@ export function useGeneration(session) {
   );
   const resultInfo = shallowRef(null);
   const includeInvitation = ref(true);
+  const includePhoto = ref(true);
   const image = shallowRef(null),
     photoURL = ref(''),
     caption = ref(''),
@@ -32,6 +33,10 @@ export function useGeneration(session) {
     cardURL = ref(''),
     cardStatus = ref(''),
     canShare = ref(false);
+  // 恢复的服务端任务不一定对应页面上最近选择的照片。
+  const cardPhotoURL = computed(() =>
+    task.value?.attempt && task.value.attempt.image === image.value?.blob ? photoURL.value : '',
+  );
   const copyStatus = ref(''),
     copyFallback = ref(false);
   const poemText = computed(() => (poem.value ? poemPlainText(poem.value) : ''));
@@ -49,6 +54,7 @@ export function useGeneration(session) {
   }
   function clearResult() {
     includeInvitation.value = true;
+    includePhoto.value = true;
     clearCard();
     poem.value = null;
     resultInfo.value = null;
@@ -104,7 +110,12 @@ export function useGeneration(session) {
       clearCard();
       cardStatus.value = t('common.rendering');
       const invitationURL = includeInvitation.value ? await session.ensureInvitationURL(ticket) : '';
-      const blob = await renderPoemCard(source, { brand, invitationURL, invitationLabel: t('sharing.scan') });
+      const blob = await renderPoemCard(source, {
+        brand,
+        photoURL: includePhoto.value ? cardPhotoURL.value : '',
+        invitationURL,
+        invitationLabel: t('sharing.scan'),
+      });
       scope.assert(ticket);
       if (poem.value !== source || task.value !== target) return;
       cardBlob = blob;
@@ -239,8 +250,15 @@ export function useGeneration(session) {
     session.resets.delete(reset);
     reset();
   });
-  async function setIncludeInvitation(value) {
+  function setIncludePhoto(value) {
+    includePhoto.value = value;
+    return redrawCard();
+  }
+  function setIncludeInvitation(value) {
     includeInvitation.value = value;
+    return redrawCard();
+  }
+  async function redrawCard() {
     clearCard();
     await draw();
   }
@@ -248,6 +266,9 @@ export function useGeneration(session) {
     resultInfo,
     hasGenerationContent,
     preferencesStatus: preferences.status,
+    cardPhotoURL,
+    includePhoto,
+    setIncludePhoto,
     includeInvitation,
     setIncludeInvitation,
     image,
