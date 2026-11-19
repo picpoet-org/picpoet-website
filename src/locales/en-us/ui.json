@@ -213,6 +213,7 @@
     "taskHelp": "Pausing only stops this page's queries and does not cancel the server-side task. Retrying with the original ID on network failure will not create a new task; failed tasks can be re-queried before explicitly starting a new creation.",
     "invalidTask": "The task ID returned by the service is invalid.",
     "taskMismatch": "The task ID returned by the service does not match. Please refresh your balance to recover the task.",
+    "busy": "Many people are creating right now. Please try again later.",
     "recovered": "This task was recovered by the server without a local photo; please continue querying the original task.",
     "recovering": "Recovering task…",
     "result": "Leave a Page of Poetry",

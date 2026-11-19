@@ -185,7 +185,14 @@ export function useGeneration(session) {
       }
       if (!task.value.attempt) throw failure('create.recovered');
       generationStatus.value = t('waiting.uploading');
-      const accepted = await request(ticket, '/generations', generationForm(task.value.attempt));
+      let accepted;
+      try {
+        accepted = await request(ticket, '/generations', generationForm(task.value.attempt));
+      } catch (error) {
+        // 满载拒绝时任务未创建，保留原请求编号，用户稍后可直接重试。
+        if (error?.status === 429 && error.code === 'RATE_LIMITED') throw failure('create.busy');
+        throw error;
+      }
       if (accepted?.id !== task.value.id) throw failure('create.taskMismatch');
       await monitor(ticket);
     });

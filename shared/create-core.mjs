@@ -153,7 +153,7 @@ export function createAPI({ fetchImpl = globalThis.fetch, timeoutMs = 35_000 } =
         headers: { Accept: 'application/json', ...(body !== undefined && !multipart ? { 'Content-Type': 'application/json' } : {}) },
         body: body === undefined ? undefined : multipart ? body : JSON.stringify(body),
       });
-      if (!response.ok) throw new ApiError(response.status);
+      if (!response.ok) throw new ApiError(response.status, await errorCode(response));
       if (!/^application\/json(?:\s*;|$)/i.test(response.headers.get('content-type') || '')) throw new Error('服务返回格式异常，请稍后重试。');
       const data = await response.json();
       if (signal?.aborted) throw staleError();
@@ -164,6 +164,14 @@ export function createAPI({ fetchImpl = globalThis.fetch, timeoutMs = 35_000 } =
       throw error;
     } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }
   };
+}
+// 仅读取稳定错误码，界面文案由前端按码与状态本地化，不展示服务端原文。
+async function errorCode(response) {
+  if (!/^application\/json(?:\s*;|$)/i.test(response.headers.get('content-type') || '')) return undefined;
+  try {
+    const code = (await response.json())?.code;
+    return typeof code === 'string' && /^[A-Z_]{1,64}$/.test(code) ? code : undefined;
+  } catch { return undefined; }
 }
 export function wait(ms, signal) {
   return new Promise((resolve, reject) => {
