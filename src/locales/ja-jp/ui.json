@@ -339,6 +339,7 @@
     "empty": "インストールパッケージはありません",
     "unpublished": "公開中",
     "releaseDetails": "アップデート情報",
+    "alternateDownload": "別の配信元からダウンロード · {arch}",
     "downloadCompact": "ダウンロード · {arch}",
     "androidStorage": "原図の上書きには Android 10 以降が必要であり、提供元およびシステムの権限制限を受けます。",
     "unavailable": "リリース情報を一時的に読み込めません。しばらくしてから更新してください。",

@@ -339,6 +339,7 @@
     "empty": "No Installation Packages Available",
     "unpublished": "Available Soon",
     "releaseDetails": "Release Notes",
+    "alternateDownload": "Alternate download · {arch}",
     "downloadCompact": "Download · {arch}",
     "androidStorage": "Overwriting the original image requires Android 10 or above and is subject to source and system authorization restrictions.",
     "unavailable": "Temporarily unable to read release information, please refresh later.",

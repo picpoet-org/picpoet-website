@@ -339,6 +339,7 @@
     "empty": "설치 파일이 없습니다",
     "unpublished": "출시 준비 중",
     "releaseDetails": "업데이트 내역",
+    "alternateDownload": "대체 다운로드 · {arch}",
     "downloadCompact": "다운로드 · {arch}",
     "androidStorage": "원본 사진 덮어쓰기는 Android 10 이상이 필요하며 소스 및 시스템 권한 제한을 받습니다.",
     "unavailable": "일시적으로 배포 정보를 읽을 수 없습니다. 잠시 후 새로고침해 주세요.",

@@ -1,7 +1,8 @@
 {
   "websiteUrl": "https://picpoet.jqknono.com",
+  "compatibilityWebsiteUrl": "https://jqknono.com",
   "dashboardWebUrl": "https://dash.jqknono.com",
-  "manifestUrl": "https://picpoet.jqknono.com/releases/stable.json",
-  "releaseFeedUrl": "https://downloads.nullprivate.com/picpoet/release/stable.json",
+  "manifestUrl": "https://downloads.nullprivate.com/picpoet/release/stable.json",
+  "fallbackManifestUrl": "https://downloads.jqknono.com/picpoet/release/stable.json",
   "downloadBaseUrl": "https://downloads.nullprivate.com/picpoet/release"
 }

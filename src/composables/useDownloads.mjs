@@ -1,11 +1,10 @@
 import { ref, provide, onMounted, onBeforeUnmount } from 'vue';
-import { loadManifest, detectPlatform } from '../../shared/releases.mjs';
+import { loadDownloadPlatforms, detectPlatform } from '../../shared/releases.mjs';
 import { useSite } from '../i18n/context.mjs';
-import bundledManifest from '../../releases/stable.json';
 export const downloadsKey = Symbol('downloads');
 export function useDownloads() {
-  const { t, asset } = useSite();
-  const platforms = ref(bundledManifest.platforms),
+  const { t } = useSite();
+  const platforms = ref([]),
     busy = ref(false),
     status = ref(t('downloads.loading')),
     failed = ref(false),
@@ -15,15 +14,14 @@ export function useDownloads() {
     controller?.abort();
     controller = new AbortController();
     const active = controller;
-    const timeout = setTimeout(() => active.abort(), 12000);
     busy.value = true;
     failed.value = false;
     status.value = t('downloads.loading');
     try {
-      const manifest = await loadManifest(asset('releases/stable.json'), { signal: active.signal });
+      const live = await loadDownloadPlatforms({ signal: active.signal });
       if (active !== controller) return;
-      platforms.value = manifest.platforms;
-      status.value = manifest.platforms.some((item) => item.artifacts.length) ? '' : t('downloads.empty');
+      platforms.value = live;
+      status.value = live.some((item) => item.artifacts.length) ? '' : t('downloads.empty');
     } catch {
       if (active === controller) {
         platforms.value = [];
@@ -31,7 +29,6 @@ export function useDownloads() {
         status.value = t('downloads.failed');
       }
     } finally {
-      clearTimeout(timeout);
       if (active === controller) busy.value = false;
     }
   }

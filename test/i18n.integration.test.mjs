@@ -18,8 +18,8 @@ test('六语言共用路由与品牌协议，根目录和历史兼容路径可�
           pagePath('account', language.id, compatibility) + '#purchase',
         );
         assert.equal(
-          context.asset('releases/stable.json'),
-          (compatibility ? '/pages' : '') + '/releases/stable.json',
+          context.asset('assets/picpoet-mark.svg'),
+          (compatibility ? '/pages' : '') + '/assets/picpoet-mark.svg',
         );
         assert.ok(context.money(100, 'CNY').length);
       }

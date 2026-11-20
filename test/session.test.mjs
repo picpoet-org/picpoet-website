@@ -202,7 +202,7 @@ test('客户端导航仅拦截同源同语言已知页面，文件下载与跨�
   assert.equal(internalDestination('/login?returnTo=create.html', base), '/login?returnTo=create.html');
   for (const target of [
     'https://other.test/account.html',
-    '/releases/stable.json',
+    '/assets/fonts/OFL.txt',
     '/en-us/account.html',
     '/unknown',
     '/pages/account.html',

@@ -38,6 +38,9 @@ const size = (value) =>
             "
             >{{ t('downloads.downloadCompact', { arch: artifact.arch }) }}</a
           >
+          <a class="text-link" :href="artifact.alternateUrl">{{
+            t('downloads.alternateDownload', { arch: artifact.arch })
+          }}</a>
           <p class="artifact-meta">{{ artifact.format }} · {{ size(artifact.sizeBytes) }}</p>
           <details>
             <summary>{{ t('downloads.checksum') }}</summary>

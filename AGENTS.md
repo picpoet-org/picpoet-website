@@ -24,4 +24,4 @@ npm run build:all
 
 - 生产浏览器直接访问 `https://picpoet-api.jqknono.com/web-api`，使用 `credentials: include`，用户令牌保存在服务端，浏览器持有 HttpOnly 会话 Cookie；服务密钥由相应后端持有。
 - 官网域名直接绑定 ESA Pages；浏览器直接访问 API 域名，后端精确允许官网 Origin，Cookie 属于 API Host。无 Pages/边缘函数转发。website 不构建后端镜像，不部署集群工作负载。
-- 公开地址以 `deployment.json` 为准；下载与 Android 升级清单共用 `releases/stable.json`，发布流程见 README。公开地址变更同步客户端 `../picpoet-app/android/packaging/release-config.json`。
+- 公开地址以 `deployment.json` 为准；下载与 Android 升级清单直读主备 R2 域名的 `/picpoet/release/stable.json`，禁止以测试快照预渲染或交付旧清单，发布流程见 README。公开地址变更同步客户端 `../picpoet-app/android/packaging/release-config.json`。

@@ -5,7 +5,8 @@ import { readInvitation } from '../../shared/invitation.mjs';
 import { normalizePhone, hasAccountIdentity } from '../../shared/account-identity.mjs';
 import { safeReturnTo } from '../../shared/user-navigation.mjs';
 import SessionGate from '../components/SessionGate.vue';
-import { websiteUrl, dashboardWebUrl } from '../../deployment.json';
+import deployment from '../../deployment.json' with { type: 'json' };
+const { websiteUrl, dashboardWebUrl } = deployment;
 const session = useSession();
 const { t, href, user, ready, verified, busy, action, request, failure } = session;
 const mode = ref('login'),

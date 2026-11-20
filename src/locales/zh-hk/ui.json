@@ -339,6 +339,7 @@
     "empty": "暫無安裝套件",
     "unpublished": "上架中",
     "releaseDetails": "更新說明",
+    "alternateDownload": "後備下載 · {arch}",
     "downloadCompact": "下載 · {arch}",
     "androidStorage": "覆寫原圖需 Android 10 及以上，並受來源與系統授權限制。",
     "unavailable": "暫時無法讀取發佈資訊，請稍後重新整理。",

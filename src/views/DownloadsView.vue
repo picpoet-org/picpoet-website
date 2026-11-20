@@ -3,9 +3,14 @@ import { computed } from 'vue';
 import { useSite } from '../i18n/context.mjs';
 const { t, href } = useSite();
 import ReleaseInfo from '../components/ReleaseInfo.vue';
+import { platformNames } from '../../shared/releases.mjs';
 import { useDownloads } from '../composables/useDownloads.mjs';
 const { busy, status, platforms, failed, recommended } = useDownloads();
-const published = computed(() => platforms.value.filter((platform) => platform.artifacts.length));
+// 预渲染只提供平台锚点，版本、包链接及未发布状态均等待实时清单。
+const placeholders = Object.entries(platformNames).map(([id, name]) => ({ id, name }));
+const visible = computed(() =>
+  platforms.value.length ? platforms.value.filter((platform) => platform.artifacts.length) : placeholders,
+);
 const upcoming = computed(() => platforms.value.filter((platform) => !platform.artifacts.length));
 </script>
 <template>
@@ -23,7 +28,7 @@ const upcoming = computed(() => platforms.value.filter((platform) => !platform.a
       <p id="download-status" class="download-status" role="status" aria-live="polite">{{ status }}</p>
       <div class="download-grid" :aria-busy="busy">
         <article
-          v-for="platform in published"
+          v-for="platform in visible"
           :id="`platform-${platform.id}`"
           :key="platform.id"
           :data-platform="platform.id"

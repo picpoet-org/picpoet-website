@@ -46,13 +46,6 @@ export default defineConfig({
               response,
               next,
             );
-          if (pathname.startsWith('/releases/'))
-            return sendSourceFile(
-              path.join(root, 'releases'),
-              pathname.slice('/releases/'.length),
-              response,
-              next,
-            );
           return next();
         });
         server.middlewares.use(async (request, response, next) => {

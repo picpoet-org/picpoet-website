@@ -6,7 +6,7 @@ import { detectPlatform, formatSize, loadManifest, releaseCopy, validateManifest
 import { androidVersionCode, deployment, validatePublishedManifest } from '../scripts/deployment-config.mjs';
 import { loadPublishedManifest } from '../scripts/check-live-release.mjs';
 
-const base = JSON.parse(await readFile(new URL('../releases/stable.json', import.meta.url), 'utf8'));
+const base = JSON.parse(await readFile(new URL('./fixtures/release-snapshot.json', import.meta.url), 'utf8'));
 
 test('公开升级验收不跟随 ESA 挑战，拒绝 HTML，接受匿名 JSON 请求', async (t) => {
   const requests = [];
@@ -78,7 +78,7 @@ test('空发布清单支持如实呈现六个平台的待发布状态', () => {
   assert.ok(unpublished.platforms.every((platform) => platform.artifacts.length === 0));
 });
 
-test('官网稳定清单经 HTTP 交付已发布产物与其余平台状态', async (t) => {
+test('稳定清单样本经 HTTP 交付已发布产物与其余平台状态', async (t) => {
   assert.equal(validatePublishedManifest(base), base);
   const server = createServer((_request, response) => {
     response.writeHead(200, { 'Content-Type': 'application/json' });
@@ -86,7 +86,7 @@ test('官网稳定清单经 HTTP 交付已发布产物与其余平台状态', as
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise((resolve) => server.close(resolve)));
-  const result = await loadManifest(`http://127.0.0.1:${server.address().port}/releases/stable.json`);
+  const result = await loadManifest(`http://127.0.0.1:${server.address().port}/picpoet/release/stable.json`);
   assert.deepEqual(result, base);
   const released = result.platforms.filter((platform) => platform.artifacts.length);
   assert.ok(released.length > 0);
@@ -125,8 +125,11 @@ test('设备识别为下载页推荐对应平台，同时保留完整平台列�
   assert.equal(base.platforms.find((platform) => platform.id === 'ohos').name, 'HarmonyOS');
 });
 
-test('Vue 预渲染交付保留根目录、pages 兼容入口及本地字体与清单', async () => {
-  for (const resource of ['releases/stable.json', 'assets/fonts/OFL.txt', 'assets/fonts/lxgw-wenkai/7acda61a02bc8863.woff2']) {
+test('Vue 预渲染交付保留根目录、pages 兼容入口与本地字体，不发布清单快照', async () => {
+  for (const prefix of ['public/', 'public/pages/']) {
+    await assert.rejects(readFile(new URL(`../${prefix}releases/stable.json`, import.meta.url)), { code: 'ENOENT' });
+  }
+  for (const resource of [ 'assets/fonts/OFL.txt', 'assets/fonts/lxgw-wenkai/7acda61a02bc8863.woff2']) {
     const source = await readFile(new URL(`../${resource}`, import.meta.url));
     for (const prefix of ['public/', 'public/pages/']) {
       assert.deepEqual(await readFile(new URL(`../${prefix}${resource}`, import.meta.url)), source);
@@ -138,13 +141,19 @@ test('Vue 预渲染交付保留根目录、pages 兼容入口及本地字体与�
   for (const name of ['index', 'docs', 'downloads', 'pricing', 'create', 'works', 'account', 'login']) {
     for (const prefix of ['public/', 'public/pages/']) {
       const page = await readFile(new URL(`../${prefix}${name}.html`, import.meta.url), 'utf8');
-      assert.ok(page.includes(`src="/${entry.file}"`));
+      const assetRoot = prefix === 'public/' ? '/' : '/pages/';
+      assert.ok(page.includes(`src="${assetRoot}${entry.file}"`));
+      for (const file of [entry.file, ...entry.css]) {
+        assert.ok(page.includes(`"${assetRoot}${file}"`));
+        await readFile(new URL(`../${prefix}${file}`, import.meta.url));
+      }
       assert.ok(page.includes('<main id="main"'));
       assert.equal((page.match(/rel="canonical"/g) || []).length, 1);
     }
   }
   const html = await readFile(new URL('../public/downloads.html', import.meta.url), 'utf8');
   for (const platform of base.platforms) assert.ok(html.includes(`data-platform="${platform.id}"`));
+  assert.doesNotMatch(html, /class="release-version"|class="artifact-list"/);
   assert.match(html, /id="download-status"/);
   assert.match(html, /\/app\/entry-client-/);
   assert.equal((html.match(/rel="canonical"/g) ?? []).length, 1);
