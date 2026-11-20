@@ -44,7 +44,15 @@ const payment = computed(() => {
           <PaymentQR :value="payment" />
           <figcaption>{{ t('account.scan') }}</figcaption>
         </figure>
-        <a v-else :href="payment" class="button primary payment-link">{{ t('account.payment') }}</a>
+        <a
+          v-else
+          :href="payment"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="button primary payment-link"
+        >
+          {{ t('account.payment') }}
+        </a>
       </div>
     </div>
     <div v-if="order.status === 'pending'" class="actions">

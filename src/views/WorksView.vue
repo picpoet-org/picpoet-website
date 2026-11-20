@@ -100,13 +100,27 @@ function backdrop(event) {
           <button
             type="button"
             class="history-image-toggle"
+            :title="item.alt || undefined"
             :aria-label="t('history.view', { title: item.title || t('common.untitled') })"
             aria-haspopup="dialog"
             :aria-expanded="selected?.id === item.id"
             aria-controls="history-detail"
             @click="open(item.id, $event)"
           >
-            <img :src="item.url || undefined" :alt="item.alt" loading="lazy" width="240" height="400" />
+            <svg aria-hidden="true" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="2.75" y="5.75" width="26.5" height="20.5" rx="3" />
+              <circle cx="11" cy="12" r="2" />
+              <path d="m4 23 7-7 5 5 6-8 7 8" stroke-linejoin="round" />
+            </svg>
+            <img
+              v-if="item.url"
+              :key="item.url"
+              :src="item.url"
+              alt=""
+              loading="lazy"
+              @load="$event.currentTarget.classList.add('is-loaded')"
+              @error="item.alt = t('history.imageUnavailable')"
+            />
           </button>
           <div class="history-item-copy">
             <h3 class="history-item-title">

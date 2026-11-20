@@ -6,7 +6,7 @@ import SessionGate from '../components/SessionGate.vue';
 import OrderItem from '../components/OrderItem.vue';
 import GenerationPreferences from '../components/GenerationPreferences.vue';
 const session = useSession();
-const { t, href, user, verified, busy, balance, money, invitationURL, grantedCredits } = session;
+const { t, href, user, verified, busy, remaining, money, invitationURL, grantedCredits } = session;
 const grantedLabel = computed(() => t('referral.total', { count: '{count}' }).split('{count}'));
 const copyStatus = ref('');
 const copyFallback = ref(false);
@@ -123,10 +123,10 @@ const {
             }}</span>
           </div>
           <dl id="balance" class="account-balance" :aria-label="t('account.remaining')">
-            <div v-for="kind in ['free', 'paid']" :key="kind">
+            <div v-for="kind in ['gifted', 'purchased']" :key="kind">
               <dt>{{ t('session.' + kind) }}</dt>
               <dd>
-                <strong>{{ balance?.[kind]?.remaining ?? '—' }}</strong><span> {{ t('session.unit') }}</span>
+                <strong>{{ remaining?.[kind] ?? '—' }}</strong><span> {{ t('session.unit') }}</span>
               </dd>
             </div>
           </dl>

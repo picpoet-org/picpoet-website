@@ -629,8 +629,23 @@
   align-items: stretch;
 }
 .works-page .history-image-toggle {
+  position: relative;
+  display: grid;
+  place-items: center;
   aspect-ratio: 3 / 4;
   align-self: start;
+  color: var(--create-muted);
+}
+.works-page .history-image-toggle svg {
+  inline-size: min(28%, 3rem);
+}
+.works-page .history-image-toggle img {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+.works-page .history-image-toggle img.is-loaded {
+  opacity: 1;
 }
 .works-page .history-item-copy {
   justify-content: flex-start;

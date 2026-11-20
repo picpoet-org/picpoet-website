@@ -28,6 +28,12 @@ export function provideSession() {
   const phoneAccount = computed(() => isPhoneAccount(user.value));
   const identityLabel = computed(() => accountLabel(user.value));
   const balance = ref(null);
+  const remaining = computed(() => {
+    const groups = balance.value?.remaining;
+    return [groups?.gifted, groups?.purchased].every((n) => Number.isSafeInteger(n) && n >= 0)
+      ? groups
+      : null;
+  });
   const invitationURL = computed(() =>
     buildInvitationURL(
       user.value?.id,
@@ -228,6 +234,7 @@ export function provideSession() {
     phoneAccount,
     identityLabel,
     balance,
+    remaining,
     invitationURL,
     grantedCredits,
     ensureInvitationURL,
