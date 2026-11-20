@@ -144,7 +144,10 @@ export function provideSession() {
   async function performLoadSession(ticket) {
     retrySession.value = false;
     const success = await action('session', status, async (ticket) => {
+      const revision = profileRevision;
       const data = await request(ticket, '/session');
+      // 同账号绑定成功时，忽略更早启动的会话读取返回的旧资料。
+      if (revision !== profileRevision && data.authenticated && data.user?.id === user.value?.id) return;
       if (data.authenticated) {
         if (!hasAccountIdentity(data.user)) throw failure('session.invalid');
         if (user.value && user.value.id !== data.user.id) reset();
@@ -161,6 +164,13 @@ export function provideSession() {
     return !!success;
   }
   let channel;
+  let profileRevision = 0;
+  function updateProfile(value) {
+    if (!hasAccountIdentity(value) || value.id !== user.value?.id) throw failure('session.invalid');
+    profileRevision++;
+    user.value = value;
+    channel?.postMessage({ type: 'profile', id: value.id });
+  }
   function acceptLogin(value) {
     reset();
     user.value = value;
@@ -202,6 +212,13 @@ export function provideSession() {
     if (typeof BroadcastChannel !== 'undefined') {
       channel = new BroadcastChannel('picpoet-session');
       channel.onmessage = ({ data }) => {
+        if (data?.type === 'profile' && data.id === user.value?.id) {
+          // 等待较早的会话检查结束，再从 BFF 读取最新资料，不打断其他页的创作。
+          void Promise.resolve(sessionRequest).then(() => {
+            if (data.id === user.value?.id) void loadSession();
+          });
+          return;
+        }
         if (!['logout', 'changed'].includes(data)) return;
         reset();
         status.value = '';
@@ -251,6 +268,7 @@ export function provideSession() {
     loadSession,
     logout,
     acceptLogin,
+    updateProfile,
     error,
     failure,
   };

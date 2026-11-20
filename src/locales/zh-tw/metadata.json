@@ -30,7 +30,7 @@
     },
     "login": {
       "title": "歡迎來到{brand} · {brand}",
-      "description": "登錄已有帳戶，或註冊並驗證郵件。你的作品與次數會隨帳戶保存。"
+      "description": "使用信箱或手機號碼註冊、登入，繼續你的創作。"
     }
   },
   "errors": {

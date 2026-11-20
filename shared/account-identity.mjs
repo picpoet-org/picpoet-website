@@ -12,6 +12,10 @@ export function isPhoneAccount(user) {
   return user?.authMethod === 'phone' && !!normalizePhone(user.phone);
 }
 
+export function hasVerifiedEmail(user) {
+  return user?.emailVerified === true && typeof user.email === 'string' && !!user.email.trim();
+}
+
 export function hasAccountIdentity(user) {
   return typeof user?.id === 'string' && !!user.id &&
     (isPhoneAccount(user) || (user.authMethod !== 'phone' && typeof user.email === 'string' && !!user.email));

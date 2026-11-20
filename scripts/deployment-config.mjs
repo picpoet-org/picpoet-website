@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { validateManifest, publicHttpsUrl } from '../shared/releases.mjs';
 
 export const deployment = JSON.parse(await readFile(new URL('../deployment.json', import.meta.url), 'utf8'));
-for (const field of ['websiteUrl', 'manifestUrl', 'downloadBaseUrl', 'releaseFeedUrl']) {
+for (const field of ['websiteUrl', 'dashboardWebUrl', 'manifestUrl', 'downloadBaseUrl', 'releaseFeedUrl']) {
   const value = deployment[field];
   if (!publicHttpsUrl(value) || new URL(value).search || new URL(value).hash) {
     throw new Error(`部署配置 ${field} 使用无凭据、查询参数或片段的 HTTPS 地址。`);

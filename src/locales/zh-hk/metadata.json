@@ -32,7 +32,7 @@
     },
     "login": {
       "title": "歡迎來到{brand} · {brand}",
-      "description": "登录已有賬戶，或註冊並驗證郵箱。你的作品與次數會隨賬戶保存。"
+      "description": "使用電郵或手機號碼註冊、登入，繼續你的創作。"
     }
   },
   "errors": {

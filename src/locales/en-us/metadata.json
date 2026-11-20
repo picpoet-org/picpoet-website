@@ -30,7 +30,7 @@
     },
     "login": {
       "title": "欢迎来到{brand} · {brand}",
-      "description": "登录已有账户，或注册并验证邮箱。你的作品与次数会随账户保存。"
+      "description": "Register or log in with your email or phone number to continue your creation."
     }
   },
   "errors": {

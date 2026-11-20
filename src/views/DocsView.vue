@@ -78,6 +78,8 @@ const { t, href } = useSite();
           <h2>{{ t('content.docs.t044') }}</h2>
           <p>{{ t('content.docs.t045') }}</p>
           <ul>
+            <li>{{ t('phoneAuth.notice') }}</li>
+            <li>{{ t('content.docs.emailChange') }}</li>
             <li>{{ t('content.docs.t046') }}</li>
             <li>{{ t('content.docs.t047') }}</li>
             <li>{{ t('content.docs.t048') }}</li>

@@ -3,6 +3,7 @@ import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
 import { useSession } from '../composables/useSession.mjs';
 import { useOrders } from '../composables/useOrders.mjs';
 import SessionGate from '../components/SessionGate.vue';
+import RecoveryEmail from '../components/RecoveryEmail.vue';
 import OrderItem from '../components/OrderItem.vue';
 import GenerationPreferences from '../components/GenerationPreferences.vue';
 const session = useSession();
@@ -122,6 +123,7 @@ const {
               )
             }}</span>
           </div>
+          <RecoveryEmail v-if="verified" :key="user.id" />
           <dl id="balance" class="account-balance" :aria-label="t('account.remaining')">
             <div v-for="kind in ['gifted', 'purchased']" :key="kind">
               <dt>{{ t('session.' + kind) }}</dt>
@@ -141,7 +143,7 @@ const {
       </section>
       <section v-if="user" class="create-panel account-referral" aria-labelledby="referral-title">
         <h2 id="referral-title">{{ t('referral.title') }}</h2>
-        <p class="referral-reward">{{ t('sharing.rewardAmount') }}</p>
+        <p class="referral-reward">{{ t('referral.offer') }}</p>
         <p class="referral-description">{{ t('referral.help') }}</p>
         <p v-if="grantedCredits !== null" id="referral-credits" class="referral-total">
           {{ grantedLabel[0] }}<strong>{{ session.number(grantedCredits) }}</strong

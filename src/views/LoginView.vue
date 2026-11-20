@@ -5,6 +5,7 @@ import { readInvitation } from '../../shared/invitation.mjs';
 import { normalizePhone, hasAccountIdentity } from '../../shared/account-identity.mjs';
 import { safeReturnTo } from '../../shared/user-navigation.mjs';
 import SessionGate from '../components/SessionGate.vue';
+import { websiteUrl, dashboardWebUrl } from '../../deployment.json';
 const session = useSession();
 const { t, href, user, ready, verified, busy, action, request, failure } = session;
 const mode = ref('login'),
@@ -40,7 +41,15 @@ const continueLabel = {
   'account.html#purchase': 'account.topUp',
   'account.html#orders': 'account.orders',
 }[returnTo];
+const recoveryURL = ref('');
 onMounted(() => {
+  const dashboard =
+    import.meta.env.VITE_DASHBOARD_WEB_URL || (location.origin === websiteUrl ? dashboardWebUrl : '');
+  if (dashboard && URL.canParse('/forgot-password', dashboard)) {
+    const url = new URL('/forgot-password', dashboard);
+    if (['https:', 'http:'].includes(url.protocol) && !url.username && !url.password)
+      recoveryURL.value = url.href;
+  }
   // 仅在客户端读取邀请码，避免 SSR 与 hydration 因 query 不一致。
   const code = readInvitation(location.search);
   if (!code) return;
@@ -112,6 +121,7 @@ async function authenticate() {
     showPassword.value = false;
     if (wasRegistering && phoneMode) {
       identity.value = body.phone;
+      identityBlurred.value = true;
       mode.value = 'login';
       verifyOpen.value = false;
       authStatus.value = t('phoneAuth.registered');
@@ -314,6 +324,13 @@ session.resets.add(() => {
               </button>
             </fieldset>
           </form>
+          <a
+            v-if="!registering && recoveryURL"
+            class="text-link"
+            :href="recoveryURL"
+            referrerpolicy="no-referrer"
+            >{{ t('recoveryEmail.forgotPassword') }}</a
+          >
         </div>
         <details id="verify-panel" :open="verifyOpen" :hidden="verified || usingPhone">
           <summary>{{ t('auth.verifyTitle') }}</summary>
