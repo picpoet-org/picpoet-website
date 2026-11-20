@@ -2,8 +2,14 @@
 import { ref } from 'vue';
 import { useSite } from '../i18n/context.mjs';
 const { t } = useSite();
-defineProps({ modelValue: Boolean, photo: Boolean, hasPhoto: Boolean, disabled: Boolean });
-const emit = defineEmits(['update:modelValue', 'update:photo']);
+defineProps({
+  modelValue: Boolean,
+  photo: Boolean,
+  fillPhoto: Boolean,
+  hasPhoto: Boolean,
+  disabled: Boolean,
+});
+const emit = defineEmits(['update:modelValue', 'update:photo', 'update:fillPhoto']);
 const dialog = ref();
 function change(event) {
   const checked = event.target.checked;
@@ -25,6 +31,15 @@ function omit() {
       @change="$emit('update:photo', $event.target.checked)"
     />
     <span>{{ t('sharing.includePhoto') }}</span>
+  </label>
+  <label v-if="hasPhoto" class="share-option">
+    <input
+      type="checkbox"
+      :checked="fillPhoto"
+      :disabled="disabled || !photo"
+      @change="$emit('update:fillPhoto', $event.target.checked)"
+    />
+    <span>{{ t('sharing.fillPhoto') }}</span>
   </label>
   <label class="share-option">
     <input type="checkbox" :checked="modelValue" :disabled="disabled" @change="change" />
@@ -71,6 +86,7 @@ label.share-option {
   color: var(--pp-color-ink);
 }
 .share-option:has(:disabled) {
+  opacity: 0.65;
   cursor: not-allowed;
 }
 .share-invitation-dialog {

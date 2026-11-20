@@ -14,6 +14,8 @@ const {
   cardPhotoURL,
   includePhoto,
   setIncludePhoto,
+  fillPhoto,
+  setFillPhoto,
   includeInvitation,
   setIncludeInvitation,
   image,
@@ -211,6 +213,8 @@ const {
             <ShareImageOptions
               :has-photo="!!cardPhotoURL"
               :photo="includePhoto"
+              :fill-photo="fillPhoto"
+              @update:fill-photo="setFillPhoto"
               @update:photo="setIncludePhoto"
               :model-value="includeInvitation"
               :disabled="busy.has('card') || busy.has('share')"

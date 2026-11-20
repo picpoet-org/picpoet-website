@@ -1,3 +1,4 @@
+import { useShareImageOptions } from './useShareImageOptions.mjs';
 import { apiURL } from '../../shared/api-origin.mjs';
 import { ref, shallowRef, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { ApiError, UUID } from '../../shared/create-core.mjs';
@@ -6,8 +7,8 @@ import { generationResult } from '../../shared/generation-result.mjs';
 
 export function useHistory(session) {
   const { t, api, scope, user, failure, error, brand } = session;
-  const includeInvitation = ref(true);
-  const includePhoto = ref(true);
+  const shareOptions = useShareImageOptions(redrawCard);
+  const { includeInvitation, includePhoto, fillPhoto } = shareOptions;
   const rows = ref([]),
     cursor = ref(null),
     listBusy = ref(false),
@@ -32,8 +33,7 @@ export function useHistory(session) {
     if (value) URL.revokeObjectURL(value);
   };
   function clearDetail() {
-    includeInvitation.value = true;
-    includePhoto.value = true;
+    shareOptions.reset();
     detailVersion++;
     dialog.value?.close();
     deleteDialog.value?.close();
@@ -269,6 +269,7 @@ export function useHistory(session) {
       const invitationURL = includeInvitation.value ? await session.ensureInvitationURL(ticket) : '';
       const blob = await renderPoemCard(source.poem, {
         brand,
+        fillPhoto: fillPhoto.value,
         photoURL: includePhoto.value ? photoURL.value : '',
         invitationURL,
         invitationLabel: t('sharing.scan'),
@@ -319,14 +320,6 @@ export function useHistory(session) {
     session.resets.delete(reset);
     reset();
   });
-  function setIncludePhoto(value) {
-    includePhoto.value = value;
-    return redrawCard();
-  }
-  function setIncludeInvitation(value) {
-    includeInvitation.value = value;
-    return redrawCard();
-  }
   async function redrawCard() {
     const hadCard = !!cardURL.value;
     release(cardURL.value);
@@ -335,9 +328,11 @@ export function useHistory(session) {
   }
   return {
     includePhoto,
-    setIncludePhoto,
+    fillPhoto,
     includeInvitation,
-    setIncludeInvitation,
+    setFillPhoto: shareOptions.setFillPhoto,
+    setIncludePhoto: shareOptions.setIncludePhoto,
+    setIncludeInvitation: shareOptions.setIncludeInvitation,
     rows,
     cursor,
     listBusy,

@@ -1,3 +1,4 @@
+import { useShareImageOptions } from './useShareImageOptions.mjs';
 import { ref, shallowRef, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import {
   createScope,
@@ -18,8 +19,8 @@ export function useGeneration(session) {
     () => preferences.value.value.photoInfo || !!preferences.value.value.poem || !!preferences.value.value.ci,
   );
   const resultInfo = shallowRef(null);
-  const includeInvitation = ref(true);
-  const includePhoto = ref(true);
+  const shareOptions = useShareImageOptions(redrawCard);
+  const { includeInvitation, includePhoto, fillPhoto } = shareOptions;
   const image = shallowRef(null),
     photoURL = ref(''),
     caption = ref(''),
@@ -53,8 +54,7 @@ export function useGeneration(session) {
     canShare.value = false;
   }
   function clearResult() {
-    includeInvitation.value = true;
-    includePhoto.value = true;
+    shareOptions.reset();
     clearCard();
     poem.value = null;
     resultInfo.value = null;
@@ -112,6 +112,7 @@ export function useGeneration(session) {
       const invitationURL = includeInvitation.value ? await session.ensureInvitationURL(ticket) : '';
       const blob = await renderPoemCard(source, {
         brand,
+        fillPhoto: fillPhoto.value,
         photoURL: includePhoto.value ? cardPhotoURL.value : '',
         invitationURL,
         invitationLabel: t('sharing.scan'),
@@ -257,14 +258,6 @@ export function useGeneration(session) {
     session.resets.delete(reset);
     reset();
   });
-  function setIncludePhoto(value) {
-    includePhoto.value = value;
-    return redrawCard();
-  }
-  function setIncludeInvitation(value) {
-    includeInvitation.value = value;
-    return redrawCard();
-  }
   async function redrawCard() {
     clearCard();
     await draw();
@@ -275,9 +268,11 @@ export function useGeneration(session) {
     preferencesStatus: preferences.status,
     cardPhotoURL,
     includePhoto,
-    setIncludePhoto,
+    fillPhoto,
     includeInvitation,
-    setIncludeInvitation,
+    setFillPhoto: shareOptions.setFillPhoto,
+    setIncludePhoto: shareOptions.setIncludePhoto,
+    setIncludeInvitation: shareOptions.setIncludeInvitation,
     image,
     photoURL,
     caption,

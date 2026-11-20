@@ -12,6 +12,8 @@ const {
   loadingPhoto,
   includePhoto,
   setIncludePhoto,
+  fillPhoto,
+  setFillPhoto,
   includeInvitation,
   setIncludeInvitation,
   rows,
@@ -224,6 +226,8 @@ function backdrop(event) {
               <ShareImageOptions
                 :has-photo="!!photoURL"
                 :photo="includePhoto"
+                :fill-photo="fillPhoto"
+                @update:fill-photo="setFillPhoto"
                 @update:photo="setIncludePhoto"
                 :model-value="includeInvitation"
                 :disabled="drawing || deleting || !selected?.poem"

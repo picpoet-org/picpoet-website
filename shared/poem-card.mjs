@@ -90,7 +90,19 @@ export async function loadCardFont(text) {
     throw new Error('文楷字体未能启用，分享图尚未生成。可先拷贝诗词，稍后从我的作品下载分享图。');
   }
 }
-export async function renderPoemCard(data, { brand = '图赋', photoURL = '', invitationURL = '', invitationLabel = '扫码，一起写诗' } = {}) {
+function drawPhoto(ctx, photo, width, height, fill) {
+  const { naturalWidth, naturalHeight } = photo;
+  if (fill) {
+    const scale = Math.max(width / naturalWidth, height / naturalHeight);
+    const sw = width / scale, sh = height / scale;
+    ctx.drawImage(photo, (naturalWidth - sw) / 2, (naturalHeight - sh) / 2, sw, sh, 0, 0, width, height);
+  } else {
+    const scale = Math.min(width / naturalWidth, height / naturalHeight);
+    const w = naturalWidth * scale, h = naturalHeight * scale;
+    ctx.drawImage(photo, (width - w) / 2, (height - h) / 2, w, h);
+  }
+}
+export async function renderPoemCard(data, { brand = '图赋', photoURL = '', fillPhoto = true, invitationURL = '', invitationLabel = '扫码，一起写诗' } = {}) {
   const matrix = invitationURL ? createQRMatrix(invitationURL) : null;
   const qrScale = 4;
   const qrSize = matrix ? (matrix.length + 8) * qrScale : 0;
@@ -101,24 +113,21 @@ export async function renderPoemCard(data, { brand = '图赋', photoURL = '', in
   const measure = (glyph, size) => { ctx.font = `${size}px "${CARD_FONT_FAMILY}"`; return ctx.measureText(glyph).width; };
   const layout = cardLayout(data, measure, { qrSize });
   const photo = photoURL ? new Image() : null;
-  let photoWidth = 0, photoHeight = 0, poemLeft = 0;
   if (photo) {
     photo.src = photoURL;
     await photo.decode();
-    const inset = CARD.padding / 2;
-    const scale = Math.min((layout.width - 2 * inset) / photo.naturalWidth, (layout.height - 2 * inset) / photo.naturalHeight);
-    photoWidth = photo.naturalWidth * scale;
-    photoHeight = photo.naturalHeight * scale;
-    poemLeft = Math.ceil(photoWidth + inset);
   }
-  canvas.width = poemLeft + layout.width; canvas.height = layout.height;
+  const portrait = photo && photo.naturalHeight > photo.naturalWidth;
+  const poemLeft = portrait ? layout.width : 0;
+  const poemTop = photo && !portrait ? Math.round(layout.width * 9 / 16) : 0;
+  canvas.width = poemLeft + layout.width; canvas.height = poemTop + layout.height;
   const colors = getComputedStyle(document.documentElement);
   const color = (name, fallback) => colors.getPropertyValue(`--pp-color-${name}`).trim() || fallback;
   try {
     ctx.fillStyle = color('paper', '#f5f3ee'); ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (photo) {
-      ctx.drawImage(photo, CARD.padding / 2, (layout.height - photoHeight) / 2, photoWidth, photoHeight);
-      ctx.translate(poemLeft, 0);
+      drawPhoto(ctx, photo, layout.width, portrait ? layout.height : poemTop, fillPhoto);
+      ctx.translate(poemLeft, poemTop);
     }
     ctx.strokeStyle = color('line', '#d7d3c9'); ctx.lineWidth = 1; ctx.strokeRect(36, 36, layout.width - 72, layout.height - 72);
     const drawLine = (text, size, spacing, center, top) => {

@@ -60,6 +60,7 @@
     "scan": "Scan QR Code to Write Poems Together",
     "noInvitation": "This image does not currently include a personal invitation code, but the poem can still be downloaded and shared.",
     "includePhoto": "Include photo",
+    "fillPhoto": "Fill frame with photo",
     "includeQR": "Include Invitation QR Code",
     "rewardTitle": "Share to Earn Creation Credits",
     "rewardNotice": "For each friend who successfully registers by scanning the QR code in the sharing image, you will receive 3 creation credits.",

@@ -34,7 +34,7 @@ test('首页以诗意叙事引导下载，并保留费用、隐私与真实使�
   assert.match(docs, /客户端 App/);
   assert.match(docs, /API key/);
   assert.match(docs, /所选照片及生成所需内容会发送至你配置的模型服务/);
-  assert.match(docs, /分享图都不包含原照片/);
+  assert.match(docs, /分享图默认附上可用的照片；如不想公开照片，请取消“附加照片”并检查预览/);
   assert.match(pricing, /免费软件不包含云端模型额度/);
 });
 
