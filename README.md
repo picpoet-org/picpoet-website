@@ -288,6 +288,8 @@ esa-cli deploy --assets ./public --name picpoet-website --environment staging --
 
 官网**当前生效版本以 ESA 的 `deployments list` → Production 为准**；推送 `main` 可能产生另一个 Git 自动部署版本。源代码以本仓库 `main` 为准；交付内容以官网 HTTPS 实际响应的哈希对照上述产物为准（入口 JS SHA-256：`9439733f5d23a52545ee6ccda98f894add98559b887d837fb6c8a3efcedfb47c`）。客户端安装包版本另以 R2 `stable.json` 为准。需回滚时，先确认没有后续自动部署仍在执行，再运行 `esa-cli deploy --name picpoet-website --environment production --version 1795172745473472862 --no-preview`，复核 Production 活动版本、页面和匿名 API；此命令仅回滚官网静态资源。
 
+本次推送 `main` 后观察到 Git 自动部署版本 `1795264598238207324` 接替手动版本，并额外公开构建用的 `/.vite/manifest.json`。本次发布以静态文件集合与 staging 严格一致为验收条件：待最后一次推送触发的自动部署结束，再把 production 切回已验证的 production 绑定版本 `1795264478539166852`，不再推送或重新构建。核验 `/.vite/manifest.json` 返回 404，公开文件 SHA-256 与预发布集合一致。后续推送同样需要复核，直至云端构建也排除内部清单。
+
 本仓库不再提供 Docker 后端镜像；Go BFF 随 `picpoet-server` 构建和部署。独立 `picpoet-web-gateway` 已删除，网站 `esa.jsonc` 仅声明静态构建。旧邀请链接只用 ESA 302 兼容跳转，不做代理。
 
 ESA 路由、域名绑定与安全响应头配置见相邻 `ecs-manager/k3s/resources/jqknono.com/picpoet-pages.json`。它们属于站点配置，不是 `esa.jsonc` 构建字段，发布静态产物不会自动修改这些规则。回滚必须协调后端版本、会话存储与动态路由，详细步骤见相邻 `ecs-manager` 的 `picpoet-release.md`。
