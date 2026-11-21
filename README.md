@@ -284,6 +284,10 @@ esa-cli deploy --assets ./public --name picpoet-website --environment staging --
 
 2026-11-21，客户端 0.2.6 配套官网已预发布至 ESA **staging**，待确认后按版本提升，不重新构建。源码提交 `e0aae28`；staging 版本 `1795263349220258572`，核验时 production 仍为 `1795172745473472862`。54 项测试、六语言构建与字典检查、格式检查通过。上传前核对静态文件白名单并排除仅构建和测试使用的 `public/.vite/manifest.json`，共交付 682 个文件。通过两个 staging IP 验证首页、英文创作页、日文兼容作品页和入口 JS 与本地产物字节一致；未调用业务 API。
 
+同日生产发布：ESA 明确拒绝将绑定 staging 的版本号直接部署到 production。未重新构建，重新核对同一份 682 文件的 `public/` 后按 production 环境上传，手动发布版本为 `1795264478539166852`。产物指纹（按相对路径排序，顺序拼接 UTF-8 路径、NUL、文件 SHA-256 原始字节后再取 SHA-256）：`d4d392295cc900e81e37e18ce9ebb4ab319971f1ecd8e230ec3d1d7c6070da75`。生产首页、创作页、作品历史页、兼容样例页、入口 CSS/JS 和 EXIF JS 与原产物逐字节一致；官方 Origin 的匿名 `/web-api/session` 返回 `200`、`authenticated: false`，匿名历史列表返回 `401 UNAUTHENTICATED`，均允许该 Origin 携带凭据。未使用真实用户或调整 DNS、验证码策略。
+
+官网**当前生效版本以 ESA 的 `deployments list` → Production 为准**；推送 `main` 可能产生另一个 Git 自动部署版本。源代码以本仓库 `main` 为准；交付内容以官网 HTTPS 实际响应的哈希对照上述产物为准（入口 JS SHA-256：`9439733f5d23a52545ee6ccda98f894add98559b887d837fb6c8a3efcedfb47c`）。客户端安装包版本另以 R2 `stable.json` 为准。需回滚时，先确认没有后续自动部署仍在执行，再运行 `esa-cli deploy --name picpoet-website --environment production --version 1795172745473472862 --no-preview`，复核 Production 活动版本、页面和匿名 API；此命令仅回滚官网静态资源。
+
 本仓库不再提供 Docker 后端镜像；Go BFF 随 `picpoet-server` 构建和部署。独立 `picpoet-web-gateway` 已删除，网站 `esa.jsonc` 仅声明静态构建。旧邀请链接只用 ESA 302 兼容跳转，不做代理。
 
 ESA 路由、域名绑定与安全响应头配置见相邻 `ecs-manager/k3s/resources/jqknono.com/picpoet-pages.json`。它们属于站点配置，不是 `esa.jsonc` 构建字段，发布静态产物不会自动修改这些规则。回滚必须协调后端版本、会话存储与动态路由，详细步骤见相邻 `ecs-manager` 的 `picpoet-release.md`。
