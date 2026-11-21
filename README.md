@@ -282,6 +282,8 @@ npm run build:all
 esa-cli deploy --assets ./public --name picpoet-website --environment staging --no-preview
 ```
 
+2026-11-21，客户端 0.2.6 配套官网已预发布至 ESA **staging**，待确认后按版本提升，不重新构建。源码提交 `e0aae28`；staging 版本 `1795263349220258572`，核验时 production 仍为 `1795172745473472862`。54 项测试、六语言构建与字典检查、格式检查通过。上传前核对静态文件白名单并排除仅构建和测试使用的 `public/.vite/manifest.json`，共交付 682 个文件。通过两个 staging IP 验证首页、英文创作页、日文兼容作品页和入口 JS 与本地产物字节一致；未调用业务 API。
+
 本仓库不再提供 Docker 后端镜像；Go BFF 随 `picpoet-server` 构建和部署。独立 `picpoet-web-gateway` 已删除，网站 `esa.jsonc` 仅声明静态构建。旧邀请链接只用 ESA 302 兼容跳转，不做代理。
 
 ESA 路由、域名绑定与安全响应头配置见相邻 `ecs-manager/k3s/resources/jqknono.com/picpoet-pages.json`。它们属于站点配置，不是 `esa.jsonc` 构建字段，发布静态产物不会自动修改这些规则。回滚必须协调后端版本、会话存储与动态路由，详细步骤见相邻 `ecs-manager` 的 `picpoet-release.md`。
