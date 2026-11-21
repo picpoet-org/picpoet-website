@@ -10,6 +10,7 @@ import {
 } from '../../shared/create-core.mjs';
 import { poemPlainText, renderPoemCard } from '../../shared/poem-card.mjs';
 import { generationResult } from '../../shared/generation-result.mjs';
+import { photoSource, shareFile } from '../../shared/photo-source.mjs';
 import { useGenerationPreferences } from './useGenerationPreferences.mjs';
 
 export function useGeneration(session) {
@@ -42,15 +43,16 @@ export function useGeneration(session) {
     copyFallback = ref(false);
   const poemText = computed(() => (poem.value ? poemPlainText(poem.value) : ''));
   const pollScope = createScope();
-  let cardBlob = null,
-    imageVersion = 0;
+  const cardFile = shallowRef(null);
+  const cardName = computed(() => cardFile.value?.name || 'PicPoet.png');
+  let imageVersion = 0;
   const release = (url) => {
     if (url) URL.revokeObjectURL(url);
   };
   function clearCard() {
     release(cardURL.value);
     cardURL.value = '';
-    cardBlob = null;
+    cardFile.value = null;
     canShare.value = false;
   }
   function clearResult() {
@@ -84,7 +86,7 @@ export function useGeneration(session) {
     task.value = { id, attempt, terminal: false, status: 'unknown' };
   }
   async function pick(event) {
-    if (task.value || !verified.value) return;
+    if (task.value || busy.has('task') || !verified.value) return;
     const file = event.target.files?.[0];
     const version = ++imageVersion;
     image.value = null;
@@ -114,14 +116,15 @@ export function useGeneration(session) {
         brand,
         fillPhoto: fillPhoto.value,
         photoURL: includePhoto.value ? cardPhotoURL.value : '',
+        photoDateTime: target.source.photoDateTime,
         invitationURL,
         invitationLabel: t('sharing.scan'),
       });
       scope.assert(ticket);
       if (poem.value !== source || task.value !== target) return;
-      cardBlob = blob;
-      cardURL.value = URL.createObjectURL(blob);
-      const file = new File([blob], 'picpoet-poem.png', { type: 'image/png' });
+      const file = shareFile(blob, target.source);
+      cardFile.value = file;
+      cardURL.value = URL.createObjectURL(file);
       canShare.value = typeof navigator.share === 'function' && !!navigator.canShare?.({ files: [file] });
       cardStatus.value = !includeInvitation.value || invitationURL ? '' : t('sharing.noInvitation');
     });
@@ -158,6 +161,7 @@ export function useGeneration(session) {
         const completedTask = task.value;
         const data = await request(ticket, `/generations/${target.id}/result`);
         if (task.value !== completedTask) return;
+        task.value = { ...completedTask, source: completedTask.attempt?.source ?? photoSource(data) };
         resultInfo.value = generationResult(data);
         poem.value = resultInfo.value.poem;
         expiry.value = result.resultAvailableUntil
@@ -181,7 +185,7 @@ export function useGeneration(session) {
         const snapshot = await preferences.snapshot();
         scope.assert(ticket);
         if (!snapshot.photoInfo && !snapshot.poem && !snapshot.ci) throw failure('preferences.enableContent');
-        const attempt = generationAttempt(image.value?.blob, snapshot);
+        const attempt = generationAttempt(image.value, snapshot);
         setTask(attempt.id, attempt);
       }
       if (!task.value.attempt) throw failure('create.recovered');
@@ -211,10 +215,10 @@ export function useGeneration(session) {
   }
   async function share() {
     await action('share', cardStatus, async (ticket) => {
-      if (!cardBlob) return;
+      if (!cardFile.value) return;
       try {
         await navigator.share({
-          files: [new File([cardBlob], 'picpoet-poem.png', { type: 'image/png' })],
+          files: [cardFile.value],
           title: t('create.shareTitle'),
         });
         scope.assert(ticket);
@@ -283,6 +287,7 @@ export function useGeneration(session) {
     poem,
     expiry,
     cardURL,
+    cardName,
     cardStatus,
     copyStatus,
     copyFallback,

@@ -1,4 +1,5 @@
 import { canvasBlob } from './create-core.mjs';
+import { dateStampedPNG } from './photo-source.mjs';
 import { CARD_FONT_FAMILY, cardFontFaces } from './poem-card-font.mjs';
 import { createQRMatrix, drawQRCode } from './qr-code.mjs';
 
@@ -102,7 +103,7 @@ function drawPhoto(ctx, photo, width, height, fill) {
     ctx.drawImage(photo, (width - w) / 2, (height - h) / 2, w, h);
   }
 }
-export async function renderPoemCard(data, { brand = '图赋', photoURL = '', fillPhoto = true, invitationURL = '', invitationLabel = '扫码，一起写诗' } = {}) {
+export async function renderPoemCard(data, { brand = '图赋', photoURL = '', photoDateTime, fillPhoto = true, invitationURL = '', invitationLabel = '扫码，一起写诗' } = {}) {
   const matrix = invitationURL ? createQRMatrix(invitationURL) : null;
   const qrScale = 4;
   const qrSize = matrix ? (matrix.length + 8) * qrScale : 0;
@@ -166,6 +167,6 @@ export async function renderPoemCard(data, { brand = '图赋', photoURL = '', fi
     }
     const blob = await canvasBlob(canvas, 'image/png');
     if (blob.type !== 'image/png') throw new Error('PNG 导出失败，请重试。');
-    return blob;
+    return dateStampedPNG(blob, photoDateTime);
   } finally { canvas.width = 0; canvas.height = 0; }
 }

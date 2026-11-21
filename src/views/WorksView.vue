@@ -217,7 +217,7 @@ function backdrop(event) {
                 id="history-download"
                 class="button primary"
                 :href="cardURL || undefined"
-                download="picpoet-history-poem.png"
+                :download="selected?.cardName"
                 :hidden="!cardURL"
                 >{{ t('history.download') }}</a
               >

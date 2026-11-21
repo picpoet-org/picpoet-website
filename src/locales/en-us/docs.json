@@ -33,7 +33,7 @@
       "t030": "Select a photo and submit for official generation",
       "t031": "Sign in with your phone number and password, or register with an email address and verify it before signing in.",
       "t032": "Select a JPEG, PNG, WebP, or GIF image on the creation page. After selection, the image is only previewed and processed locally in the browser; it will not be uploaded immediately.",
-      "t033": "After clicking generate, the browser re-encodes the photo to JPEG, removes the original EXIF data, and then submits the official asynchronous task.",
+      "t033": "Only when you generate a poem does the browser upload the re-encoded JPEG. GPS, camera details, and other original EXIF data are stripped from the image. The original filename and photo date, if available, are sent separately for export.",
       "t034": "You can pause querying on this page while waiting for results; the server-side task will not be canceled as a result. You can also continue querying the original task or retry with the same ID.",
       "t035": "Original images up to 25 MiB and 40 million pixels; locally scaled to a maximum long edge of 2048px, upload remains up to 10 MiB. GIFs only process the first frame. The website does not provide poetry genre, rhyming dictionary, or photo metadata preference settings; generation parameters use official default values.",
       "t036": "Please download results in a timely manner",
@@ -102,7 +102,7 @@
       "t098": "Local saving does not mean fully offline",
       "t099": "Please understand 'where results are saved' and 'where generation requests are sent' separately. Both the website and client will send photo content to the corresponding service during generation.",
       "t100": "Website online creation",
-      "t101": "Selected photos are re-encoded in the browser with EXIF removed and uploaded only when you click Generate. The official service and its model providers receive the processed photo. With history enabled, compressed photos, poetry, and generated photo information, including tags and composition suggestions, are retained on the server for 90 days and removed together when you delete history. Photos and sharing images are not stored persistently in the browser.",
+      "t101": "The official service and its model providers receive the re-encoded photo. With history enabled, the official service keeps the compressed photo, original filename and photo date if available, poem, and generated photo information for 90 days. Deleting the work removes its history. The browser does not persist photos or share images.",
       "t102": "Client custom model",
       "t103": "The selected photo and content needed for generation will be sent to the model service you configured. Data retention, usage, and fees are determined by the policy of that service; please read and confirm before sending.",
       "t104": "Client official service",
@@ -110,7 +110,7 @@
       "t106": "Local models and other network connections",
       "t107": "Whether self-deployed visual models continue to call upstream depends on the deployment method. Android update checks, model detection, login, balance checks, and purchases may also connect to the network. Local history does not mean the application is completely offline.",
       "t108": "Confirm once more before sharing",
-      "t109": "Check the text, image, and metadata before sending a photo or sharing a PNG. Share images include the photo by default when available. To keep it private, turn off “Include photo” and check the preview.",
+      "t109": "Share images include the photo by default when available. To leave it out, turn off “Include photo” and check the preview. Even without the picture, the PNG uses the original filename if available and embeds the capture time, or the original file’s modification time. Browsers cannot set the modification time your system shows for a downloaded file.",
       "t111": "Table of contents"
     }
   }

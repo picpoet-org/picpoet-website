@@ -138,7 +138,7 @@ https://picpoet.jqknono.com/{user.id}/invite_code={invitationCode}
 
 ## 网页版创作（本地验收）
 
-网页版复用 Dashboard 的 Picpoet 邮箱注册／OTP 验证、账户及额度，通过官方异步任务生成诗词。分享卡在浏览器以文楷绘制，沿用客户端的纸色、1080px 宽的诗板和品牌底纹，可附照片。文楷使用 ZSFT 发布的霞鹜文楷 v1.530 Regular 网页分片，缓存在 `assets/fonts/lxgw-wenkai/`；绘制时只启用当次文字覆盖的同源 woff2，不请求外部字体，也不再下载完整 TTF。图片选中后仅在本机解码、缩小及 JPEG 重编码（移除原图 EXIF）；点击生成才上传。历史启用后，新提交的账户官方成功任务保存压缩照片与诗词 90 天，可提前永久删除；不保存原图、不回填旧任务。是否已保存以历史接口记录为准，需要长期保留的作品请下载。
+网页版复用 Dashboard 的 Picpoet 邮箱注册／OTP 验证、账户及额度，通过官方异步任务生成诗词。分享卡在浏览器以文楷绘制，沿用客户端的纸色、1080px 宽的诗板和品牌底纹，可附照片。文楷使用 ZSFT 发布的霞鹜文楷 v1.530 Regular 网页分片，缓存在 `assets/fonts/lxgw-wenkai/`；绘制时只启用当次文字覆盖的同源 woff2，不请求外部字体，也不再下载完整 TTF。选图后仅在本机读取原文件名与照片时间、缩小并重新编码为 JPEG；点击生成才上传。上传图片不含原图 EXIF，原文件名及时间作为独立可选字段发送，不收集 GPS、相机型号等其他 EXIF 信息。历史启用后，新提交的账户官方成功任务保存压缩照片与诗词 90 天，可提前永久删除；不保存原图、不回填旧任务。是否已保存以历史接口记录为准，需要长期保留的作品请下载。
 
 工作目录 `picpoet-website/`，Node.js 22.13+。先启动启用了网页接口的 Go 服务，然后启动前端：
 
@@ -169,7 +169,7 @@ bash ../picpoet-app/official-dev.sh stop
 | 网站同源接口 | 官方上游 | 约束 |
 | --- | --- | --- |
 | `GET /web-api/history?limit=20&cursor=…` | `GET /v1/history` | `limit` 1–100，`cursor` 最长 512 字符，仅允许两个键且各出现一次 |
-| `GET /web-api/history/{id}` | `GET /v1/history/{id}` | UUID，返回诗词详情及创建/到期时间 |
+| `GET /web-api/history/{id}` | `GET /v1/history/{id}` | UUID，返回诗词详情、创建/到期时间及可用的 `photoName` / `photoDateTime` |
 | `GET /web-api/history/{id}/image` | `GET /v1/history/{id}/image` | JPEG，最大 2 MiB，独立超时默认 15 秒（`WEB_HISTORY_IMAGE_TIMEOUT_MS`，最大 30 秒） |
 | `DELETE /web-api/history/{id}` | `DELETE /v1/history/{id}` | 用户明确确认后发送，成功须返回 `{deleted:true}` |
 
@@ -293,6 +293,10 @@ ESA 路由、域名绑定与安全响应头配置见相邻 `ecs-manager/k3s/reso
 网站默认端口为 `18090`。一键联调启动时若该端口被占用，仅向当前用户的 TCP 监听进程发送 TERM，等待 5 秒后仍未退出则发送 KILL；不会终止整个进程组。其他用户的进程、无法识别或回收后仍占用的端口会报错，保留现场。此操作可能中断同一用户的其他项目；仅 website 端口启用此策略，其他后端端口继续保留占用进程。需要 Linux pidfd 支持及 `lsof`。已受管理且健康的 website 进程正常复用。旧 `8090` 进程不受影响。
 
 ### 分享图选项
+
+下载和系统分享使用 `原图文件名（仅去掉最后一个扩展名）_picpoet.png`，例如 `春山.清晨.jpg` → `春山.清晨_picpoet.png`。不含路径，替换不合法字符；没有可用原名则用 `PicPoet.png`。优先读取 JPEG、PNG、WebP 原图的 EXIF `DateTimeOriginal`（含亚秒、`OffsetTimeOriginal`；没有时区按客户端本地时间解释）。GIF 无标准 EXIF，或拍摄时间不可用时，回退到原 `File.lastModified`；都缺失则不写日期。输出 PNG 使用标准 `eXIf` 块保存该时刻（保存原拍摄钟表时间及其偏移；仅有文件修改时间或 UTC 历史时使用 `+00:00`），不复制位置或设备信息。取消附图不会移除原文件名和日期。相册是否识别 PNG 拍摄时间取决于软件；浏览器无法指定下载文件在操作系统中的修改时间。
+
+`POST /web-api/generations` 的 multipart 在独立文本字段 `photoName`（清理后的原文件名，含原扩展名，最多 255 UTF-8 字节）和 `photoDateTime`（带时区的 RFC 3339，保留拍摄时的偏移和亚秒；只有绝对时刻时用 `Z`）传递可用值；`image` 仍是重编码的 `photo.jpg`。重试复用任务快照；恢复任务和作品详情分别读取 `/web-api/generations/{id}/result`、`/web-api/history/{id}` 的同名字段，不使用当前选择的其他照片或作品创建时间，不回填缺失的历史元数据。原图字节不进浏览器持久存储。
 
 在线创作或打开「我的作品」时，有对应照片时默认勾选“附加照片”和“铺满照片”。横图及方图在诗板上方占满卡片宽度，照片区域约为 16:9；竖图使用等宽双栏，左侧照片与右侧诗板等高。默认等比居中裁切以铺满照片区域；关闭“铺满照片”则完整居中显示照片，允许留白，位置不变。取消“附加照片”只导出诗词卡，“铺满照片”不可用，不影响邀请二维码选项。恢复任务没有对应本地照片、或历史照片不可用时，不显示照片选项，仍可导出诗词。照片合成在浏览器内完成，不额外上传。
 

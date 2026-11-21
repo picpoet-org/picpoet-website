@@ -28,6 +28,7 @@ const {
   poem,
   expiry,
   cardURL,
+  cardName,
   cardStatus,
   copyStatus,
   copyFallback,
@@ -83,7 +84,10 @@ const {
             {{ t('preferences.enableContent') }}
           </p>
           <form id="create-form" @submit.prevent="!task && submit()">
-            <fieldset id="generation-inputs" :disabled="!verified || !!task || busy.has('image')">
+            <fieldset
+              id="generation-inputs"
+              :disabled="!verified || !!task || busy.has('image') || busy.has('task')"
+            >
               <div class="image-picker">
                 <label for="image">{{ t('create.pick') }}</label><input
                   id="image"
@@ -188,7 +192,7 @@ const {
               id="download-card"
               class="button primary"
               :href="cardURL || undefined"
-              download="picpoet-poem.png"
+              :download="cardName"
               :hidden="!cardURL"
               >{{ t('common.download') }}</a><button
               id="copy-poem"

@@ -5,7 +5,10 @@ import { validateImage, imageDimensions, prepareImage, MAX_IMAGE_BYTES, MAX_SOUR
 import { poemData, poemPlainText, wrapText, cardLayout, CARD } from '../shared/poem-card.mjs';
 import { createQRMatrix, drawQRCode } from '../shared/qr-code.mjs';
 import jsQR from 'jsqr';
-import { secureUUID } from '../shared/create-core.mjs';
+import { secureUUID, generationAttempt, generationForm } from '../shared/create-core.mjs';
+import { readPhotoSource, photoSource, shareFile, dateStampedPNG } from '../shared/photo-source.mjs';
+import ExifReader from 'exifreader';
+import { crc32 } from 'node:zlib';
 
 test('局域网 HTTP 缺少 randomUUID 时用安全随机数生成 UUID v4', () => {
   assert.equal(secureUUID({ getRandomValues: bytes => bytes.fill(255) }), 'ffffffff-ffff-4fff-bfff-ffffffffffff');
@@ -78,7 +81,61 @@ test('像素边界、横竖图缩放与小图不放大', () => {
   assert.deepEqual(imageDimensions(20, 10), { width: 20, height: 10 });
   for (const [w, h] of [[8001, 5000], [0, 1], [Infinity, 1], [1.5, 20]]) assert.throws(() => imageDimensions(w, h));
 });
-test('图片经过 bitmap → 白底 Canvas → JPEG，不上传原字节或文件名', async () => {
+test('JPEG / PNG / WebP 的 EXIF 钟表时间和偏移随任务和分享 PNG 保留，不复制设备信息', async () => {
+  // Pillow 生成的单像素 WebP，含测试设备名、拍摄时间、偏移和亚秒；复用其标准 TIFF 负载。
+  const webp = Buffer.from('UklGRqwAAABXRUJQVlA4WAoAAAAIAAAAAAAAAAAAVlA4TA4AAAAvAAAAAAcQEf0PRET/A0VYSUZ4AAAATU0AKgAAAAgAAgEPAAIAAAAMAAAAJodpAAQAAAABAAAAMgAAAABURVNUIENBTUVSQQAAA5ADAAIAAAAUAAAAXJARAAIAAAAHAAAAcJKRAAIAAAAEMTIzAAAAAAAyMDIwOjA1OjE0IDAzOjA0OjA1ACswOTozMAAA', 'base64');
+  const tiff = webp.subarray(webp.indexOf('EXIF') + 8);
+  function jpeg(payload) {
+    const marker = Buffer.from([255, 216, 255, 225, 0, 0]);
+    marker.writeUInt16BE(payload.length + 8, 4);
+    return Buffer.concat([marker, Buffer.from('Exif\0\0'), payload, Buffer.from([255, 217])]);
+  }
+  const png = new Blob([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC', 'base64')], { type: 'image/png' });
+  const stamp = '2020-05-14T03:04:05.123+09:30';
+  const withDate = dateStampedPNG(png, stamp);
+  for (const [type, bytes] of [['image/webp', webp], ['image/jpeg', jpeg(tiff)], ['image/png', withDate]]) {
+    const original = new File([bytes], 'dir\\山.水?:.jpg', { type, lastModified: 1 });
+    const source = await readPhotoSource(original);
+    assert.deepEqual(source, { photoName: '山.水__.jpg', photoDateTime: stamp });
+    const prepared = { blob: new Blob(['compressed'], { type: 'image/jpeg' }), source };
+    const attempt = generationAttempt(prepared, {}, () => ID);
+    prepared.source = { photoName: '重选.jpg' };
+    const form = generationForm(attempt);
+    assert.equal(form.get('photoDateTime'), stamp);
+    assert.equal(form.get('photoName'), '山.水__.jpg');
+    assert.equal(form.get('image').name, 'photo.jpg');
+    const shared = shareFile(withDate, source);
+    assert.equal(shared.name, '山.水___picpoet.png');
+    assert.equal(shared.lastModified, Date.parse(stamp));
+    const bytesOut = Buffer.from(await shared.arrayBuffer());
+    const end = 33 + 8 + bytesOut.readUInt32BE(33);
+    assert.equal(bytesOut.readUInt32BE(end), crc32(bytesOut.subarray(37, end)));
+    const { exif } = ExifReader.load(bytesOut, { expanded: true });
+    assert.equal(exif.DateTimeOriginal.description, '2020:05:14 03:04:05');
+    assert.equal(exif.OffsetTimeOriginal.description, '+09:30');
+    assert.equal(exif.Make, undefined);
+    assert.equal(exif['GPS Info IFD Pointer'], undefined);
+  }
+  const noOffset = Buffer.from(tiff);
+  noOffset.fill(32, noOffset.indexOf('+09:30'), noOffset.indexOf('+09:30') + 6);
+  const local = await readPhotoSource(new File([jpeg(noOffset)], 'a.jpg', { type: 'image/jpeg' }));
+  assert.equal(Date.parse(local.photoDateTime), new Date(2020, 4, 14, 3, 4, 5, 123).getTime());
+  const historic = '2001-01-01T00:01:02.123456789+05:30';
+  assert.equal((await readPhotoSource(new File([dateStampedPNG(png, historic)], '', { type: 'image/png' }))).photoDateTime, historic);
+});
+
+test('只有原文件时间时回退；旧历史、无时间及无有效原名时不冒用生成日期或标题', async () => {
+  const source = await readPhotoSource(new File(['GIF89a'], 'picture.gif', { type: 'image/gif', lastModified: 0 }));
+  assert.equal(source.photoDateTime, '1970-01-01T00:00:00.000Z');
+  const missing = photoSource({ photoName: 'folder/.jpg', createdAt: '2025-05-05T12:00:00Z', title: '诗名' });
+  const blob = new Blob(['image'], { type: 'image/png' });
+  assert.equal(dateStampedPNG(blob, missing.photoDateTime), blob);
+  assert.equal(shareFile(blob, missing).name, 'PicPoet.png');
+  assert.deepEqual(await readPhotoSource(blob), {});
+  for (const photoDateTime of ['2020-02-31T00:00:00Z', '2020-01-01T00:00:00']) assert.deepEqual(photoSource({ photoDateTime }), {});
+});
+
+test('图片经过 bitmap → 白底 Canvas → JPEG，不上传原字节', async () => {
   const calls = []; let closed = false;
   const output = new Blob(['reencoded'], { type: 'image/jpeg' });
   const canvas = { getContext: () => ({ fillRect: (...args) => calls.push(['fill', ...args]), drawImage: (...args) => calls.push(['draw', ...args]) }), toBlob: (cb, type, quality) => { calls.push(['export', type, quality]); cb(output); } };

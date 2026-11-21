@@ -219,7 +219,7 @@
     "works": "View My Works",
     "compose": "Capture Scenery into Poetry",
     "pick": "Select a Photo",
-    "imageHelp": "JPEG / PNG / WebP / GIF · Original image max 25 MiB, 40 megapixels; compressed locally before uploading, animated GIFs use the first frame only.",
+    "imageHelp": "JPEG / PNG / WebP / GIF · Up to 25 MiB and 40 megapixels; animated images use the first frame. Generating a poem uploads the compressed photo and, if available, the original filename and photo date.",
     "photoAlt": "Local preview of the selected photo",
     "generate": "Generate Poem",
     "processing": "Processing photo…",

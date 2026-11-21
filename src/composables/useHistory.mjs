@@ -4,6 +4,7 @@ import { ref, shallowRef, watch, nextTick, onMounted, onBeforeUnmount } from 'vu
 import { ApiError, UUID } from '../../shared/create-core.mjs';
 import { renderPoemCard } from '../../shared/poem-card.mjs';
 import { generationResult } from '../../shared/generation-result.mjs';
+import { photoSource, shareFilename } from '../../shared/photo-source.mjs';
 
 export function useHistory(session) {
   const { t, api, scope, user, failure, error, brand } = session;
@@ -238,6 +239,8 @@ export function useHistory(session) {
       selected.value = {
         ...data,
         info,
+        photoDateTime: photoSource(data).photoDateTime,
+        cardName: shareFilename(data.photoName),
         poem: info.poem || { title: '', body: t('common.emptyBody') },
         empty: !info.poem,
       };
@@ -271,6 +274,7 @@ export function useHistory(session) {
         brand,
         fillPhoto: fillPhoto.value,
         photoURL: includePhoto.value ? photoURL.value : '',
+        photoDateTime: source.photoDateTime,
         invitationURL,
         invitationLabel: t('sharing.scan'),
       });

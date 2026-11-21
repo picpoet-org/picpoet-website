@@ -41,7 +41,7 @@ function setup(t, fetchImage = async () => jpeg()) {
       if (path.includes('?')) return { items: [{ id: ID, title: '山水', excerpt: '清风' }] };
       detailCalls++;
       if (detailError) throw new ApiError(detailError);
-      return { id: ID, poem: ['清风入山林'] };
+      return { id: ID, poem: ['清风入山林'], photoName: '清风.原图.jpg', photoDateTime: '2019-09-23T00:10:11+05:30' };
     },
     reset() {
       this.scope.reset();
@@ -91,6 +91,8 @@ test('列表、并发详情及重复打开共用一次图片请求，关闭详�
   await opened;
   const url = s.history.photoURL.value;
   assert.ok(url.startsWith('blob:'));
+  assert.equal(s.history.selected.value.cardName, '清风.原图_picpoet.png');
+  assert.equal(s.history.selected.value.photoDateTime, '2019-09-23T00:10:11+05:30');
   assert.equal(s.history.rows.value[0].url, url);
   s.history.close();
   assert.deepEqual(s.revoked, []);

@@ -25,6 +25,7 @@
     "public:sync": "npm run build"
   },
   "dependencies": {
+    "exifreader": "^4.54.0",
     "qrcode-generator": "^2.0.4",
     "vue": "^3.5.45",
     "vue-router": "^4.6.0",

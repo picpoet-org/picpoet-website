@@ -1,4 +1,5 @@
 import { apiURL } from './api-origin.mjs';
+import { readPhotoSource } from './photo-source.mjs';
 // 页面与 node:test 共用的边界校验、请求身份及生命周期。
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 export const MAX_SOURCE_IMAGE_BYTES = 25 * 1024 * 1024;
@@ -32,9 +33,9 @@ export async function prepareImage(file, { decode = globalThis.createImageBitmap
   if (typeof decode !== 'function') throw new Error('此浏览器不支持安全图片解码，请使用新版浏览器。');
   let bitmap;
   try { bitmap = await decode(file); } catch { throw new Error('浏览器无法解码这张图片，请转换为 JPEG 或 PNG 后重试。'); }
-  let canvas;
+  let canvas, blob, size;
   try {
-    const size = imageDimensions(bitmap.width, bitmap.height);
+    size = imageDimensions(bitmap.width, bitmap.height);
     canvas = makeCanvas();
     Object.assign(canvas, size);
     const ctx = canvas.getContext('2d');
@@ -42,13 +43,13 @@ export async function prepareImage(file, { decode = globalThis.createImageBitmap
     ctx.fillStyle = '#f5f3ee';
     ctx.fillRect(0, 0, size.width, size.height);
     ctx.drawImage(bitmap, 0, 0, size.width, size.height);
-    const blob = await canvasBlob(canvas, 'image/jpeg', 0.9);
+    blob = await canvasBlob(canvas, 'image/jpeg', 0.9);
     if (blob.type !== 'image/jpeg' || blob.size > MAX_IMAGE_BYTES) throw new Error('图片重编码失败或仍然过大，请缩小后重试。');
-    return { blob, ...size };
   } finally {
     bitmap.close();
     if (canvas) { canvas.width = 0; canvas.height = 0; }
   }
+  return { blob, ...size, source: await readPhotoSource(file) };
 }
 export function secureUUID(crypto = globalThis.crypto) {
   if (typeof crypto?.randomUUID === 'function') return crypto.randomUUID();
@@ -64,15 +65,17 @@ export function uuid(make = secureUUID) {
   if (!UUID.test(id)) throw new Error('浏览器无法创建请求编号，请在 HTTPS 或本机地址使用新版浏览器。');
   return id.toLowerCase();
 }
-export function generationAttempt(image, preferences, makeUUID) {
-  if (!image || image.type !== 'image/jpeg') throw new Error('请先选择并处理图片。');
-  return Object.freeze({ id: uuid(makeUUID), image, preferences: Object.freeze({ ...preferences }) });
+export function generationAttempt(prepared, preferences, makeUUID) {
+  if (prepared?.blob?.type !== 'image/jpeg') throw new Error('请先选择并处理图片。');
+  return Object.freeze({ id: uuid(makeUUID), image: prepared.blob, source: Object.freeze({ ...prepared.source }), preferences: Object.freeze({ ...preferences }) });
 }
 export function generationForm(attempt) {
   const form = new FormData();
   form.set('generationId', attempt.id);
   form.set('photoInfo', 'false');
   form.set('image', attempt.image, 'photo.jpg');
+  if (attempt.source?.photoName) form.set('photoName', attempt.source.photoName);
+  if (attempt.source?.photoDateTime) form.set('photoDateTime', attempt.source.photoDateTime);
   // ci 的显式空值表示关闭词，不能省略后退回服务端 auto 默认值。
   for (const key of ['language', 'poemLanguage', 'poem', 'poemMeter', 'rhymeStandard', 'ci', 'suggest']) {
     form.set(key, String(key === 'suggest' ? false : attempt.preferences[key]));

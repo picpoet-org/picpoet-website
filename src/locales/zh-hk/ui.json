@@ -219,7 +219,7 @@
     "works": "查看我的作品",
     "compose": "選景成詩",
     "pick": "選擇一張相片",
-    "imageHelp": "JPEG / PNG / WebP / GIF · 原圖最大 25 MiB、4000 萬像素；本地壓縮後上載，動圖僅取首幀。",
+    "imageHelp": "JPEG / PNG / WebP / GIF · 原圖最大 25 MiB、4,000 萬像素；動圖只取首幀。生成時會上載壓縮相片，以及可用的原檔名稱和相片時間。",
     "photoAlt": "所選相片的本地預覽",
     "generate": "生成詩詞",
     "processing": "正在處理相片…",
