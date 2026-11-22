@@ -272,7 +272,7 @@
     "gone": "這份歷史已刪除或過期，無法恢復。",
     "view": "{title}：查看完整詩詞",
     "detail": "詩詞詳情",
-    "close": "關閉作品詳情",
+    "backToList": "返回作品列表",
     "photoAlt": "歷史儲存的壓縮相片",
     "cardAlt": "歷史詩詞分享圖，正文見上方",
     "time": "創作時間：{created} · 自動刪除時間：{expires}",

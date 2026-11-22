@@ -272,7 +272,7 @@
     "gone": "这份历史已删除或过期，无法恢复。",
     "view": "{title}：查看完整诗词",
     "detail": "诗词详情",
-    "close": "关闭作品详情",
+    "backToList": "返回作品列表",
     "photoAlt": "历史保存的压缩照片",
     "cardAlt": "历史诗词分享图，正文见上方",
     "time": "创作时间：{created} · 自动删除时间：{expires}",

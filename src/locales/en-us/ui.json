@@ -272,7 +272,7 @@
     "gone": "This history has been deleted or expired and cannot be recovered.",
     "view": "{title}: View Complete Poem",
     "detail": "Poem Details",
-    "close": "Close Work Details",
+    "backToList": "Back to my works",
     "photoAlt": "Compressed photo saved in history",
     "cardAlt": "Poem sharing image. Full text above.",
     "time": "Created: {created} · Automatically deleted: {expires}",

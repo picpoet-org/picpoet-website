@@ -46,7 +46,8 @@ export function useHistory(session) {
     detailStatus.value = '';
     exportStatus.value = '';
     drawing.value = false;
-    if (trigger?.isConnected) trigger.focus();
+    if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+    trigger = undefined;
   }
   function clearImage(row) {
     release(row.url);

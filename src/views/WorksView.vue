@@ -169,19 +169,15 @@ function backdrop(event) {
         @cancel.prevent="close"
         @click="backdrop"
       >
-        <div class="section-top">
-          <h3 id="history-detail-title">{{ selected?.poem?.title || t('history.detail') }}</h3>
-          <button
-            id="history-dialog-close"
-            class="history-dialog-close"
-            type="button"
-            :aria-label="t('history.close')"
-            autofocus
-            @click="close"
-          >
-            ×
+        <div class="history-detail-nav">
+          <button id="history-dialog-close" class="button secondary" type="button" autofocus @click="close">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m14 5-7 7 7 7" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            {{ t('history.backToList') }}
           </button>
         </div>
+        <h3 id="history-detail-title">{{ selected?.poem?.title || t('history.detail') }}</h3>
         <p id="history-detail-status" class="create-status" role="status" aria-live="polite">
           {{ detailStatus }}
         </p>
@@ -242,6 +238,9 @@ function backdrop(event) {
             :disabled="!selected?.poem || deleting"
             @click="deleteDialog.showModal()"
           >
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13M10 10v7m4-7v7" stroke-linejoin="round" />
+            </svg>
             {{ t('history.delete') }}
           </button>
         </footer>
