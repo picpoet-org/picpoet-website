@@ -3,10 +3,11 @@ import { computed } from 'vue';
 import CiPicker from './CiPicker.vue';
 import SelectControl from './SelectControl.vue';
 import { useGenerationPreferences } from '../composables/useGenerationPreferences.mjs';
-import { options } from '../../shared/generation-preferences.mjs';
+import { defaultPoemLanguage, options } from '../../shared/generation-preferences.mjs';
 const props = defineProps({ session: { type: Object, required: true } });
 const { t } = props.session;
 const { value, status, ready, failed, save, retry } = useGenerationPreferences(props.session);
+const defaultScript = defaultPoemLanguage(props.session.locale);
 const kind = computed(() => (value.value.ci ? 'ci' : value.value.poem || 'none'));
 function update(key, next) {
   save({ ...value.value, [key]: next });
@@ -50,6 +51,10 @@ function setKind(next) {
                 :value="value.poemLanguage"
                 @change="update('poemLanguage', $event.target.value)"
               >
+                <option value="auto">
+                  {{ t('preferences.autoLanguage') }} ·
+                  {{ t(defaultScript === 'zh' ? 'preferences.simplified' : 'preferences.traditional') }}
+                </option>
                 <option value="zh">{{ t('preferences.simplified') }}</option>
                 <option value="zh-Hant">{{ t('preferences.traditional') }}</option>
               </select></SelectControl
@@ -72,7 +77,7 @@ function setKind(next) {
           <CiPicker
             v-if="kind === 'ci'"
             :model-value="value.ci"
-            :poem-language="value.poemLanguage"
+            :poem-language="value.poemLanguage === 'auto' ? defaultScript : value.poemLanguage"
             :t="t"
             @update:model-value="update('ci', $event)"
           />

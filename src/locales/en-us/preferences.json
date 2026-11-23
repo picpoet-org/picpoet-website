@@ -14,7 +14,7 @@
     "poemLanguage": "Poetry script",
     "simplified": "Simplified Chinese",
     "traditional": "Traditional Chinese",
-    "languageHelp": "Poetry supports simplified and traditional Chinese only, with traditional as the default. Tags and photo descriptions use the tag language.",
+    "languageHelp": "When matching the interface, poems use Simplified Chinese for the Simplified Chinese interface and Traditional Chinese for all others. Tags and photo descriptions use the tag language.",
     "form": "Poetic form",
     "forms": {
       "jueju": "Quatrain (jueju)",

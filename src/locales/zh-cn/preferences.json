@@ -14,7 +14,7 @@
     "poemLanguage": "用字",
     "simplified": "简体",
     "traditional": "繁体",
-    "languageHelp": "诗词仅支持简繁中文，默认繁体。标签与照片描述使用标签语言。",
+    "languageHelp": "跟随界面时，简体中文界面使用简体，其他界面使用繁体。标签与照片描述使用标签语言。",
     "form": "体裁",
     "forms": { "jueju": "绝句", "lvshi": "律诗", "line": "单句", "ci": "词", "none": "不生成诗词" },
     "meter": "字数",

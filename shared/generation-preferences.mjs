@@ -1,14 +1,17 @@
 import options from './generation-options.json' with { type: 'json' };
 
 export { options };
-export const defaults = Object.freeze({
+const defaults = Object.freeze({
   language: 'auto',
   photoInfo: false,
   suggest: false,
   ...options.defaults,
-  poemLanguage: 'zh',
+  poemLanguage: 'auto',
 });
 const ciNames = new Set(['', 'auto', ...options.ci.map(([name]) => name)]);
+export function defaultPoemLanguage(locale) {
+  return locale === 'zh-cn' ? 'zh' : 'zh-Hant';
+}
 export function normalizePreferences(value) {
   const input = value && typeof value === 'object' ? value : {};
   const choice = (key, values) => (values.includes(input[key]) ? input[key] : defaults[key]);
@@ -17,7 +20,7 @@ export function normalizePreferences(value) {
     // 网站暂不提供照片信息生成，旧账户的开启值也不启用此分支。
     photoInfo: false,
     language: choice('language', ['auto', ...options.languages]),
-    poemLanguage: choice('poemLanguage', options.poemLanguages),
+    poemLanguage: choice('poemLanguage', ['auto', ...options.poemLanguages]),
     poem,
     poemMeter: choice('poemMeter', options.meters),
     rhymeStandard: choice('rhymeStandard', options.rhymes),
@@ -27,6 +30,7 @@ export function normalizePreferences(value) {
 }
 export function resolvePreferences(value, locale) {
   const result = normalizePreferences(value);
+  if (result.poemLanguage === 'auto') result.poemLanguage = defaultPoemLanguage(locale);
   if (!result.photoInfo) result.suggest = false;
   if (result.language === 'auto')
     result.language =

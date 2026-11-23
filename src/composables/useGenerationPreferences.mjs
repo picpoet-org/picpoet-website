@@ -1,8 +1,11 @@
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
-import { defaults, normalizePreferences, resolvePreferences } from '../../shared/generation-preferences.mjs';
+import {
+  normalizePreferences as normalize,
+  resolvePreferences,
+} from '../../shared/generation-preferences.mjs';
 
 export function useGenerationPreferences(session) {
-  const value = ref({ ...defaults }),
+  const value = ref(normalize()),
     status = ref(''),
     ready = ref(false),
     failed = ref(false);
@@ -15,7 +18,7 @@ export function useGenerationPreferences(session) {
   function cached(version) {
     try {
       const data = JSON.parse(localStorage.getItem(key(version)));
-      return data?.version === version && data.preferences ? normalizePreferences(data.preferences) : null;
+      return data?.version === version && data.preferences ? normalize(data.preferences) : null;
     } catch {
       return null;
     }
@@ -30,7 +33,7 @@ export function useGenerationPreferences(session) {
   function read(data) {
     if (!data?.preferences || typeof data.preferences !== 'object' || Array.isArray(data.preferences))
       throw session.failure('preferences.loadFailed');
-    return normalizePreferences(data.preferences);
+    return normalize(data.preferences);
   }
   function load() {
     if (loading) return loading;
@@ -44,21 +47,22 @@ export function useGenerationPreferences(session) {
       try {
         let data = await session.request(ticket, '/preferences');
         if (current !== epoch) return false;
-        if (data?.preferences === null) {
-          // 只在账户尚无配置时导入；并发初始化由服务器原子地保留首份配置。
+        const legacy = data?.preferences === null ? cached(1) : null;
+        if (legacy) {
+          // 只迁移已有偏好，不把界面语言推导的默认值写成账户选择。
           data = await session.request(
             ticket,
             '/preferences',
-            {
-              preferences: cached(1) || { ...defaults },
-              initialize: true,
-            },
+            { preferences: legacy, initialize: true },
             'PUT',
           );
+          if (current !== epoch) return false;
         }
-        if (current !== epoch) return false;
-        value.value = read(data);
-        cache(value.value);
+        if (!legacy && data?.preferences === null) value.value = normalize();
+        else {
+          value.value = read(data);
+          cache(value.value);
+        }
         ready.value = true;
         status.value = '';
         return true;
@@ -107,7 +111,7 @@ export function useGenerationPreferences(session) {
   }
   function save(next) {
     if (!ready.value || !session.user.value?.id) return;
-    value.value = normalizePreferences(next);
+    value.value = normalize(next);
     pending = value.value;
     return flush();
   }
@@ -124,7 +128,7 @@ export function useGenerationPreferences(session) {
     epoch++;
     pending = saving = loading = null;
     ready.value = failed.value = false;
-    value.value = mounted ? cached(2) || cached(1) || { ...defaults } : { ...defaults };
+    value.value = mounted ? cached(2) || cached(1) || normalize() : normalize();
     status.value = '';
     if (mounted) void load();
   }
