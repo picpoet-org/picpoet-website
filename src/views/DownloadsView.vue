@@ -35,7 +35,10 @@ const upcoming = computed(() => platforms.value.filter((platform) => !platform.a
           class="download-card"
           :class="{ recommended: recommended === platform.id }"
         >
-          <h2>{{ platform.name }}</h2>
+          <header class="download-card-heading">
+            <h2>{{ platform.name }}</h2>
+            <p v-if="recommended === platform.id" class="platform-badge">{{ t('downloads.recommended') }}</p>
+          </header>
           <ReleaseInfo :platform-id="platform.id" />
         </article>
       </div>
@@ -63,9 +66,8 @@ const upcoming = computed(() => platforms.value.filter((platform) => !platform.a
         <p>{{ t('content.downloads.t037') }}</p>
         <div class="actions">
           <a class="button primary" :href="href('create.html')">{{ t('content.downloads.t040') }}</a>
-          <a class="button secondary" :href="href('docs.html#app')">{{ t('content.downloads.t038') }}</a><a
-            class="text-link"
-            :href="href('docs.html#website')"
+          <a class="button secondary" :href="href('docs.html#app')">{{ t('content.downloads.t038') }}</a>
+          <a class="text-link" :href="href('docs.html#website')"
             >{{ t('content.downloads.t039') }}<span aria-hidden="true">→</span></a
           >
         </div>

@@ -102,21 +102,10 @@
 .download-status:empty {
   margin: 0;
 }
-.download-grid {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
-  gap: 1.5rem;
-}
-.download-card {
-  padding: clamp(1.25rem, 3vw, 1.75rem);
-}
-.download-card .platform-caveat {
-  font-size: 0.8125rem;
-  line-height: 1.6;
-}
 .release-details {
-  margin-block-start: 1rem;
+  margin-block-start: auto;
   border-block-start: 1px solid var(--pp-color-line);
-  padding-block-start: 0.5rem;
+  padding-block-start: var(--pp-space-2);
 }
 .release-details .release-date {
   margin-block-start: 0.5rem;
@@ -125,11 +114,12 @@
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.75rem 2rem;
-  margin-block-start: 1.5rem;
-  padding: 1.25rem 1.5rem;
-  border-radius: 0.75rem;
-  background: var(--pp-color-panel);
+  gap: var(--pp-space-3) var(--pp-space-8);
+  margin-block-start: var(--pp-space-6);
+  padding: var(--pp-space-5) var(--pp-space-6);
+  border: 1px dashed var(--pp-color-line);
+  border-radius: var(--pp-radius-3);
+  background: transparent;
 }
 .upcoming-platforms h3 {
   margin: 0;

@@ -337,11 +337,11 @@
   "downloads": {
     "loading": "リリース情報を読み込み中…",
     "empty": "インストールパッケージはありません",
-    "unpublished": "公開中",
+    "unpublished": "公開準備中",
+    "recommended": "この端末",
     "releaseDetails": "アップデート情報",
     "alternateDownload": "別の配信元からダウンロード · {arch}",
     "downloadCompact": "ダウンロード · {arch}",
-    "androidStorage": "原図の上書きには Android 10 以降が必要であり、提供元およびシステムの権限制限を受けます。",
     "unavailable": "リリース情報を一時的に読み込めません。しばらくしてから更新してください。",
     "failed": "リリース情報の読み込みが完了しませんでした。ネットワークを確認してページを更新してください。",
     "version": "バージョン {version}",
