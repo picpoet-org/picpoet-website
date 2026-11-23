@@ -89,6 +89,10 @@ export function provideSession() {
         reset();
         ready.value = true;
         status.value = t('http.s401');
+      } else if (cause.status === 504 && key === 'session') {
+        target.value = t('session.checkTimeout');
+      } else if (cause.status === 504 && key === 'balance') {
+        target.value = t('session.balanceTimeout');
       } else target.value = error(cause);
     } finally {
       if (scope.current(ticket)) busy.delete(key);

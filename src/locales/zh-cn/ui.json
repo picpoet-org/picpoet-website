@@ -157,6 +157,8 @@
   },
   "session": {
     "checking": "正在检查登录状态…",
+    "checkTimeout": "登录状态检查超时，请重试连接。",
+    "balanceTimeout": "创作次数查询超时，回到本页时会再次查询。",
     "retry": "重试连接",
     "loginTitle": "登录后继续",
     "loginHelp": "使用同一个账户，继续创作、查看作品和管理次数。",

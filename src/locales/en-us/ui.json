@@ -157,6 +157,8 @@
   },
   "session": {
     "checking": "Checking login status…",
+    "checkTimeout": "Checking your login status timed out. Please retry the connection.",
+    "balanceTimeout": "Checking your credits timed out. We’ll check again when you return to this tab.",
     "retry": "Retry Connection",
     "loginTitle": "Log in to Continue",
     "loginHelp": "Use the same account to continue creating, viewing works, and managing credits.",

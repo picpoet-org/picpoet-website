@@ -157,6 +157,8 @@
   },
   "session": {
     "checking": "正在檢查登入狀態…",
+    "checkTimeout": "登入狀態檢查逾時，請重新連線。",
+    "balanceTimeout": "創作次數查詢逾時，返回此頁時會再次查詢。",
     "retry": "重試連線",
     "loginTitle": "登入後繼續",
     "loginHelp": "使用同一個帳戶，繼續創作、檢視作品和管理次數。",
