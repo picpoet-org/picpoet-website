@@ -8,8 +8,7 @@ import OrderItem from '../components/OrderItem.vue';
 import PlanCard from '../components/PlanCard.vue';
 import GenerationPreferences from '../components/GenerationPreferences.vue';
 const session = useSession();
-const { t, href, user, verified, busy, remaining, dailyPromotionNote, invitationURL, grantedCredits } =
-  session;
+const { t, href, user, verified, busy, remaining, dailyGrantNote, invitationURL, grantedCredits } = session;
 const grantedLabel = computed(() => t('referral.total', { count: '{count}' }).split('{count}'));
 const copyStatus = ref('');
 const copyFallback = ref(false);
@@ -134,7 +133,7 @@ const {
               </dd>
             </div>
           </dl>
-          <p v-if="dailyPromotionNote" class="fine-print">{{ dailyPromotionNote }}</p>
+          <p v-if="dailyGrantNote" class="fine-print">{{ dailyGrantNote }}</p>
           <div class="account-links">
             <a class="text-link" href="#purchase">{{ t('account.topUp') }}</a><a
               class="text-link"

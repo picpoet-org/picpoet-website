@@ -132,9 +132,11 @@ https://picpoet.jqknono.com/{user.id}/invite_code={invitationCode}
 
 个人中心将账户／余额与邀请获赠分为两块，宽屏并排、窄屏上下排列。邀请操作仅保留“复制邀请链接”；剪贴板不可用时展示并选中可复制的完整链接，切换账户后清除旧反馈。已登录用户访问登录／邀请页时显示当前账户与明确的继续目的地；邀请页说明奖励仅适用于新用户注册，不自动退出或跳转，也不因预览产生奖励。
 
-个人中心和创作页按 `GET /web-api/balance` 的 `remaining.gifted`、`remaining.purchased` 展示赠送和购买的可用余额。赠送余额可包含每日赠送、人工赠送与邀请奖励，不等于每日赠送。仅当当前账户的 `free.promotionActive` 明确为 `true` 时，另用 `free.remaining` 标注「推广期每日赠送」的今日剩余次数；字段缺省或为 `false` 时不显示推广提示。不改变每日上限或领取资格。个人中心另用 `referral.totalGrantedCredits` 展示历史累计邀请获赠，消费后不减少。旧后端缺少相应统计时显示占位，不将未知状态冒充 0。
+个人中心和创作页按 `GET /web-api/balance` 的 `remaining.gifted`、`remaining.purchased` 展示赠送和购买的可用余额。赠送余额可包含每日赠送、人工赠送与邀请奖励，不等于每日赠送。有日赠的账户同时展示 `free.dailyLimit`（每日上限）和 `free.remaining`（今日剩余）；仅当 `free.promotionActive=true` 才标注推广。无余额数据、上限为零或访客状态不承诺日赠，不用赠送合计猜测每日剩余。上限、资格及预占由服务端管理；当日调整后在下次获取余额时直接展示新值。个人中心另用 `referral.totalGrantedCredits` 展示历史累计邀请获赠，消费后不减少。旧后端缺少相应统计时显示占位，不将未知状态冒充 0。
 
-个人中心直接读取 `GET /web-api/plans` 的套餐数组，价格取自 `priceMinor`、`currency`，`credits` 就是实际到账总数。仅当可选的 `baseCredits` 为小于总数的正整数时，才展示促销标识、`credits / baseCredits` 倍率及基础次数；不在浏览器换算应发次数或写死档位。历史订单继续展示订单快照的 `credits`，已到账状态取交付记录的 `delivery.creditsGranted`，不套用当前套餐。
+个人中心直接读取 `GET /web-api/plans` 的套餐数组，价格取自 `priceMinor`、`currency`，`credits` 就是实际到账总数。仅当可选的 `baseCredits` 为小于总数的正整数且能整除总数时，才展示促销标识、`credits / baseCredits` 倍率及基础次数；不在浏览器换算应发次数或写死档位。历史订单继续展示订单快照的 `credits`，已到账状态取交付记录的 `delivery.creditsGranted`，不套用当前套餐。
+
+购买促销与每日赠送分别配置在 `user-dashboard/apps/api/config/picpoet-policy.json`；可用 `PICPOET_POLICY_FILE` 指定文件，相对路径按 Dashboard 进程工作目录解析。修改并重启 Dashboard 后，官网重新获取套餐和余额即可，无需重发网页。例如 7.25 元、基础 5 次、4 倍的套餐显示实际到账 20 次；1 倍时服务端省略 `baseCredits`，卡片只列正常次数与价格。邀请奖励不随此配置调整。
 
 累计获赠下方提供默认收起的“已邀请用户”。每次展开时，网站通过需登录的 `GET /web-api/invitations` 读取 Dashboard 的 `GET /api/v1/invitations`，复用 JWT 续期和服务端用户身份校验，不接受浏览器指定邀请人；仅返回记录 ID 与完整邮箱，不返回用户名或手机号。无邮箱记录显示“手机号用户”，加载失败可重试，成功空列表与接口失败分别提示；退出或切换账户清除列表。记录沿用 Dashboard 成功邀请的统计口径，不能将列表人数乘以当前奖励额度替代累计实际获赠。此功能需更新并重启网站 BFF，无需数据库迁移。奖励迁移及规则说明见 [Dashboard 邀请奖励说明](../../user-dashboard/docs/picpoet-referral-registration-rewards.md)。
 

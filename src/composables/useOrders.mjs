@@ -70,6 +70,7 @@ export function useOrders(session) {
   }
   function loadPlans() {
     return action('plans', status, async (ticket) => {
+      plans.value = [];
       status.value = t('account.plansLoading');
       const data = await request(ticket, '/plans');
       if (

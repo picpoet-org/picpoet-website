@@ -7,7 +7,10 @@ defineEmits(['buy']);
 const { t, money, number } = useSite();
 const multiplier = computed(() => {
   const { baseCredits, credits } = props.plan;
-  return Number.isSafeInteger(baseCredits) && baseCredits > 0 && baseCredits < credits
+  return Number.isSafeInteger(baseCredits) &&
+    baseCredits > 0 &&
+    baseCredits < credits &&
+    credits % baseCredits === 0
     ? credits / baseCredits
     : null;
 });

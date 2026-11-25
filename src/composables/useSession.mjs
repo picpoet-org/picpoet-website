@@ -34,11 +34,13 @@ export function provideSession() {
       ? groups
       : null;
   });
-  const dailyPromotionNote = computed(() => {
+  const dailyGrantNote = computed(() => {
     const free = balance.value?.free;
-    return verified.value && free?.promotionActive === true
-      ? t('session.dailyPromotionRemaining', { count: site.number(free.remaining) })
-      : '';
+    if (!verified.value || !Number.isSafeInteger(free?.dailyLimit) || free.dailyLimit <= 0) return '';
+    return t(free.promotionActive === true ? 'session.dailyPromotionRemaining' : 'session.dailyRemaining', {
+      limit: site.number(free.dailyLimit),
+      count: site.number(free.remaining),
+    });
   });
   const invitationURL = computed(() =>
     buildInvitationURL(
@@ -262,7 +264,7 @@ export function provideSession() {
     identityLabel,
     balance,
     remaining,
-    dailyPromotionNote,
+    dailyGrantNote,
     invitationURL,
     grantedCredits,
     ensureInvitationURL,
