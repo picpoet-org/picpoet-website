@@ -132,7 +132,9 @@ https://picpoet.jqknono.com/{user.id}/invite_code={invitationCode}
 
 个人中心将账户／余额与邀请获赠分为两块，宽屏并排、窄屏上下排列。邀请操作仅保留“复制邀请链接”；剪贴板不可用时展示并选中可复制的完整链接，切换账户后清除旧反馈。已登录用户访问登录／邀请页时显示当前账户与明确的继续目的地；邀请页说明奖励仅适用于新用户注册，不自动退出或跳转，也不因预览产生奖励。
 
-个人中心和创作页按账户服务的 `remaining.gifted`、`remaining.purchased` 展示余额：“赠送剩余”包含每日官方额度、人工赠送与邀请奖励中当前可用的次数；“购买剩余”只包含购买或购买兑换后仍可用的次数，不重复计算赠送。个人中心另用 `referral.totalGrantedCredits` 展示历史累计邀请获赠，消费后不减少。旧后端缺少相应统计时显示占位，不将未知状态冒充 0。
+个人中心和创作页按 `GET /web-api/balance` 的 `remaining.gifted`、`remaining.purchased` 展示赠送和购买的可用余额。赠送余额可包含每日赠送、人工赠送与邀请奖励，不等于每日赠送。仅当当前账户的 `free.promotionActive` 明确为 `true` 时，另用 `free.remaining` 标注「推广期每日赠送」的今日剩余次数；字段缺省或为 `false` 时不显示推广提示。不改变每日上限或领取资格。个人中心另用 `referral.totalGrantedCredits` 展示历史累计邀请获赠，消费后不减少。旧后端缺少相应统计时显示占位，不将未知状态冒充 0。
+
+个人中心直接读取 `GET /web-api/plans` 的套餐数组，价格取自 `priceMinor`、`currency`，`credits` 就是实际到账总数。仅当可选的 `baseCredits` 为小于总数的正整数时，才展示促销标识、`credits / baseCredits` 倍率及基础次数；不在浏览器换算应发次数或写死档位。历史订单继续展示订单快照的 `credits`，已到账状态取交付记录的 `delivery.creditsGranted`，不套用当前套餐。
 
 累计获赠下方提供默认收起的“已邀请用户”。每次展开时，网站通过需登录的 `GET /web-api/invitations` 读取 Dashboard 的 `GET /api/v1/invitations`，复用 JWT 续期和服务端用户身份校验，不接受浏览器指定邀请人；仅返回记录 ID 与完整邮箱，不返回用户名或手机号。无邮箱记录显示“手机号用户”，加载失败可重试，成功空列表与接口失败分别提示；退出或切换账户清除列表。记录沿用 Dashboard 成功邀请的统计口径，不能将列表人数乘以当前奖励额度替代累计实际获赠。此功能需更新并重启网站 BFF，无需数据库迁移。奖励迁移及规则说明见 [Dashboard 邀请奖励说明](../../user-dashboard/docs/picpoet-referral-registration-rewards.md)。
 

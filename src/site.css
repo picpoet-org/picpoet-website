@@ -608,6 +608,16 @@
 .create-page .plan-item h3 {
   white-space: normal;
 }
+.account-page .plan-offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.625rem;
+}
+.account-page .plan-offer .account-badge {
+  border-color: currentColor;
+  color: var(--pp-color-accent-dark);
+}
 .create-page dialog.history-detail {
   inline-size: min(45rem, calc(100% - 2rem));
 }

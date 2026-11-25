@@ -34,6 +34,12 @@ export function provideSession() {
       ? groups
       : null;
   });
+  const dailyPromotionNote = computed(() => {
+    const free = balance.value?.free;
+    return verified.value && free?.promotionActive === true
+      ? t('session.dailyPromotionRemaining', { count: site.number(free.remaining) })
+      : '';
+  });
   const invitationURL = computed(() =>
     buildInvitationURL(
       user.value?.id,
@@ -256,6 +262,7 @@ export function provideSession() {
     identityLabel,
     balance,
     remaining,
+    dailyPromotionNote,
     invitationURL,
     grantedCredits,
     ensureInvitationURL,

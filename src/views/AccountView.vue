@@ -5,9 +5,11 @@ import { useOrders } from '../composables/useOrders.mjs';
 import SessionGate from '../components/SessionGate.vue';
 import RecoveryEmail from '../components/RecoveryEmail.vue';
 import OrderItem from '../components/OrderItem.vue';
+import PlanCard from '../components/PlanCard.vue';
 import GenerationPreferences from '../components/GenerationPreferences.vue';
 const session = useSession();
-const { t, href, user, verified, busy, remaining, money, invitationURL, grantedCredits } = session;
+const { t, href, user, verified, busy, remaining, dailyPromotionNote, invitationURL, grantedCredits } =
+  session;
 const grantedLabel = computed(() => t('referral.total', { count: '{count}' }).split('{count}'));
 const copyStatus = ref('');
 const copyFallback = ref(false);
@@ -132,6 +134,7 @@ const {
               </dd>
             </div>
           </dl>
+          <p v-if="dailyPromotionNote" class="fine-print">{{ dailyPromotionNote }}</p>
           <div class="account-links">
             <a class="text-link" href="#purchase">{{ t('account.topUp') }}</a><a
               class="text-link"
@@ -218,31 +221,13 @@ const {
       <p class="payment-method">{{ t('account.alipay') }}</p>
       <p id="purchase-status" class="create-status" role="status" aria-live="polite">{{ status }}</p>
       <div id="plans" class="plan-grid">
-        <article v-for="plan in plans" :key="plan.id" class="plan-item">
-          <h3>{{ t('common.credits', { count: plan.credits }) }}</h3>
-          <p
-            v-if="
-              plan.title.replace(/\s/g, '') !== `${plan.credits}次创作` &&
-              plan.title.replace(/\s/g, '') !== `${plan.credits}次`
-            "
-            class="plan-caption"
-          >
-            {{ plan.title }}
-          </p>
-          <p class="plan-price">{{ money(plan.priceMinor, plan.currency) }}</p>
-          <button
-            class="button primary"
-            type="button"
-            :data-plan-id="plan.id"
-            :aria-label="
-              t('account.buyLabel', { count: plan.credits, price: money(plan.priceMinor, plan.currency) })
-            "
-            :disabled="!verified || !!pendingOrder || busy.has('orders')"
-            @click="buy(plan)"
-          >
-            {{ t('account.buy') }}
-          </button>
-        </article>
+        <PlanCard
+          v-for="plan in plans"
+          :key="plan.id"
+          :plan="plan"
+          :disabled="!verified || !!pendingOrder || busy.has('orders')"
+          @buy="buy"
+        />
       </div>
       <button
         id="retry-order"

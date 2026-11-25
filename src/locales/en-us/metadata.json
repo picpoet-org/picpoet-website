@@ -9,8 +9,8 @@
       "description": "分别了解 {brand} 网站在线创作与客户端 App 的当前能力：账户、官方次数、本机模型、历史、分享图与隐私边界。"
     },
     "pricing": {
-      "title": "定价 · {brand}",
-      "description": "{brand} 软件免费，无订阅。云端模型按服务商规则计费，本地模型需要自行部署与承担运行成本。"
+      "title": "Pricing · {brand}",
+      "description": "The {brand} app is free with no subscription. Creating on the web uses account credits; see current packages on your account page. Cloud model pricing and local running costs are separate."
     },
     "downloads": {
       "title": "下载与发布状态 · {brand}",
