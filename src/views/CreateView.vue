@@ -6,7 +6,7 @@ import { useGeneration } from '../composables/useGeneration.mjs';
 import SessionGate from '../components/SessionGate.vue';
 import WaitingPoems from '../components/WaitingPoems.vue';
 const session = useSession();
-const { t, href, asset, verified, busy, balance, remaining, dailyGrantNote } = session;
+const { t, href, asset, verified, busy, remaining, periodGrantNote } = session;
 const {
   resultInfo,
   preferencesStatus,
@@ -54,9 +54,9 @@ const {
     <div class="creation-toolbar">
       <p id="balance">
         {{
-          balance ? t('session.balance', remaining ?? { gifted: '—', purchased: '—' }) : t('create.balance')
+          verified ? t('session.balance', remaining ?? { gifted: '—', purchased: '—' }) : t('create.balance')
         }}
-        <small v-if="dailyGrantNote">{{ dailyGrantNote }}</small>
+        <small v-if="periodGrantNote">{{ periodGrantNote }}</small>
       </p>
       <button
         id="refresh-balance"

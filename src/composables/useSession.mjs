@@ -34,13 +34,34 @@ export function provideSession() {
       ? groups
       : null;
   });
-  const dailyGrantNote = computed(() => {
+  const periodGrantNote = computed(() => {
     const free = balance.value?.free;
     if (!verified.value || !Number.isSafeInteger(free?.dailyLimit) || free.dailyLimit <= 0) return '';
-    return t(free.promotionActive === true ? 'session.dailyPromotionRemaining' : 'session.dailyRemaining', {
-      limit: site.number(free.dailyLimit),
-      count: site.number(free.remaining),
-    });
+    const note = t(
+      free.promotionActive === true ? 'session.periodPromotionRemaining' : 'session.periodRemaining',
+      {
+        limit: site.number(free.dailyLimit),
+        count: site.number(free.remaining),
+      },
+    );
+    const bounds = [free.periodStart, free.periodEnd];
+    if (!bounds.every((value) => typeof value === 'string' && /T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value)))
+      return note;
+    const [start, end] = bounds.map(Date.parse);
+    const hours = (end - start) / 3_600_000;
+    if (!Number.isSafeInteger(hours) || hours <= 0) return note;
+    const duration = new Intl.NumberFormat(site.language.tag, {
+      style: 'unit',
+      unit: 'hour',
+      unitDisplay: 'long',
+    }).format(hours);
+    const window = new Intl.DateTimeFormat(site.language.tag, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: 'UTC',
+      hourCycle: 'h23',
+    }).formatRange(start, end);
+    return `${note} ${t('session.periodWindow', { duration, window })}`;
   });
   const invitationURL = computed(() =>
     buildInvitationURL(
@@ -264,7 +285,7 @@ export function provideSession() {
     identityLabel,
     balance,
     remaining,
-    dailyGrantNote,
+    periodGrantNote,
     invitationURL,
     grantedCredits,
     ensureInvitationURL,
